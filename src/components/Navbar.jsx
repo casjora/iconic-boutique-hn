@@ -1,7 +1,7 @@
 import React from 'react';
 import { useStore } from '../store';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingBag, Key, LogOut, Package, FileSpreadsheet, Settings, Percent, Tags, HelpCircle } from 'lucide-react';
+import { ShoppingBag, Key, LogOut, Package, FileSpreadsheet, Settings, Percent, Tags, HelpCircle, TrendingUp } from 'lucide-react';
 
 export default function Navbar() {
   const { user, cart, logout } = useStore();
@@ -10,8 +10,8 @@ export default function Navbar() {
   const currentPath = location.pathname;
   
   const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
-  const isEmployee = user?.role === 'owner' || user?.role === 'vendedor';
-  const isOwner = user?.role === 'owner';
+  const isEmployee = user?.role === 'owner' || user?.role === 'dueño' || user?.role === 'vendedor';
+  const isOwner = user?.role === 'owner' || user?.role === 'dueño';
 
   const handleLogout = () => {
     logout();
@@ -63,6 +63,15 @@ export default function Navbar() {
 
           {isEmployee && (
             <>
+              <Link
+                to="/dashboard"
+                className={`px-3 py-2 text-sm font-medium rounded-md flex items-center gap-1.5 transition-colors ${
+                  currentPath === '/dashboard' ? 'bg-neutral-900 text-white' : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
+                }`}
+              >
+                <TrendingUp className="h-4 w-4" />
+                Dashboard
+              </Link>
               <Link
                 to="/inventory"
                 className={`px-3 py-2 text-sm font-medium rounded-md flex items-center gap-1.5 transition-colors ${
@@ -142,7 +151,7 @@ export default function Navbar() {
                   {user.name}
                 </span>
                 <span className="text-[10px] uppercase tracking-wide font-bold text-neutral-500">
-                  {user.role === 'owner' ? 'Dueño' : user.role === 'vendedor' ? 'Vendedor' : 'Cliente VIP'}
+                  {(user.role === 'owner' || user.role === 'dueño') ? 'Dueño' : user.role === 'vendedor' ? 'Vendedor' : 'Cliente VIP'}
                 </span>
               </div>
               <button
@@ -187,6 +196,14 @@ export default function Navbar() {
         </Link>
         {isEmployee && (
           <>
+            <Link
+              to="/dashboard"
+              className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                currentPath === '/dashboard' ? 'bg-neutral-900 text-white font-semibold' : 'bg-white text-neutral-600 border border-neutral-200'
+              }`}
+            >
+              Dashboard
+            </Link>
             <Link
               to="/inventory"
               className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${

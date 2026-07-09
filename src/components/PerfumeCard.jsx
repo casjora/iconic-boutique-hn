@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useStore } from '../store';
 import { Link } from 'react-router-dom';
 import { ShoppingCart, Sparkles, AlertTriangle, Check, Award, Gift } from 'lucide-react';
-import { isProductSet } from '.././utils/porductHelper';
+import { isProductSet } from '../utils/porductHelper';
 
 export default function PerfumeCard({ product }) {
   const { user, addToCart } = useStore();
@@ -10,6 +10,7 @@ export default function PerfumeCard({ product }) {
 
   const isAuthenticated = !!user;
   const isEmployee = user?.role === 'owner' || user?.role === 'vendedor';
+  const isOwner = user?.role === 'owner';
 
   const saving = product.pricePublic - product.pricePromotional;
   const isOutOfStock = product.stock <= 0;
@@ -135,8 +136,8 @@ export default function PerfumeCard({ product }) {
           )}
         </div>
 
-        {/* Cost - ONLY shown to owner/vendedor */}
-        {isEmployee && (
+        {/* Cost - ONLY shown to owner */}
+        {isOwner && (
           <div className="mt-2 rounded bg-neutral-50 p-1.5 border border-neutral-100 text-[10px] font-mono text-neutral-500 flex justify-between">
             <span>Costo de Compra (Fórmula L27):</span>
             <span className="font-bold text-neutral-800">L. {product.cost.toLocaleString()} HNL</span>

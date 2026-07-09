@@ -72,7 +72,7 @@ export const useStore = create((set, get) => ({
       if (profileErr) throw profileErr;
 
       let mappedRole = 'client';
-      if (profile.role === 'dueño') mappedRole = 'owner';
+      if (profile.role === 'dueño' || profile.role === 'owner') mappedRole = 'owner';
       else if (profile.role === 'vendedor') mappedRole = 'vendedor';
 
       const email = session.user.email || '';
@@ -121,7 +121,7 @@ export const useStore = create((set, get) => ({
 
       // Map Supabase roles ('dueño', 'vendedor', 'usuario') to App roles ('owner', 'vendedor', 'client')
       let mappedRole = 'client';
-      if (profile.role === 'dueño') mappedRole = 'owner';
+      if (profile.role === 'dueño' || profile.role === 'owner') mappedRole = 'owner';
       else if (profile.role === 'vendedor') mappedRole = 'vendedor';
 
       const loggedUser = {
@@ -189,7 +189,7 @@ export const useStore = create((set, get) => ({
 
       let mappedRole = 'client';
       if (profile) {
-        if (profile.role === 'dueño') mappedRole = 'owner';
+        if (profile.role === 'dueño' || profile.role === 'owner') mappedRole = 'owner';
         else if (profile.role === 'vendedor') mappedRole = 'vendedor';
       }
 

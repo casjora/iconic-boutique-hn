@@ -13,14 +13,25 @@ import Orders from './pages/Orders';
 import Config from './pages/Config';
 import Cart from './pages/Cart';
 import Barcodes from './pages/Barcodes';
+import Dashboard from './pages/Dashboard';
 
 // Auth Guard Wrapper
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user } = useStore();
+  
+  console.log('[ProtectedRoute] Checking access for path:', window.location.hash || window.location.pathname, 'User:', user, 'AllowedRoles:', allowedRoles);
+
   if (!user) {
     return <Navigate to="/login" replace />;
   }
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+
+  // Normalize 'dueño' and 'owner' to be completely interchangeable
+  const userRole = user.role;
+  const normalizedUserRole = userRole === 'dueño' ? 'owner' : userRole;
+  const normalizedAllowedRoles = (allowedRoles || []).map(r => r === 'dueño' ? 'owner' : r);
+
+  if (allowedRoles && !normalizedAllowedRoles.includes(normalizedUserRole)) {
+    console.warn('[ProtectedRoute] Access Denied! Redirecting to home. Normalized user role:', normalizedUserRole, 'Allowed normalized roles:', normalizedAllowedRoles);
     return <Navigate to="/" replace />;
   }
   return children;
@@ -90,6 +101,14 @@ export default function App() {
             <Route path="/cart" element={<Cart />} />
             
             {/* Employee Protected Routes */}
+            <Route 
+              path="/dashboard" 
+              element={
+                <ProtectedRoute allowedRoles={['owner', 'vendedor']}>
+                  <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
             <Route 
               path="/inventory" 
               element={
