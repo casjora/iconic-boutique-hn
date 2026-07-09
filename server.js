@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
@@ -373,7 +374,7 @@ Trata de extraer la mayor cantidad de información real posible de la factura de
               barcode: { type: Type.STRING },
               description: { type: Type.STRING },
             },
-            required: ['name', 'brand', 'size', 'cost', 'pricePublic', 'pricePromotional', 'stock', 'category', 'barcode']
+            required: ['name']
           }
         }
       }
@@ -384,7 +385,58 @@ Trata de extraer la mayor cantidad de información real posible de la factura de
       throw new Error('Gemini no retornó resultados legibles');
     }
 
-    const parsedProducts = JSON.parse(text);
+    const rawProducts = JSON.parse(text);
+    const parsedProducts = (Array.isArray(rawProducts) ? rawProducts : []).map(p => {
+      const name = (p.name || 'Perfume').trim();
+      const cost = Number(p.cost) || 0;
+      
+      let pricePublic = Number(p.pricePublic) || 0;
+      if (pricePublic === 0 && cost > 0) {
+        pricePublic = Math.round(cost * 1.45);
+      } else if (pricePublic === 0) {
+        pricePublic = 1500;
+      }
+
+      let pricePromotional = Number(p.pricePromotional) || 0;
+      if (pricePromotional === 0 && pricePublic > 0) {
+        pricePromotional = Math.round(pricePublic * 0.75);
+      } else if (pricePromotional === 0) {
+        pricePromotional = 1100;
+      }
+
+      let brand = (p.brand || '').trim();
+      if (!brand) {
+        brand = name.split(' ')[0] || 'Genérica';
+      }
+
+      let size = (p.size || '100 ml').trim();
+      let stock = Number(p.stock) || 1;
+      
+      let category = (p.category || 'Unisex').trim();
+      if (category.toLowerCase().includes('masculino') || category.toLowerCase().includes('hombre') || category.toLowerCase().includes('men')) {
+        category = 'Masculino';
+      } else if (category.toLowerCase().includes('femenino') || category.toLowerCase().includes('mujer') || category.toLowerCase().includes('women')) {
+        category = 'Femenino';
+      } else {
+        category = 'Unisex';
+      }
+
+      const barcode = (p.barcode || '').trim() || `740${Math.floor(100000000 + Math.random() * 900000000)}`;
+
+      return {
+        name,
+        brand,
+        size,
+        cost,
+        pricePublic,
+        pricePromotional,
+        stock,
+        category,
+        barcode,
+        description: p.description || 'Importado por PDF'
+      };
+    });
+
     return res.json({
       success: true,
       products: parsedProducts

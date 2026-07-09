@@ -14,15 +14,17 @@ const CODE128_PATTERNS = [
   "112412", "122114", "122411", "142112", "142211", "241211", "221114", "413111", "241112", "134111", // 70-79
   "111242", "121142", "121241", "114212", "124112", "124211", "411212", "421112", "421211", "212141", // 80-89
   "214121", "412121", "111143", "111341", "131141", "114113", "114311", "411113", "411311", "113141", // 90-99
-  "114131", "311141", "411131", "211412", "211214", "211232" // 100-105
+  "114131", "311141", "411131", "211412", "211214", "211232", "2331112" // 100-106
 ];
 
 const START_CODE_B = 104;
 const STOP_CODE = 106;
 
 export function generateBarcodeSVG(text) {
+  if (text === null || text === undefined) return "";
+  const stringText = String(text);
   // Filter ASCII values for Code 128 Code B (values 32 to 127)
-  const cleanText = text.replace(/[^\x20-\x7F]/g, "");
+  const cleanText = stringText.replace(/[^\x20-\x7F]/g, "");
   if (!cleanText) return "";
 
   const indices = [START_CODE_B];
@@ -44,14 +46,13 @@ export function generateBarcodeSVG(text) {
   let binaryString = "";
   for (const index of indices) {
     const pattern = CODE128_PATTERNS[index];
+    if (!pattern) continue;
     for (let j = 0; j < pattern.length; j++) {
       const width = parseInt(pattern[j], 10);
       const isBar = j % 2 === 0;
       binaryString += (isBar ? "1" : "0").repeat(width);
     }
   }
-  // Add stop bar
-  binaryString += "23"; // standard termination bar of 2 modules and space
 
   // Build the SVG paths
   const barWidth = 2;

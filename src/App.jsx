@@ -36,14 +36,35 @@ const PublicOnlyRoute = ({ children }) => {
 };
 
 export default function App() {
-  const { fetchProducts, fetchOrders, fetchTelegramConfig } = useStore();
+  const { fetchProducts, fetchOrders, fetchTelegramConfig, restoreSession, checkingSession } = useStore();
 
   useEffect(() => {
-    // Initial fetch from backend APIs
-    fetchProducts();
-    fetchTelegramConfig();
-    fetchOrders();
+    const init = async () => {
+      // First try to restore existing session
+      await restoreSession();
+      // Fetch backend data
+      fetchProducts();
+      fetchTelegramConfig();
+      fetchOrders();
+    };
+    init();
   }, []);
+
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans">
+        <div className="flex flex-col items-center">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600"></div>
+          <p className="mt-4 text-xs font-semibold text-neutral-500 uppercase tracking-widest font-mono">
+            Iconic Boutique HN
+          </p>
+          <p className="mt-1 text-xs text-neutral-400">
+            Cargando sesión...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Router>

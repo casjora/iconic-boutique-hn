@@ -1,6 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useStore } from '../store';
-import { generateBarcodeSVG } from '../utils/barcode';
+import { generateBarcodeSVG } from '.././utils/barcode';
+import { isProductSet } from '.././utils/porductHelper';
+
 import { Plus, Edit2, Trash2, FileUp, Sparkles, Loader2, CheckCircle2, RefreshCw, X, AlertCircle, FileText, ClipboardList, Copy, Check, Server } from 'lucide-react';
 
 export default function InventoryManager() {
@@ -19,6 +21,7 @@ export default function InventoryManager() {
   const [showCsvImport, setShowCsvImport] = useState(false);
   const [csvText, setCsvText] = useState('');
   const [csvParsedProducts, setCsvParsedProducts] = useState(null);
+  const [csvSaving, setCsvSaving] = useState(false);
 
   // Form states
   const [name, setName] = useState('');
@@ -121,7 +124,10 @@ export default function InventoryManager() {
         if (parsed && parsed.length > 0) {
           setAiParsedProducts(parsed);
         } else {
-          setError('No se pudieron extraer productos del PDF. Verifique que el documento contenga datos de facturas o cotizaciones legibles.');
+          const storeErr = useStore.getState().error;
+          if (!storeErr) {
+            setError('No se pudieron extraer productos del PDF. Verifique que el documento contenga datos de facturas o cotizaciones legibles.');
+          }
         }
         setPdfUploading(false);
       };
@@ -148,101 +154,204 @@ export default function InventoryManager() {
     alert(`Se agregaron o actualizaron exitosamente ${addedCount} perfumes importados al inventario.`);
   };
 
-  // CSV / Plain Text processing
-  const handleParseCsv = () => {
-    if (!csvText.trim()) return;
+  // Decompose column 1 into Name, Brand, Size, Category
+  const parsePerfumeDescription = (rawDescStr) => {
+    if (!rawDescStr || typeof rawDescStr !== 'string') {
+      return { name: 'Desconocido', brand: 'Genérica', size: '100 ML', category: 'Unisex' };
+    }
+
+    // IMPORTANTE: Aplanamos todas las líneas para no perder tallas o categorías en los SETS
+    let text = rawDescStr.replace(/[\r\n]+/g, ' ').trim();
+    
+    let size = '100 ML';
+    const actualSizeRegex = /(\d+(\.\d+)?\s*(ML|ml|Ml|oz|Oz|OZ|PC|pc|Pcs|pcs|Pieces|pieces))/i;
+    const sizeMatch = text.match(actualSizeRegex);
+    if (sizeMatch) {
+      size = sizeMatch[1].toUpperCase();
+      text = text.replace(actualSizeRegex, '');
+    }
+
+    let category = 'Unisex';
+    // Se agregan Pour Femme y Pour Homme
+    const genderRegex = /\b(Women|Women's|Woman|Women|Men|Men's|Man|Unisex|U|W|M|Femenino|Masculino|Pour Femme|Pour Homme)\b/i;
+    const genderMatch = text.match(genderRegex);
+    if (genderMatch) {
+      const g = genderMatch[1].toUpperCase();
+      if (['MEN', "MEN'S", 'MAN', 'M', 'MASCULINO', 'POUR HOMME'].includes(g)) category = 'Masculino';
+      else if (['WOMEN', "WOMEN'S", 'WOMAN', 'W', 'FEMENINO', 'POUR FEMME'].includes(g)) category = 'Femenino';
+      text = text.replace(genderRegex, '');
+    }
+
+    const techRegex = /\b(Sp|SP|Spray|EDP|EDT|Parfum|Extrait\s+De\s+Parfum|Extrait|Cologne|EDC|Extraite|Set|Tester|Refillable|New UPC|Gift Set)\b/ig;
+    text = text.replace(techRegex, '');
+    text = text.replace(/\(\s*\)/g, '').replace(/\[\s*\]/g, '');
+
+    const commonBrands = [
+      'Al Haramain', 'Antonio Banderas', 'Ariana Grande', 'Carolina Herrera', 'Christian Dior', 
+      'Dolce & Gabbana', 'Elizabeth Arden', 'Elizabeth Taylor', 'Fragrance World', 'French Avenue',
+      'Giorgio Armani', 'Giorgio Valenti', 'Jean Paul Gaultier', 'Jennifer Lopez', 'Juicy Couture', 
+      'Kenneth Cole', 'Marc Jacobs', 'Paco Rabanne', 'Paris Hilton', 'Patek Maison', 'Perry Ellis',
+      'Ralph Lauren', 'Salvatore Ferragamo', 'Ted Lapidus', 'Thierry Mugler', 'Tommy Hilfiger', 
+      'Yves Saint Laurent', 'Acqua Di Parisis', 'Mont Blanc', 'Afnan', 'Animale', 'Armaf', 'Azzaro', 
+      'Benetton', 'Bharara', 'Burberry', 'Boucheron', 'Cacharel', 'Calvin Klein', 'Chloe', 'Clinique', 
+      'Davidoff', 'Emper', 'Givenchy', 'Gucci', 'Guess', 'Hugo Boss', 'Issey Miyake', 'Lacoste', 
+      'Lancome', 'Lattafa', 'Liz Claiborne', 'Moschino', 'Nautica', 'Orientica', 'Prada', 'Rasasi', 
+      'Valentino', 'Versace', 'YSL', 'Dior', 'Chanel'
+    ];
+    
+    let brand = '';
+    text = text.replace(/\s+/g, ' ').trim();
+    const textUpper = text.toUpperCase();
+
+    for (const b of commonBrands) {
+      const bUpper = b.toUpperCase();
+      if (textUpper.startsWith(bUpper) || textUpper.includes(' ' + bUpper + ' ') || textUpper.includes(bUpper)) {
+        brand = b;
+        break;
+      }
+    }
+
+    if (!brand) {
+      const firstWord = text.split(' ')[0] || 'Genérica';
+      brand = firstWord.charAt(0).toUpperCase() + firstWord.slice(1).toLowerCase();
+    }
+
+    let cleanName = text;
+    if (brand && brand !== 'Genérica') {
+      const brandEscaped = brand.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const brandRegex = new RegExp(`^\\s*${brandEscaped}\\s*`, 'i');
+      cleanName = cleanName.replace(brandRegex, '');
+    }
+
+    cleanName = cleanName.replace(/^[,\s-]+|[,\s-]+$/g, '').replace(/\s+/g, ' ').trim();
+    if (cleanName.length > 0) {
+      cleanName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+    } else {
+      cleanName = text || 'Perfume Importado';
+    }
+
+    return { name: cleanName, brand, size, category };
+  };
+
+  // Unified parsing handler
+  const parseAndSetCsv = (textToParse) => {
+    if (!textToParse || typeof textToParse !== 'string' || !textToParse.trim()) return;
+    
     try {
-      const lines = csvText.split('\n');
       const results = [];
-      const commonBrands = ['Afnan', 'Al Haramain', 'Animale', 'Antonio Banderas', 'Ariana Grande', 'Armaf', 'Azzaro', 'Benetton', 'Bharara', 'Burberry', 'Boucheron', 'Cacharel', 'Calvin Klein', 'Carolina Herrera', 'Chloe', 'Christian Dior', 'Clinique', 'Davidoff', 'Elizabeth Arden', 'Elizabeth Taylor', 'Emper', 'Fragrance World', 'French Avenue', 'Giorgio Armani', 'Giorgio Valenti', 'Givenchy', 'Gucci', 'Guess', 'Hugo Boss', 'Issey Miyake', 'Jean Paul Gaultier', 'Jennifer Lopez', 'Juicy Couture', 'Kenneth Cole', 'Lacoste', 'Lancome', 'Lattafa', 'Liz Claiborne', 'Marc Jacobs', 'Mont Blanc', 'Moschino', 'Nautica', 'Orientica', 'Paco Rabanne', 'Paris Hilton', 'Patek Maison', 'Perry Ellis', 'Prada', 'Ralph Lauren', 'Rasasi', 'Salvatore Ferragamo', 'Tommy Hilfiger', 'Thierry Mugler', 'Valentino', 'Versace', 'Yves Saint Laurent', 'YSL'];
-
-      for (let line of lines) {
-        line = line.trim();
-        if (!line) continue;
-
-        // Quote-aware CSV parsing
-        const parts = [];
-        let currentPart = '';
-        let insideQuotes = false;
-        for (let i = 0; i < line.length; i++) {
-          const char = line[i];
-          if (char === '"') {
-            insideQuotes = !insideQuotes;
-          } else if (char === ',' && !insideQuotes) {
-            parts.push(currentPart.trim());
-            currentPart = '';
-          } else {
-            currentPart += char;
-          }
+      
+      // 1. Detección automática del delimitador
+      let delimiter = ',';
+      if (textToParse.includes('\t')) {
+        delimiter = '\t'; // Fue pegado desde Excel
+      } else if (textToParse.indexOf(';') !== -1) {
+        const firstLine = textToParse.split('\n')[0] || '';
+        if (firstLine.split(';').length > firstLine.split(',').length) {
+          delimiter = ';'; // Formato regional CSV español
         }
-        parts.push(currentPart.trim());
+      }
 
-        if (parts.length >= 3) {
-          const fullName = parts[0];
-          const stock = parseInt(parts[1]) || 0;
-          const costStr = parts[2].replace(/[^0-9.]/g, '');
-          const cost = parseFloat(costStr) || 0;
-          
-          let pricePublic = 0;
-          if (parts[3]) {
-            const priceStr = parts[3].replace(/[^0-9.]/g, '');
-            pricePublic = parseFloat(priceStr) || 0;
-          } else {
-            pricePublic = Math.round(cost * 1.45);
+      const rows = [];
+      let currentRow = [];
+      let currentCell = '';
+      let inQuotes = false;
+
+      // 2. Lector para separar celdas y respetar multilíneas
+      for (let i = 0; i < textToParse.length; i++) {
+        const char = textToParse[i];
+        const nextChar = textToParse[i + 1];
+
+        if (char === '"' && inQuotes && nextChar === '"') {
+          currentCell += '"'; 
+          i++;
+        } else if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === delimiter && !inQuotes) {
+          currentRow.push(currentCell);
+          currentCell = '';
+        } else if ((char === '\n' || char === '\r') && !inQuotes) {
+          if (char === '\r' && nextChar === '\n') {
+            i++; 
+          }
+          currentRow.push(currentCell);
+          rows.push(currentRow);
+          currentRow = [];
+          currentCell = '';
+        } else {
+          currentCell += char;
+        }
+      }
+      
+      if (currentCell || currentRow.length > 0) {
+        currentRow.push(currentCell);
+        rows.push(currentRow);
+      }
+
+      // 3. Procesar las columnas mapeadas
+      for (const row of rows) {
+        const cleanRow = row.map(cell => (cell ? cell.trim() : ''));
+        if (cleanRow.every(c => !c)) continue; 
+
+        const firstColLower = cleanRow[0]?.toLowerCase() || '';
+        if (
+          firstColLower.includes('nombre de perfume') || 
+          firstColLower.includes('product') || 
+          firstColLower.includes('item') ||
+          firstColLower.includes('descrip') ||
+          firstColLower.includes('name') ||
+          firstColLower.includes('precio vip') ||
+          firstColLower.includes('precio al publico')
+        ) {
+          continue; 
+        }
+
+        // Si tenemos al menos descripción y una columna de números, intentamos procesar
+        if (cleanRow.length >= 2) {
+          const rawDesc = cleanRow[0];
+          if (!rawDesc) continue;
+
+          // Asignamos índices seguros en caso de columnas vacías
+          const stockRaw = cleanRow[1] || '0';
+          const vipRaw = cleanRow[2] || '0';
+          const publicRaw = cleanRow[3] || '0';
+
+          // Limpiar formatos monetarios (quita comas de miles y simbolos, mantiene el punto decimal)
+          const stock = parseInt(stockRaw.replace(/[^0-9-]/g, '')) || 0;
+          const pricePromotional = parseFloat(vipRaw.replace(/[^0-9.]/g, '')) || 0; 
+          const pricePublic = parseFloat(publicRaw.replace(/[^0-9.]/g, '')) || 0; 
+
+          const parsedDesc = parsePerfumeDescription(rawDesc);
+          if (parsedDesc.name.length < 3) continue; 
+
+          // Estimación de precios
+          let finalPricePublic = pricePublic;
+          let finalPricePromotional = pricePromotional;
+
+          if (finalPricePublic === 0 && finalPricePromotional > 0) {
+            finalPricePublic = Math.round(finalPricePromotional * 1.5);
+          }
+          if (finalPricePromotional === 0 && finalPricePublic > 0) {
+            finalPricePromotional = Math.round(finalPricePublic * 0.75);
           }
 
-          // Brand
-          let brand = '';
-          const upperFullName = fullName.toUpperCase();
-          for (const b of commonBrands) {
-            if (upperFullName.startsWith(b.toUpperCase()) || upperFullName.includes(' ' + b.toUpperCase() + ' ') || upperFullName.includes(b.toUpperCase())) {
-              brand = b;
-              break;
-            }
-          }
-          if (!brand) {
-            brand = fullName.split(' ')[0] || 'Genérica';
-          }
-
-          // Size
-          let size = '100 ML';
-          const sizeMatch = fullName.match(/(\d+(\.\d+)?\s*(ML|ml|Ml|EDP|EDT|oz|Oz|OZ|Sp|g|G|uds|Uds))/i);
-          if (sizeMatch) {
-            size = sizeMatch[0];
-          }
-
-          // VIP Price (Promotional)
-          let pricePromotional = Math.round(pricePublic * 0.7);
-          if (cost > 0) {
-            pricePromotional = Math.max(Math.round(cost * 1.25), Math.round(pricePublic * 0.7));
-          }
-          if (pricePromotional >= pricePublic) {
-            pricePromotional = Math.round(pricePublic * 0.85);
-          }
-          if (pricePromotional <= cost && cost < pricePublic) {
-            pricePromotional = Math.round((cost + pricePublic) / 2);
-          }
-
-          // Category
-          let category = 'Unisex';
-          const upperName = fullName.toUpperCase();
-          if (upperName.includes('MEN') || upperName.includes('HOMBRE') || upperName.includes('POUR HOMME') || upperName.includes('MALE') || upperName.includes(' M ')) {
-            category = 'Masculino';
-          } else if (upperName.includes('WOMEN') || upperName.includes('MUJER') || upperName.includes('POUR FEMME') || upperName.includes('FEMALE') || upperName.includes(' W ') || upperName.includes('GIRL') || upperName.includes('DONNA')) {
-            category = 'Femenino';
+          let estimatedCost = 0;
+          if (finalPricePromotional > 0) {
+            estimatedCost = Math.round(finalPricePromotional * 0.8);
+          } else if (finalPricePublic > 0) {
+            estimatedCost = Math.round(finalPricePublic * 0.55);
           }
 
           results.push({
-            name: fullName,
-            brand,
-            size,
-            cost,
-            pricePublic,
-            pricePromotional,
+            name: parsedDesc.name,
+            brand: parsedDesc.brand,
+            size: parsedDesc.size,
+            cost: estimatedCost,
+            pricePublic: finalPricePublic,
+            pricePromotional: finalPricePromotional,
             stock,
-            category,
+            category: parsedDesc.category,
             barcode: `740${Math.floor(100000000 + Math.random() * 900000000)}`,
-            description: 'Importado por lote CSV'
+            description: rawDesc.replace(/[\r\n]+/g, ' ').trim()
           });
         }
       }
@@ -251,16 +360,37 @@ export default function InventoryManager() {
         setCsvParsedProducts(results);
         setError(null);
       } else {
-        setError('No se encontraron líneas válidas. Formato requerido: Nombre del perfume, Stock, Costo, Precio Público');
+        setError('No se pudieron extraer productos. Revisa el formato de los datos copiados.');
       }
     } catch (err) {
-      setError('Error al procesar el texto: ' + err.message);
+      setError('Error al procesar: ' + err.message);
     }
+  };
+
+  // CSV button click handler
+  const handleParseCsv = () => {
+    parseAndSetCsv(csvText);
+  };
+
+  // CSV file selector change handler
+  const handleCsvFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target.result;
+      setCsvText(text);
+      setTimeout(() => {
+        parseAndSetCsv(text);
+      }, 100);
+    };
+    reader.readAsText(file, 'UTF-8');
   };
 
   const handleSaveCsvProducts = async () => {
     if (!csvParsedProducts) return;
-    setPdfUploading(true);
+    setCsvSaving(true);
     
     let addedCount = 0;
     for (const prod of csvParsedProducts) {
@@ -271,7 +401,7 @@ export default function InventoryManager() {
     setCsvParsedProducts(null);
     setCsvText('');
     setShowCsvImport(false);
-    setPdfUploading(false);
+    setCsvSaving(false);
     alert(`Se agregaron o actualizaron exitosamente ${addedCount} perfumes en el inventario.`);
   };
 
@@ -485,7 +615,42 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 
--- 8. Insertar datos actuales de tu Inventario local (${products.length} perfumes)
+-- 8. Crear tabla de Telegram para configuración de notificaciones automáticas
+CREATE TABLE IF NOT EXISTS public.telegram (
+  id TEXT PRIMARY KEY,
+  token TEXT NOT NULL,
+  "chatId" TEXT NOT NULL,
+  active BOOLEAN NOT NULL DEFAULT false,
+  "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Habilitar RLS en telegram
+ALTER TABLE public.telegram ENABLE ROW LEVEL SECURITY;
+
+-- Políticas de RLS para telegram
+CREATE POLICY "Permitir lectura de configuración de Telegram a empleados" ON public.telegram
+  FOR SELECT TO authenticated USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles 
+      WHERE profiles.id = auth.uid() AND profiles.role IN ('vendedor', 'dueño')
+    )
+  );
+
+CREATE POLICY "Permitir al dueño gestionar la configuración de Telegram" ON public.telegram
+  FOR ALL TO authenticated USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles 
+      WHERE profiles.id = auth.uid() AND profiles.role = 'dueño'
+    )
+  ) WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.profiles 
+      WHERE profiles.id = auth.uid() AND profiles.role = 'dueño'
+    )
+  );
+
+
+-- 9. Insertar datos actuales de tu Inventario local (${products.length} perfumes)
 ${products.length > 0 ? `INSERT INTO products (id, name, brand, size, cost, price_public, price_promotional, stock, category, barcode, description)
 VALUES
   ${productSeedLines}
@@ -593,6 +758,19 @@ ON CONFLICT (id) DO UPDATE SET
         </div>
       )}
 
+      {/* CSV Saving Overlay Loader */}
+      {csvSaving && (
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-6 flex flex-col items-center text-center space-y-3">
+          <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+          <h3 className="font-display font-bold text-emerald-900 text-base">
+            Guardando perfumes en la base de datos de Supabase...
+          </h3>
+          <p className="text-xs text-emerald-700 max-w-md">
+            Estamos registrando los perfumes importados en tu catálogo. Esto tomará sólo un momento.
+          </p>
+        </div>
+      )}
+
       {/* CSV Paste / Raw Text Import Panel */}
       {showCsvImport && !csvParsedProducts && (
         <div className="rounded-2xl border border-neutral-200 bg-white p-6 space-y-4 shadow-sm">
@@ -612,16 +790,43 @@ ON CONFLICT (id) DO UPDATE SET
           </div>
           
           <div className="text-xs text-neutral-600 space-y-2">
-            <p>Pega tu base de datos o lista de inventario línea por línea. El sistema detectará automáticamente el nombre, la marca, la presentación y estimará los precios.</p>
-            <p className="font-bold text-neutral-700">Formato esperado (CSV o separado por comas):</p>
-            <pre className="p-2.5 bg-neutral-50 rounded-lg text-[11px] font-mono border border-neutral-100 whitespace-pre-wrap overflow-x-auto text-neutral-700">
-              Nombre de Perfume, Cantidad (Stock), Costo de Compra, Precio Público de Venta
-            </pre>
-            <p className="italic text-neutral-500">Ejemplo: Acqua Di Parisis Venizia 100 ML EDP Sp Women, 7, 675.00, 1100.00</p>
+            <p>Selecciona un archivo CSV/TXT o pega tu base de datos de inventario. El sistema detectará automáticamente el nombre, la marca, la presentación y descompondrá los campos requeridos.</p>
+            <p className="font-bold text-neutral-700">Formato de Columnas requerido en tu CSV:</p>
+            <div className="p-3 bg-neutral-50 rounded-lg text-xs border border-neutral-100 text-neutral-700 space-y-1">
+              <p>📍 <strong>Columna 1:</strong> Nombre perfume, ML, tipo, SP, género (ej. <em>Acqua Di Parisis Venizia 100 ML EDP Sp Women</em>)</p>
+              <p>📦 <strong>Columna 2:</strong> Cantidad en Inventario (Stock)</p>
+              <p>💎 <strong>Columna 3:</strong> Precio VIP (Clientes mayoristas)</p>
+              <p>💵 <strong>Columna 4:</strong> Precio al Público General</p>
+            </div>
+          </div>
+
+          {/* CSV File Selector & Drag-and-drop zone */}
+          <div className="border-2 border-dashed border-emerald-200 hover:border-emerald-400 rounded-xl p-5 text-center cursor-pointer bg-emerald-50/20 hover:bg-emerald-50/50 transition-colors relative">
+            <input
+              type="file"
+              accept=".csv,.txt"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              onChange={handleCsvFileChange}
+            />
+            <div className="flex flex-col items-center justify-center space-y-2">
+              <FileText className="h-7 w-7 text-emerald-600 animate-pulse" />
+              <p className="text-xs font-semibold text-neutral-700">
+                Selecciona o arrastra tu archivo CSV / Texto
+              </p>
+              <p className="text-[10px] text-neutral-400">
+                Admite archivos .csv y .txt con codificación UTF-8
+              </p>
+            </div>
+          </div>
+
+          <div className="relative flex py-1 items-center">
+            <div className="flex-grow border-t border-neutral-200"></div>
+            <span className="flex-shrink mx-4 text-neutral-400 text-[10px] font-bold uppercase">O PEGAR TEXTO DIRECTAMENTE</span>
+            <div className="flex-grow border-t border-neutral-200"></div>
           </div>
 
           <textarea
-            rows={8}
+            rows={5}
             value={csvText}
             onChange={(e) => setCsvText(e.target.value)}
             placeholder="Pega las líneas de tu inventario aquí..."
@@ -683,20 +888,30 @@ ON CONFLICT (id) DO UPDATE SET
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
-                {csvParsedProducts.map((p, idx) => (
-                  <tr key={idx} className="hover:bg-neutral-50/50 text-neutral-700">
-                    <td className="px-4 py-2">
-                      <span className="font-bold text-neutral-900 block">{p.name}</span>
-                      <span className="text-[10px] text-neutral-400 font-bold uppercase">{p.brand}</span>
-                    </td>
-                    <td className="px-4 py-2 font-mono">{p.size}</td>
-                    <td className="px-4 py-2 text-neutral-500">{p.category}</td>
-                    <td className="px-4 py-2 text-right font-mono">L. {p.cost.toLocaleString()}</td>
-                    <td className="px-4 py-2 text-right font-mono font-bold text-emerald-600">L. {p.pricePublic.toLocaleString()}</td>
-                    <td className="px-4 py-2 text-right font-mono font-bold text-amber-600">L. {p.pricePromotional.toLocaleString()}</td>
-                    <td className="px-4 py-2 text-center font-mono font-bold">{p.stock}</td>
-                  </tr>
-                ))}
+                {csvParsedProducts.map((p, idx) => {
+                  const isSet = isProductSet(p);
+                  return (
+                    <tr key={idx} className={`hover:bg-neutral-50/50 text-neutral-700 ${isSet ? 'bg-indigo-50/10' : ''}`}>
+                      <td className="px-4 py-2">
+                        <span className="font-bold text-neutral-900 block flex items-center gap-1.5">
+                          {isSet && (
+                            <span className="bg-indigo-50 text-indigo-700 text-[9px] font-black px-1.5 py-0.5 rounded border border-indigo-100 flex-shrink-0">
+                              🎁 SET
+                            </span>
+                          )}
+                          {p.name}
+                        </span>
+                        <span className="text-[10px] text-neutral-400 font-bold uppercase">{p.brand}</span>
+                      </td>
+                      <td className="px-4 py-2 font-mono">{p.size}</td>
+                      <td className="px-4 py-2 text-neutral-500">{p.category}</td>
+                      <td className="px-4 py-2 text-right font-mono">L. {p.cost.toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right font-mono font-bold text-emerald-600">L. {p.pricePublic.toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right font-mono font-bold text-amber-600">L. {p.pricePromotional.toLocaleString()}</td>
+                      <td className="px-4 py-2 text-center font-mono font-bold">{p.stock}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -704,16 +919,27 @@ ON CONFLICT (id) DO UPDATE SET
           <div className="flex justify-end gap-2 border-t border-emerald-100 pt-3">
             <button
               onClick={() => setCsvParsedProducts(null)}
-              className="px-4 py-2 rounded-xl border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 cursor-pointer"
+              disabled={csvSaving}
+              className="px-4 py-2 rounded-xl border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Atrás / Editar Texto
             </button>
             <button
               onClick={handleSaveCsvProducts}
-              className="inline-flex items-center gap-1 px-4 py-2 rounded-xl bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 cursor-pointer shadow-sm"
+              disabled={csvSaving}
+              className="inline-flex items-center gap-1 px-4 py-2 rounded-xl bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <CheckCircle2 className="h-4 w-4" />
-              Confirmar e Importar al Inventario
+              {csvSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Importando Perfumes...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  Confirmar e Importar al Inventario
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -991,70 +1217,80 @@ ON CONFLICT (id) DO UPDATE SET
                   </td>
                 </tr>
               ) : (
-                products.map((p) => (
-                  <tr key={p.id} className="hover:bg-neutral-50/50">
-                    <td className="px-6 py-4">
-                      <span className="block font-bold text-neutral-950">{p.name}</span>
-                      <span className="text-[10px] text-neutral-400 uppercase font-bold font-mono">{p.brand}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-2 py-0.5 rounded-full border border-neutral-100 bg-neutral-50 text-[10px] font-bold">
-                        {p.category}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-mono">{p.size}</td>
-                    <td className="px-6 py-4 font-mono font-bold text-neutral-900">
-                      L. {p.cost.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 font-mono font-bold text-emerald-600">
-                      L. {p.pricePublic.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 font-mono font-bold text-amber-600">
-                      L. {p.pricePromotional.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`font-mono font-bold px-2.5 py-0.5 rounded-full text-xs ${
-                        p.stock <= 0 
-                          ? 'bg-red-50 text-red-800' 
-                          : p.stock <= 3 
-                          ? 'bg-amber-50 text-amber-800 animate-pulse' 
-                          : 'bg-emerald-50 text-emerald-800'
-                      }`}>
-                        {p.stock} uds.
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1">
-                        <span className="font-mono text-[11px] text-neutral-900 font-bold bg-neutral-100 px-1.5 py-0.5 rounded max-w-fit">
-                          {p.barcode}
+                products.map((p) => {
+                  const isSet = isProductSet(p);
+                  return (
+                    <tr key={p.id} className={`hover:bg-neutral-50/50 ${isSet ? 'bg-indigo-50/20' : ''}`}>
+                      <td className="px-6 py-4">
+                        <span className="block font-bold text-neutral-950 flex items-center gap-1.5">
+                          {isSet && (
+                            <span className="bg-indigo-100 text-indigo-800 text-[9px] font-black px-1.5 py-0.5 rounded border border-indigo-200 uppercase tracking-wide flex-shrink-0">
+                              🎁 SET
+                            </span>
+                          )}
+                          {p.name}
                         </span>
-                        {/* Tiny vector preview */}
-                        <div 
-                          className="h-6 w-24 overflow-hidden opacity-80"
-                          dangerouslySetInnerHTML={{ __html: generateBarcodeSVG(p.barcode) }}
-                        />
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-1.5">
-                        <button
-                          onClick={() => handleEdit(p)}
-                          className="p-2 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors cursor-pointer"
-                          title="Editar"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(p.id)}
-                          className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )))}
+                        <span className="text-[10px] text-neutral-400 uppercase font-bold font-mono">{p.brand}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-2 py-0.5 rounded-full border border-neutral-100 bg-neutral-50 text-[10px] font-bold">
+                          {p.category}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 font-mono">{p.size}</td>
+                      <td className="px-6 py-4 font-mono font-bold text-neutral-900">
+                        L. {(Number(p.cost) || 0).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 font-mono font-bold text-emerald-600">
+                        L. {(Number(p.pricePublic) || 0).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 font-mono font-bold text-amber-600">
+                        L. {(Number(p.pricePromotional) || 0).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`font-mono font-bold px-2.5 py-0.5 rounded-full text-xs ${
+                          (p.stock || 0) <= 0 
+                            ? 'bg-red-50 text-red-800' 
+                            : (p.stock || 0) <= 3 
+                            ? 'bg-amber-50 text-amber-800 animate-pulse' 
+                            : 'bg-emerald-50 text-emerald-800'
+                        }`}>
+                          {(p.stock || 0)} uds.
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-mono text-[11px] text-neutral-900 font-bold bg-neutral-100 px-1.5 py-0.5 rounded max-w-fit">
+                            {p.barcode}
+                          </span>
+                          {/* Tiny vector preview */}
+                          <div 
+                            className="h-6 w-24 overflow-hidden opacity-80"
+                            dangerouslySetInnerHTML={{ __html: generateBarcodeSVG(p.barcode) }}
+                          />
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-1.5">
+                          <button
+                            onClick={() => handleEdit(p)}
+                            className="p-2 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors cursor-pointer"
+                            title="Editar"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(p.id)}
+                            className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }))}
             </tbody>
           </table>
         </div>

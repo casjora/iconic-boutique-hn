@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useStore } from '../store';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Sparkles, AlertTriangle, Check, Award } from 'lucide-react';
+import { ShoppingCart, Sparkles, AlertTriangle, Check, Award, Gift } from 'lucide-react';
+import { isProductSet } from '.././utils/porductHelper';
 
 export default function PerfumeCard({ product }) {
   const { user, addToCart } = useStore();
@@ -12,6 +13,7 @@ export default function PerfumeCard({ product }) {
 
   const saving = product.pricePublic - product.pricePromotional;
   const isOutOfStock = product.stock <= 0;
+  const isSet = isProductSet(product);
 
   const handleAddToCart = () => {
     if (isOutOfStock) return;
@@ -39,13 +41,19 @@ export default function PerfumeCard({ product }) {
   };
 
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
+    <div className={`group relative flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md ${isSet ? 'border-indigo-200 ring-1 ring-indigo-50/50' : 'border-neutral-200'}`}>
       
       {/* Category Tag & Stock Status */}
       <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-1.5">
         <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${getCategoryStyles()}`}>
           {product.category}
         </span>
+        {isSet && (
+          <span className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-600 text-white px-2.5 py-0.5 text-[11px] font-bold shadow-sm">
+            <Gift className="h-3 w-3" />
+            Set / Estuche
+          </span>
+        )}
         {isAuthenticated && product.pricePublic !== product.pricePromotional && (
           <span className="inline-flex items-center rounded-full border border-amber-100 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
             Oferta VIP
@@ -76,17 +84,22 @@ export default function PerfumeCard({ product }) {
           <span className="text-xs uppercase tracking-wider font-bold text-neutral-400 font-mono">
             {product.brand}
           </span>
-          <span className="text-xs text-neutral-500 font-mono">
-            {product.size}
+          <span className={`text-xs font-mono font-bold ${isSet ? 'text-indigo-600' : 'text-neutral-500'}`}>
+            {isSet ? `🎁 ${product.size}` : product.size}
           </span>
         </div>
 
-        <h3 className="font-display text-base font-bold text-neutral-900 group-hover:text-neutral-950 line-clamp-1">
-          {product.name}
+        <h3 className="font-display text-base font-bold text-neutral-900 group-hover:text-neutral-950 line-clamp-2 leading-snug flex items-start gap-1.5 min-h-[3rem]">
+          {isSet && (
+            <span className="inline-flex items-center gap-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-black px-1.5 py-0.5 rounded-md border border-indigo-100 uppercase tracking-wide flex-shrink-0 mt-0.5">
+              🎁 SET
+            </span>
+          )}
+          <span>{product.name}</span>
         </h3>
 
-        <p className="mt-1 text-xs text-neutral-500 line-clamp-2 flex-1">
-          {product.description || 'Fragancia importada original de alta gama. Perfecta para cualquier ocasión especial.'}
+        <p className={`mt-1 text-xs line-clamp-2 flex-1 ${isSet ? 'text-indigo-950/80 font-medium bg-indigo-50/40 p-2 rounded-xl border border-indigo-100/30' : 'text-neutral-500'}`}>
+          {product.description || (isSet ? 'Set original de regalo que incluye fragancia y accesorios premium.' : 'Fragancia importada original de alta gama. Perfecta para cualquier ocasión especial.')}
         </p>
 
         {/* Inventory alerts */}

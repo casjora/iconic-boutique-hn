@@ -33,35 +33,61 @@ export default function BarcodeLabels() {
       {/* Print Instructions */}
       <style>{`
         @media print {
-          body * {
-            visibility: hidden;
-          }
-          #print-area, #print-area * {
-            visibility: visible;
-          }
-          #print-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-          .no-print {
+          /* Hide non-printable elements completely */
+          header, footer, nav, .no-print {
             display: none !important;
           }
+          
+          /* Reset layout styles for printing */
+          body, html, #root {
+            background-color: white !important;
+            color: black !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            height: auto !important;
+            min-height: 0 !important;
+          }
+          
+          main {
+            max-width: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            display: block !important;
+          }
+          
+          /* Ensure print area is shown */
+          #print-area {
+            display: block !important;
+            width: 100% !important;
+            position: relative !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          
           .print-card {
             width: 60mm;
             height: 40mm;
             padding: 3mm;
             border: 1px solid #000;
-            margin: 5mm;
-            display: inline-flex !important;
+            margin: 0 auto !important;
+            display: flex !important;
             flex-direction: column;
             align-items: center;
             justify-content: space-between;
+            page-break-after: always;
+            break-after: page;
             page-break-inside: avoid;
+            break-inside: avoid;
             background: white !important;
             color: black !important;
+            box-sizing: border-box;
           }
+        }
+        
+        @page {
+          size: 60mm 40mm;
+          margin: 0;
         }
       `}</style>
 
@@ -187,7 +213,7 @@ export default function BarcodeLabels() {
       </div>
 
       {/* Actual Hidden Area targeted by print media stylesheet */}
-      <div id="print-area" className="hidden media-print:block">
+      <div id="print-area" className="hidden print:block">
         {selectedProducts.map(p => (
           <div key={p.id} className="print-card">
             <div style={{ textAlign: 'center', width: '100%' }}>

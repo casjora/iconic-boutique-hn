@@ -77,21 +77,21 @@ export default function LoginView() {
           </p>
           <div className="grid gap-2 text-[10px] font-mono">
             <button
-              onClick={() => handleQuickFill('admin', 'admin123')}
+              onClick={() => handleQuickFill('casjora@gmail.com', 'R@fae!12')}
               className="bg-white border border-blue-100 p-2 rounded-lg text-left hover:bg-neutral-50/80 cursor-pointer flex justify-between"
             >
               <span>👑 <strong>Dueño (Admin):</strong> id: <code>admin</code></span>
               <span className="font-bold text-blue-700 hover:underline">Autocompletar</span>
             </button>
             <button
-              onClick={() => handleQuickFill('vendedor', 'vend123')}
+              onClick={() => handleQuickFill('rlquality.multiservices@gmail.com', 'a12345')}
               className="bg-white border border-blue-100 p-2 rounded-lg text-left hover:bg-neutral-50/80 cursor-pointer flex justify-between"
             >
               <span>💼 <strong>Vendedor (Staff):</strong> id: <code>vendedor</code></span>
               <span className="font-bold text-blue-700 hover:underline">Autocompletar</span>
             </button>
             <button
-              onClick={() => handleQuickFill('cliente', 'cliente123')}
+              onClick={() => handleQuickFill('casjorahn@gmail.com', 'a12345')}
               className="bg-white border border-blue-100 p-2 rounded-lg text-left hover:bg-neutral-50/80 cursor-pointer flex justify-between"
             >
               <span>🤝 <strong>Cliente VIP (Distribuidor):</strong> id: <code>cliente</code></span>

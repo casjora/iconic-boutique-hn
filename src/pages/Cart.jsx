@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useStore } from '../store';
 import { Link } from 'react-router-dom';
 import { ShoppingBag, Trash2, ArrowLeft, MessageSquare, CheckCircle2, Phone, User as UserIcon, Loader2, Award } from 'lucide-react';
+import { isProductSet } from '.././utils/porductHelper';
 
 export default function CartView() {
   const { cart, user, updateCartQuantity, removeFromCart, submitOrder, loading, error } = useStore();
@@ -46,7 +47,10 @@ export default function CartView() {
   // Pre-format WhatsApp link for the customer
   const getWhatsAppConfirmationLink = (order) => {
     const itemsText = order.items
-      .map((i) => `• ${i.quantity}x ${i.brand} ${i.name} (${i.size}) - L. ${i.pricePaid.toLocaleString()}`)
+      .map((i) => {
+        const prefix = isProductSet(i) ? '🎁 [SET] ' : '';
+        return `• ${i.quantity}x ${prefix}${i.brand} ${i.name} (${i.size}) - L. ${i.pricePaid.toLocaleString()}`;
+      })
       .join('\n');
 
     const text = `¡Hola Iconic Boutique HN! 🇭🇳✨
@@ -175,9 +179,16 @@ Por favor, ayúdenme con el método de pago y la facturación manual para coordi
                           />
                         </div>
                         <div>
-                          <span className="block text-[10px] uppercase font-bold text-neutral-400 font-mono leading-none mb-1">
-                            {item.product.brand}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                            <span className="block text-[10px] uppercase font-bold text-neutral-400 font-mono leading-none">
+                              {item.product.brand}
+                            </span>
+                            {isProductSet(item.product) && (
+                              <span className="bg-indigo-50 text-indigo-700 text-[9px] font-black px-1.5 py-0.5 rounded border border-indigo-100 uppercase tracking-wide">
+                                🎁 SET
+                              </span>
+                            )}
+                          </div>
                           <h4 className="font-display font-bold text-sm text-neutral-900 leading-tight">
                             {item.product.name}
                           </h4>

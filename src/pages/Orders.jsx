@@ -58,7 +58,7 @@ export default function OrderList() {
   // Pre-format WhatsApp template text
   const getWhatsAppLink = (order) => {
     const itemsText = order.items
-      .map(i => `• ${i.quantity}x ${i.brand} ${i.name} (${i.size}) - L. ${i.pricePaid.toLocaleString()}`)
+      .map(i => `• ${i.quantity}x ${i.brand} ${i.name} (${i.size}) - L. ${(Number(i.pricePaid) || 0).toLocaleString()}`)
       .join('\n');
 
     const text = `¡Hola *${order.clientName}*! Le saludamos de *Iconic Boutique HN* 🇭🇳✨.
@@ -67,14 +67,14 @@ Hemos recibido su orden de cotización *${order.id}*:
 
 ${itemsText}
 
-*Total a Pagar:* *L. ${order.total.toLocaleString()} HNL*
+*Total a Pagar:* *L. ${(Number(order.total) || 0).toLocaleString()} HNL*
 *Precios aplicados:* ${order.roleUsed === 'client' ? 'Promocional VIP' : 'Público General'}
 
 Para coordinar la facturación manual, método de pago (transferencia Ficohsa/Atlántida/BAC, o efectivo) y el envío (delivery local o Rapido Cargo / CAEX), favor confírmenos por esta vía. ¡Muchas gracias por su preferencia! ✨`;
 
     const encodedText = encodeURIComponent(text);
     // Honduras phone numbers are 8 digits, add prefix +504
-    const cleanPhone = order.clientPhone.replace(/[^\d]/g, '');
+    const cleanPhone = (order.clientPhone || '').replace(/[^\d]/g, '');
     const phoneWithPrefix = cleanPhone.startsWith('504') ? cleanPhone : `504${cleanPhone}`;
 
     return `https://wa.me/${phoneWithPrefix}?text=${encodedText}`;
@@ -82,10 +82,10 @@ Para coordinar la facturación manual, método de pago (transferencia Ficohsa/At
 
   const copyToClipboard = (order) => {
     const itemsText = order.items
-      .map(i => `• ${i.quantity}x ${i.brand} ${i.name} (${i.size}) - L. ${i.pricePaid.toLocaleString()}`)
+      .map(i => `• ${i.quantity}x ${i.brand} ${i.name} (${i.size}) - L. ${(Number(i.pricePaid) || 0).toLocaleString()}`)
       .join('\n');
 
-    const text = `Iconic Boutique HN 🇭🇳\nOrden: ${order.id}\nCliente: ${order.clientName}\nTeléfono: ${order.clientPhone}\n\nDetalle:\n${itemsText}\n\nTotal: L. ${order.total.toLocaleString()} HNL`;
+    const text = `Iconic Boutique HN 🇭🇳\nOrden: ${order.id}\nCliente: ${order.clientName}\nTeléfono: ${order.clientPhone}\n\nDetalle:\n${itemsText}\n\nTotal: L. ${(Number(order.total) || 0).toLocaleString()} HNL`;
     
     navigator.clipboard.writeText(text);
     setCopiedId(order.id);
@@ -466,7 +466,7 @@ Para coordinar la facturación manual, método de pago (transferencia Ficohsa/At
                         <div className="flex justify-between items-center pt-2 font-mono">
                           <span className="text-xs font-bold text-neutral-500 uppercase">Subtotal Cotizado:</span>
                           <span className="text-base font-black text-neutral-950">
-                            L. {order.total.toLocaleString()} HNL
+                            L. {(Number(order.total) || 0).toLocaleString()} HNL
                           </span>
                         </div>
                       </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../store';
 import { Link } from 'react-router-dom';
+import { isProductSet } from '.././utils/porductHelper';
 import PerfumeCard from '../components/PerfumeCard';
 import { 
   Search, 
@@ -41,7 +42,10 @@ export default function CatalogView() {
       product.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.barcode.includes(searchTerm);
     
-    const matchesCategory = categoryFilter === 'Todos' || product.category === categoryFilter;
+    const matchesCategory = 
+      categoryFilter === 'Todos' || 
+      (categoryFilter === 'Sets 🎁' ? isProductSet(product) : product.category === categoryFilter);
+      
     const matchesBrand = brandFilter === 'Todas' || product.brand === brandFilter;
 
     return matchesSearch && matchesCategory && matchesBrand;
@@ -51,7 +55,7 @@ export default function CatalogView() {
   const downloadCSV = () => {
     const headers = ['Fragancia (Marca y Nombre)', 'Tamaño', 'Precio de Mayoreo (VIP)', 'Precio de Detalle (Publico)'];
     const rows = products.map(p => [
-      `"${p.brand} - ${p.name}"`,
+      `"${p.brand} - ${p.name}${isProductSet(p) ? ' 🎁 [SET]' : ''}"`,
       `"${p.size}"`,
       p.pricePromotional,
       p.pricePublic
@@ -140,7 +144,7 @@ export default function CatalogView() {
 
             {/* Gender Filters */}
             <div className="flex gap-1.5 overflow-x-auto">
-              {['Todos', 'Masculino', 'Femenino', 'Unisex'].map((cat) => (
+              {['Todos', 'Masculino', 'Femenino', 'Unisex', 'Sets 🎁'].map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setCategoryFilter(cat)}
@@ -252,17 +256,21 @@ export default function CatalogView() {
                     </tr>
                   </thead>
                   <tbody>
-                    {products.map((p, index) => (
-                      <tr key={p.id} className={`border-b border-neutral-100 hover:bg-neutral-50/50 ${index % 2 === 0 ? 'bg-neutral-50/20' : ''}`}>
-                        <td className="py-2 px-2 text-neutral-900 font-semibold">
-                          <span className="text-neutral-400 font-mono text-[10px] mr-1">{(index + 1).toString().padStart(2, '0')}</span>
-                          {p.brand} - {p.name}
-                        </td>
-                        <td className="py-2 px-2 text-center text-neutral-600 font-mono">{p.size}</td>
-                        <td className="py-2 px-2 text-right font-mono font-bold text-neutral-800">L. {p.pricePromotional.toLocaleString()}</td>
-                        <td className="py-2 px-2 text-right font-mono font-extrabold text-emerald-600">L. {p.pricePublic.toLocaleString()}</td>
-                      </tr>
-                    ))}
+                    {products.map((p, index) => {
+                      const isSet = isProductSet(p);
+                      return (
+                        <tr key={p.id} className={`border-b border-neutral-100 hover:bg-neutral-50/50 ${index % 2 === 0 ? 'bg-neutral-50/20' : ''} ${isSet ? 'bg-indigo-50/20' : ''}`}>
+                          <td className="py-2 px-2 text-neutral-900 font-semibold">
+                            <span className="text-neutral-400 font-mono text-[10px] mr-1">{(index + 1).toString().padStart(2, '0')}</span>
+                            {isSet && <span className="mr-1">🎁</span>}
+                            {p.brand} - {p.name}
+                          </td>
+                          <td className="py-2 px-2 text-center text-neutral-600 font-mono">{p.size}</td>
+                          <td className="py-2 px-2 text-right font-mono font-bold text-neutral-800">L. {p.pricePromotional.toLocaleString()}</td>
+                          <td className="py-2 px-2 text-right font-mono font-extrabold text-emerald-600">L. {p.pricePublic.toLocaleString()}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
