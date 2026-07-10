@@ -825,9 +825,9 @@ ON CONFLICT (id) DO UPDATE SET
           </div>
 
           <div className="relative flex py-1 items-center">
-            <div className="flex-grow border-t border-neutral-200"></div>
-            <span className="flex-shrink mx-4 text-neutral-400 text-[10px] font-bold uppercase">O PEGAR TEXTO DIRECTAMENTE</span>
-            <div className="flex-grow border-t border-neutral-200"></div>
+            <div className="grow border-t border-neutral-200"></div>
+            <span className="shrink mx-4 text-neutral-400 text-[10px] font-bold uppercase">O PEGAR TEXTO DIRECTAMENTE</span>
+            <div className="grow border-t border-neutral-200"></div>
           </div>
 
           <textarea
@@ -900,7 +900,7 @@ ON CONFLICT (id) DO UPDATE SET
                       <td className="px-4 py-2">
                         <span className="font-bold text-neutral-900 block flex items-center gap-1.5">
                           {isSet && (
-                            <span className="bg-indigo-50 text-indigo-700 text-[9px] font-black px-1.5 py-0.5 rounded border border-indigo-100 flex-shrink-0">
+                            <span className="bg-indigo-50 text-indigo-700 text-[9px] font-black px-1.5 py-0.5 rounded border border-indigo-100 shrink-0">
                               🎁 SET
                             </span>
                           )}
@@ -1241,7 +1241,7 @@ ON CONFLICT (id) DO UPDATE SET
                       <td className="px-6 py-4">
                         <span className="block font-bold text-neutral-950 flex items-center gap-1.5">
                           {isSet && (
-                            <span className="bg-indigo-100 text-indigo-800 text-[9px] font-black px-1.5 py-0.5 rounded border border-indigo-200 uppercase tracking-wide flex-shrink-0">
+                            <span className="bg-indigo-100 text-indigo-800 text-[9px] font-black px-1.5 py-0.5 rounded border border-indigo-200 uppercase tracking-wide shrink-0">
                               🎁 SET
                             </span>
                           )}
