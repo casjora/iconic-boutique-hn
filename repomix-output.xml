@@ -84,10 +84,6 @@ vite.config.js
 <files>
 This section contains the contents of the repository's files.
 
-<file path="server-db.json">
-
-</file>
-
 <file path=".env.example">
 # GEMINI_API_KEY: Required for Gemini AI API calls.
 # AI Studio automatically injects this at runtime from user secrets.
@@ -98,17 +94,6 @@ GEMINI_API_KEY="MY_GEMINI_API_KEY"
 # AI Studio automatically injects this at runtime with the Cloud Run service URL.
 # Used for self-referential links, OAuth callbacks, and API endpoints.
 APP_URL="MY_APP_URL"
-</file>
-
-<file path=".gitignore">
-node_modules/
-build/
-dist/
-coverage/
-.DS_Store
-*.log
-.env*
-!.env.example
 </file>
 
 <file path="eslint.config.js">
@@ -133,17 +118,6 @@ export default defineConfig([
     },
   },
 ])
-</file>
-
-<file path="metadata.json">
-{
-  "name": "Remix: Iconic Boutique HN",
-  "description": "Aplicación web premium para venta, cotización y gestión de inventario de perfumes y lociones originales en Honduras con cotización por WhatsApp/Telegram, carga de PDF con IA y precios VIP para distribuidores de Iconic Boutique.",
-  "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
-}
 </file>
 
 <file path="pnpm-workspace.yaml">
@@ -359,6 +333,10 @@ El sistema tiene preconfigurada la lógica financiera de Iconic Boutique HN:
 *Este software ha sido diseñado con interfaces limpias, tipografía responsiva y optimizado para una alta tasa de conversión en smartphones, garantizando un flujo ágil desde tus historias de Instagram directas a WhatsApp.*
 </file>
 
+<file path="server-db.json">
+
+</file>
+
 <file path="src/App.css">
 .counter {
   font-size: 16px;
@@ -543,259 +521,6 @@ El sistema tiene preconfigurada la lógica financiera de Iconic Boutique HN:
     right: 0;
     border-right-color: var(--border);
   }
-}
-</file>
-
-<file path="src/components/HondurasGuide.jsx">
-import React from 'react';
-import { BookOpen, DollarSign, ClipboardList, RefreshCw, BarChart3, Truck, ShoppingCart } from 'lucide-react';
-
-export default function HondurasGuide() {
-  return (
-    <div className="bg-white rounded-3xl border border-neutral-200 p-6 sm:p-8 shadow-sm">
-      <div className="max-w-3xl mx-auto">
-        
-        {/* Header */}
-        <div className="text-center mb-8">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-3 py-1 text-xs font-semibold text-white mb-3">
-            <BookOpen className="h-3 w-3" />
-            Guía de Implementación Oficial
-          </span>
-          <h2 className="font-display text-3xl font-bold tracking-tight text-neutral-900 sm:text-4xl">
-            Estructura de Negocio en Honduras
-          </h2>
-          <p className="mt-2 text-sm text-neutral-500">
-            Guía paso a paso y desglose financiero sugerido en Lempiras (HNL) para operar tu perfumería de forma exitosa y rentable.
-          </p>
-        </div>
-
-        {/* Bento Grid layout */}
-        <div className="grid gap-6 sm:grid-cols-2 mt-8">
-          
-          {/* Card 1: Desglose de Costos e Inversión */}
-          <div className="border border-neutral-100 bg-neutral-50/50 rounded-2xl p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-neutral-900 text-white rounded-xl">
-                <DollarSign className="h-5 w-5" />
-              </div>
-              <h3 className="font-display font-bold text-base text-neutral-900">
-                Inversión Inicial Sugerida
-              </h3>
-            </div>
-            <p className="text-xs text-neutral-600 mb-3">
-              Presupuesto estimado para un lote inicial competitivo de fragancias originales de diseñador en Honduras:
-            </p>
-            <ul className="space-y-2 text-xs font-mono text-neutral-700">
-              <li className="flex justify-between border-b border-neutral-100 pb-1">
-                <span>📦 Lote inicial (30 perfumes):</span>
-                <span className="font-bold">L. 45,000</span>
-              </li>
-              <li className="flex justify-between border-b border-neutral-100 pb-1">
-                <span>🛍️ Empaque de lujo y bolsas:</span>
-                <span className="font-bold">L. 3,500</span>
-              </li>
-              <li className="flex justify-between border-b border-neutral-100 pb-1">
-                <span>🚀 Marketing (Meta Ads):</span>
-                <span className="font-bold">L. 2,500 /mes</span>
-              </li>
-              <li className="flex justify-between border-b border-neutral-100 pb-1">
-                <span>🌐 Hosting / Dominio web:</span>
-                <span className="font-bold">L. 1,200 /año</span>
-              </li>
-              <li className="flex justify-between pt-2 text-sm font-extrabold text-neutral-900">
-                <span>Total Estimado:</span>
-                <span>L. 52,200 HNL</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* Card 2: Qué necesitas recopilar */}
-          <div className="border border-neutral-100 bg-neutral-50/50 rounded-2xl p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-neutral-900 text-white rounded-xl">
-                <ClipboardList className="h-5 w-5" />
-              </div>
-              <h3 className="font-display font-bold text-base text-neutral-900">
-                ¿Qué recopilar para iniciar?
-              </h3>
-            </div>
-            <ul className="space-y-2 text-xs text-neutral-600">
-              <li className="flex gap-2">
-                <span className="text-neutral-900 font-bold">•</span>
-                <span><strong>Proveedores de Confianza:</strong> Buscar importadores directos autorizados en SPS o Tegucigalpa, o importar directamente vía casillero de USA.</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-neutral-900 font-bold">•</span>
-                <span><strong>Fotos Reales de Perfumes:</strong> Fotos nítidas sobre fondos limpios o empaques sellados con el número de lote visible para garantizar originalidad.</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-neutral-900 font-bold">•</span>
-                <span><strong>Lista de Precios Base:</strong> Costos CIF (incluyendo envío e impuestos de aduana en Honduras) para calcular márgenes correctos.</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* Card 3: Gestión de Inventario */}
-          <div className="border border-neutral-100 bg-neutral-50/50 rounded-2xl p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-neutral-900 text-white rounded-xl">
-                <RefreshCw className="h-5 w-5" />
-              </div>
-              <h3 className="font-display font-bold text-base text-neutral-900">
-                ¿Cómo llevar el inventario?
-              </h3>
-            </div>
-            <p className="text-xs text-neutral-600 leading-relaxed">
-              El inventario se centraliza en esta aplicación. Al cargar un PDF de factura de compra o importación, la <strong>Inteligencia Artificial de Gemini</strong> lee los perfumes, calcula costos en Lempiras, y genera códigos de barra automáticos.
-            </p>
-            <div className="mt-3 text-xs bg-emerald-50 text-emerald-800 p-2.5 rounded-lg border border-emerald-100 font-medium">
-              💡 <strong>Regla clave:</strong> El stock físico debe coincidir exactamente con el stock en la app. Realicen un conteo cada domingo por la noche.
-            </div>
-          </div>
-
-          {/* Card 4: Distribución y Logística en HN */}
-          <div className="border border-neutral-100 bg-neutral-50/50 rounded-2xl p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-neutral-900 text-white rounded-xl">
-                <Truck className="h-5 w-5" />
-              </div>
-              <h3 className="font-display font-bold text-base text-neutral-900">
-                Envíos y Entregas en Honduras
-              </h3>
-            </div>
-            <ul className="space-y-2 text-xs text-neutral-600">
-              <li className="flex gap-2">
-                <span className="text-neutral-900 font-bold">•</span>
-                <span><strong>Entregas locales:</strong> Servicio de delivery en moto (con costo adicional de L. 50 a L. 80 en Tegucigalpa / SPS).</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-neutral-900 font-bold">•</span>
-                <span><strong>Envíos nacionales:</strong> Rapido Cargo, CAEX, o PedidosYa a nivel nacional, previo pago por transferencia bancaria (BAC, Ficohsa, Atlántida).</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-neutral-900 font-bold">•</span>
-                <span><strong>Cobro Contra Entrega:</strong> Disponible solo para Tegucigalpa y SPS para aumentar la confianza en compras iniciales.</span>
-              </li>
-            </ul>
-          </div>
-
-        </div>
-
-        {/* Workflow Summary */}
-        <div className="mt-8 border-t border-neutral-200 pt-6">
-          <h3 className="font-display font-bold text-lg text-neutral-900 mb-3 flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5 text-neutral-700" />
-            Flujo de Operación del Cliente
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-center mt-4">
-            <div className="bg-neutral-50 p-3 rounded-xl border border-neutral-100">
-              <div className="font-display font-black text-neutral-900 text-lg mb-1">1</div>
-              <span className="block text-xs font-semibold text-neutral-900">Explorar catálogo</span>
-              <span className="text-[10px] text-neutral-500">Público o precios VIP de cliente registrado</span>
-            </div>
-            <div className="bg-neutral-50 p-3 rounded-xl border border-neutral-100">
-              <div className="font-display font-black text-neutral-900 text-lg mb-1">2</div>
-              <span className="block text-xs font-semibold text-neutral-900">Agregar al Carrito</span>
-              <span className="text-[10px] text-neutral-500">Añadir fragancias preferidas</span>
-            </div>
-            <div className="bg-neutral-50 p-3 rounded-xl border border-neutral-100">
-              <div className="font-display font-black text-neutral-900 text-lg mb-1">3</div>
-              <span className="block text-xs font-semibold text-neutral-900">Generar Cotización</span>
-              <span className="text-[10px] text-neutral-500">Con nombre y teléfono del cliente</span>
-            </div>
-            <div className="bg-neutral-50 p-3 rounded-xl border border-neutral-100">
-              <div className="font-display font-black text-neutral-900 text-lg mb-1">4</div>
-              <span className="block text-xs font-semibold text-neutral-900">Facturación Manual</span>
-              <span className="text-[10px] text-neutral-500">El vendedor recibe en Telegram y cierra por WhatsApp</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Maps Section - Iconic Boutique HN */}
-        <div className="mt-8 border-t border-neutral-200 pt-6 space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="p-2 bg-neutral-900 text-amber-400 rounded-xl">📍</span>
-            <h3 className="font-display font-bold text-lg text-neutral-900">
-              Ubicación Física de Iconic Boutique HN
-            </h3>
-          </div>
-          <p className="text-xs text-neutral-600">
-            Encuéntranos en Tegucigalpa, Honduras. Nuestra boutique física cuenta con probadores exclusivos de fragancias de diseñador 100% originales.
-          </p>
-          <div className="rounded-2xl overflow-hidden border border-neutral-200 shadow-sm bg-neutral-100">
-            <iframe 
-              src="https://www.google.com/maps/embed?pb=!1m16!1m12!1m3!1d1042.0810210725676!2d-87.18681700757827!3d14.085964687074538!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!2m1!1sIconic%20Boutique%2C%20tegucigalpa!5e0!3m2!1ses-419!2shn!4v1783549286926!5m2!1ses-419!2shn" 
-              width="100%" 
-              height="300" 
-              style={{ border: 0 }} 
-              allowFullScreen={true} 
-              loading="lazy" 
-              referrerPolicy="strict-origin-when-cross-origin"
-              title="Mapa de ubicación física de Iconic Boutique HN en Tegucigalpa, Honduras"
-            ></iframe>
-          </div>
-        </div>
-
-        {/* Launch Steps & Pricing Section */}
-        <div className="mt-8 border-t border-neutral-200 pt-6 grid gap-6 sm:grid-cols-2">
-          
-          {/* Next Steps Card */}
-          <div className="border border-neutral-200 bg-neutral-50/50 rounded-2xl p-5 space-y-3">
-            <h4 className="font-display font-bold text-base text-neutral-900 flex items-center gap-1.5">
-              🚀 Pasos de Lanzamiento Rápido
-            </h4>
-            <ol className="space-y-2 text-xs text-neutral-600 list-decimal pl-4">
-              <li>
-                <strong>Dominio y Servidor (.com / .hn):</strong> Adquirir un dominio como <code>iconicboutiquehn.com</code> y alojarlo en una plataforma veloz como Vercel o Cloud Run.
-              </li>
-              <li>
-                <strong>Carga de Catálogo en Segundos:</strong> Utilizar el <strong>Importador de Texto / CSV</strong> o el escáner de facturas PDF con IA para subir toda su base de datos actual de perfumes en minutos.
-              </li>
-              <li>
-                <strong>Publicidad en Redes Sociales:</strong> Enlazar los botones de WhatsApp de la página en campañas de Facebook Ads e Instagram Ads dirigidas a Tegucigalpa, San Pedro Sula y el resto del país.
-              </li>
-              <li>
-                <strong>Precios VIP para Distribuidores:</strong> Asignar cuentas de <code>Cliente VIP</code> a sus distribuidores de confianza para que coticen de manera autónoma con el margen correcto.
-              </li>
-            </ol>
-          </div>
-
-          {/* Pricing Quote Card */}
-          <div className="border border-neutral-200 bg-neutral-50/50 rounded-2xl p-5 space-y-3">
-            <h4 className="font-display font-bold text-base text-neutral-900 flex items-center gap-1.5">
-              💼 Valor de Mercado de este Software
-            </h4>
-            <p className="text-xs text-neutral-600">
-              Desglose de costos profesionales en el mercado hondureño para un desarrollo personalizado con estas características:
-            </p>
-            <ul className="space-y-1.5 text-[11px] font-mono text-neutral-700">
-              <li className="flex justify-between border-b border-neutral-100 pb-1">
-                <span>🖥️ Plataforma Web & SPA:</span>
-                <span className="font-bold">L. 37,000 - L. 61,000</span>
-              </li>
-              <li className="flex justify-between border-b border-neutral-100 pb-1">
-                <span>🧠 Escáner PDF con IA:</span>
-                <span className="font-bold">L. 12,300 - L. 24,700</span>
-              </li>
-              <li className="flex justify-between border-b border-neutral-100 pb-1">
-                <span>📊 Gestión de Inventario & Barras:</span>
-                <span className="font-bold">L. 19,700 - L. 37,000</span>
-              </li>
-              <li className="flex justify-between pt-1.5 text-xs font-extrabold text-neutral-900">
-                <span>Costo Profesional Promedio:</span>
-                <span className="text-emerald-600 font-bold">L. 69,000 - L. 122,700 HNL</span>
-              </li>
-            </ul>
-            <p className="text-[10px] text-neutral-400 italic">
-              * Nota: Desarrollado bajo arquitectura React Premium con optimizaciones móviles para garantizar conversiones.
-            </p>
-          </div>
-
-        </div>
-
-      </div>
-    </div>
-  );
 }
 </file>
 
@@ -1286,92 +1011,6 @@ export default function ForgotPassword() {
 }
 </file>
 
-<file path="src/pages/Home.jsx">
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { useStore } from '../store';
-import HondurasGuide from '../components/HondurasGuide';
-import { Sparkles, Truck, Percent, Award, ArrowRight } from 'lucide-react';
-
-export default function Home() {
-  const { user } = useStore();
-
-  return (
-    <div className="space-y-12 fade-in-up">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-3xl bg-neutral-900 text-white p-8 sm:p-12 md:p-16 shadow-lg">
-        {/* Abstract elegant decoration */}
-        <div className="absolute top-0 right-0 h-96 w-96 rounded-full bg-gradient-to-br from-neutral-800 to-transparent opacity-50 -mr-20 -mt-20 blur-2xl" />
-        
-        <div className="relative max-w-2xl space-y-6">
-          <span className="inline-flex items-center gap-1 rounded-full bg-neutral-800 px-3 py-1 text-xs font-semibold text-neutral-300">
-            <Sparkles className="h-3 w-3 text-amber-400 animate-pulse" />
-            Perfumes Importados Originales en Honduras
-          </span>
-          
-          <h1 className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight leading-none text-white">
-            Seducción en cada gota, calidad garantizada.
-          </h1>
-          
-          <p className="text-sm sm:text-base text-neutral-300 leading-relaxed">
-            Descubre nuestro catálogo exclusivo de fragancias de diseñador. Ofrecemos precios especiales para público general y tarifas promocionales altamente competitivas para revendedores y mayoristas VIP en Honduras.
-          </p>
-
-          <div className="flex flex-wrap gap-3 pt-2">
-            <Link
-              to="/catalog"
-              className="inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-xs font-black text-neutral-950 hover:bg-neutral-100 cursor-pointer shadow active:scale-95 transition-all"
-            >
-              Explorar Catálogo
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            
-            {!user && (
-              <Link
-                to="/login"
-                className="inline-flex items-center gap-2 rounded-2xl bg-neutral-800 border border-neutral-700 px-6 py-3.5 text-xs font-semibold text-neutral-200 hover:bg-neutral-700 cursor-pointer active:scale-95 transition-all"
-              >
-                Registrarse como Distribuidor VIP
-              </Link>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Feature Bento overview */}
-      <div className="grid gap-6 sm:grid-cols-3">
-        <div className="bg-white border border-neutral-200 rounded-2xl p-5 hover:shadow-sm transition-shadow">
-          <div className="p-2.5 bg-neutral-900 text-white rounded-xl w-fit mb-4">
-            <Truck className="h-5 w-5" />
-          </div>
-          <h2 className="font-display font-bold text-neutral-900 text-base mb-1">Envíos a Todo Honduras</h2>
-          <p className="text-xs text-neutral-500">Coordinamos despachos seguros por Rapido Cargo o CAEX, o delivery en moto en Tegucigalpa y SPS.</p>
-        </div>
-        
-        <div className="bg-white border border-neutral-200 rounded-2xl p-5 hover:shadow-sm transition-shadow">
-          <div className="p-2.5 bg-neutral-900 text-white rounded-xl w-fit mb-4">
-            <Percent className="h-5 w-5" />
-          </div>
-          <h2 className="font-display font-bold text-neutral-900 text-base mb-1">Ofertas Exclusivas VIP</h2>
-          <p className="text-xs text-neutral-500">Los clientes mayoristas tienen acceso inmediato a precios promocionales con descuentos de hasta L. 600.</p>
-        </div>
-
-        <div className="bg-white border border-neutral-200 rounded-2xl p-5 hover:shadow-sm transition-shadow">
-          <div className="p-2.5 bg-neutral-900 text-white rounded-xl w-fit mb-4">
-            <Award className="h-5 w-5 animate-pulse text-amber-500" />
-          </div>
-          <h2 className="font-display font-bold text-neutral-900 text-base mb-1">100% Originales Sella</h2>
-          <p className="text-xs text-neutral-500">Garantía absoluta de autenticidad en cada frasco de diseñador importado directo de USA.</p>
-        </div>
-      </div>
-
-      {/* Honduras Guide Panel */}
-      <HondurasGuide />
-    </div>
-  );
-}
-</file>
-
 <file path="src/pages/Ofertas.jsx">
 import React from 'react';
 import { useStore } from '../store';
@@ -1613,72 +1252,26 @@ export function isProductSet(product) {
 }
 </file>
 
-<file path="src/utils/supabase.js">
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://nsubmnvkojsmoykfcjgl.supabase.co';
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_FIp9glGAZJ1hLMp2pEKtcQ_BwSQPR1e';
-
-export const supabase = createClient(supabaseUrl, supabaseKey);
+<file path=".gitignore">
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
 </file>
 
-<file path="vite.config.js">
-import tailwindcss from '@tailwindcss/vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { defineConfig } from 'vite';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-export default defineConfig(() => {
-  return {
-    plugins: [react(), tailwindcss()],
-    resolve: {
-      alias: {
-        '@': path.resolve(__dirname, '.'),
-      },
-    },
-    build: {
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            if (id.includes('node_modules')) {
-              return 'vendor';
-            }
-          },
-        },
-      },
-    },
-    server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modify—file watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
-    },
-  };
-});
-</file>
-
-<file path="index.html">
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Iconic Boutique HN - Catálogo de fragancias de diseñador 100% originales en Honduras. Precios VIP para distribuidores, cotizaciones automáticas y gestión de inventario." />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <title>Perfumes Brother's HN - Inventario, Ofertas y Cotización</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>
+<file path="metadata.json">
+{
+  "name": "Remix: Iconic Boutique HN",
+  "description": "Aplicación web premium para venta, cotización y gestión de inventario de perfumes y lociones originales en Honduras con cotización por WhatsApp/Telegram, carga de PDF con IA y precios VIP para distribuidores de Iconic Boutique.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
 </file>
 
 <file path="server.js">
@@ -2375,6 +1968,742 @@ async function startServer() {
 startServer();
 </file>
 
+<file path="src/components/HondurasGuide.jsx">
+import React from 'react';
+import { BookOpen, DollarSign, ClipboardList, RefreshCw, BarChart3, Truck, ShoppingCart } from 'lucide-react';
+
+export default function HondurasGuide() {
+  return (
+    <div className="bg-white rounded-3xl border border-neutral-200 p-6 sm:p-8 shadow-sm">
+      <div className="max-w-3xl mx-auto">
+        
+        {/* Header */}
+        <div className="text-center mb-8">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-3 py-1 text-xs font-semibold text-white mb-3">
+            <BookOpen className="h-3 w-3" />
+            Guía de Implementación Oficial
+          </span>
+          <h2 className="font-display text-3xl font-bold tracking-tight text-neutral-900 sm:text-4xl">
+            Estructura de Negocio en Honduras
+          </h2>
+          <p className="mt-2 text-sm text-neutral-500">
+            Guía paso a paso y desglose financiero sugerido en Lempiras (HNL) para operar tu perfumería de forma exitosa y rentable.
+          </p>
+        </div>
+
+        {/* Bento Grid layout */}
+        <div className="grid gap-6 sm:grid-cols-2 mt-8">
+          
+          {/* Card 1: Desglose de Costos e Inversión */}
+          <div className="border border-neutral-100 bg-neutral-50/50 rounded-2xl p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-neutral-900 text-white rounded-xl">
+                <DollarSign className="h-5 w-5" />
+              </div>
+              <h3 className="font-display font-bold text-base text-neutral-900">
+                Inversión Inicial Sugerida
+              </h3>
+            </div>
+            <p className="text-xs text-neutral-600 mb-3">
+              Presupuesto estimado para un lote inicial competitivo de fragancias originales de diseñador en Honduras:
+            </p>
+            <ul className="space-y-2 text-xs font-mono text-neutral-700">
+              <li className="flex justify-between border-b border-neutral-100 pb-1">
+                <span>📦 Lote inicial (30 perfumes):</span>
+                <span className="font-bold">L. 45,000</span>
+              </li>
+              <li className="flex justify-between border-b border-neutral-100 pb-1">
+                <span>🛍️ Empaque de lujo y bolsas:</span>
+                <span className="font-bold">L. 3,500</span>
+              </li>
+              <li className="flex justify-between border-b border-neutral-100 pb-1">
+                <span>🚀 Marketing (Meta Ads):</span>
+                <span className="font-bold">L. 2,500 /mes</span>
+              </li>
+              <li className="flex justify-between border-b border-neutral-100 pb-1">
+                <span>🌐 Hosting / Dominio web:</span>
+                <span className="font-bold">L. 1,200 /año</span>
+              </li>
+              <li className="flex justify-between pt-2 text-sm font-extrabold text-neutral-900">
+                <span>Total Estimado:</span>
+                <span>L. 52,200 HNL</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Card 2: Qué necesitas recopilar */}
+          <div className="border border-neutral-100 bg-neutral-50/50 rounded-2xl p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-neutral-900 text-white rounded-xl">
+                <ClipboardList className="h-5 w-5" />
+              </div>
+              <h3 className="font-display font-bold text-base text-neutral-900">
+                ¿Qué recopilar para iniciar?
+              </h3>
+            </div>
+            <ul className="space-y-2 text-xs text-neutral-600">
+              <li className="flex gap-2">
+                <span className="text-neutral-900 font-bold">•</span>
+                <span><strong>Proveedores de Confianza:</strong> Buscar importadores directos autorizados en SPS o Tegucigalpa, o importar directamente vía casillero de USA.</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-neutral-900 font-bold">•</span>
+                <span><strong>Fotos Reales de Perfumes:</strong> Fotos nítidas sobre fondos limpios o empaques sellados con el número de lote visible para garantizar originalidad.</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-neutral-900 font-bold">•</span>
+                <span><strong>Lista de Precios Base:</strong> Costos CIF (incluyendo envío e impuestos de aduana en Honduras) para calcular márgenes correctos.</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Card 3: Gestión de Inventario */}
+          <div className="border border-neutral-100 bg-neutral-50/50 rounded-2xl p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-neutral-900 text-white rounded-xl">
+                <RefreshCw className="h-5 w-5" />
+              </div>
+              <h3 className="font-display font-bold text-base text-neutral-900">
+                ¿Cómo llevar el inventario?
+              </h3>
+            </div>
+            <p className="text-xs text-neutral-600 leading-relaxed">
+              El inventario se centraliza en esta aplicación. Al cargar un PDF de factura de compra o importación, la <strong>Inteligencia Artificial de Gemini</strong> lee los perfumes, calcula costos en Lempiras, y genera códigos de barra automáticos.
+            </p>
+            <div className="mt-3 text-xs bg-emerald-50 text-emerald-800 p-2.5 rounded-lg border border-emerald-100 font-medium">
+              💡 <strong>Regla clave:</strong> El stock físico debe coincidir exactamente con el stock en la app. Realicen un conteo cada domingo por la noche.
+            </div>
+          </div>
+
+          {/* Card 4: Distribución y Logística en HN */}
+          <div className="border border-neutral-100 bg-neutral-50/50 rounded-2xl p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-neutral-900 text-white rounded-xl">
+                <Truck className="h-5 w-5" />
+              </div>
+              <h3 className="font-display font-bold text-base text-neutral-900">
+                Envíos y Entregas en Honduras
+              </h3>
+            </div>
+            <ul className="space-y-2 text-xs text-neutral-600">
+              <li className="flex gap-2">
+                <span className="text-neutral-900 font-bold">•</span>
+                <span><strong>Entregas locales:</strong> Servicio de delivery en moto (con costo adicional de L. 50 a L. 80 en Tegucigalpa / SPS).</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-neutral-900 font-bold">•</span>
+                <span><strong>Envíos nacionales:</strong> Rapido Cargo, CAEX, o PedidosYa a nivel nacional, previo pago por transferencia bancaria (BAC, Ficohsa, Atlántida).</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-neutral-900 font-bold">•</span>
+                <span><strong>Cobro Contra Entrega:</strong> Disponible solo para Tegucigalpa y SPS para aumentar la confianza en compras iniciales.</span>
+              </li>
+            </ul>
+          </div>
+
+        </div>
+
+        {/* Workflow Summary */}
+        <div className="mt-8 border-t border-neutral-200 pt-6">
+          <h3 className="font-display font-bold text-lg text-neutral-900 mb-3 flex items-center gap-2">
+            <ShoppingCart className="h-5 w-5 text-neutral-700" />
+            Flujo de Operación del Cliente
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-center mt-4">
+            <div className="bg-neutral-50 p-3 rounded-xl border border-neutral-100">
+              <div className="font-display font-black text-neutral-900 text-lg mb-1">1</div>
+              <span className="block text-xs font-semibold text-neutral-900">Explorar catálogo</span>
+              <span className="text-[10px] text-neutral-500">Público o precios VIP de cliente registrado</span>
+            </div>
+            <div className="bg-neutral-50 p-3 rounded-xl border border-neutral-100">
+              <div className="font-display font-black text-neutral-900 text-lg mb-1">2</div>
+              <span className="block text-xs font-semibold text-neutral-900">Agregar al Carrito</span>
+              <span className="text-[10px] text-neutral-500">Añadir fragancias preferidas</span>
+            </div>
+            <div className="bg-neutral-50 p-3 rounded-xl border border-neutral-100">
+              <div className="font-display font-black text-neutral-900 text-lg mb-1">3</div>
+              <span className="block text-xs font-semibold text-neutral-900">Generar Cotización</span>
+              <span className="text-[10px] text-neutral-500">Con nombre y teléfono del cliente</span>
+            </div>
+            <div className="bg-neutral-50 p-3 rounded-xl border border-neutral-100">
+              <div className="font-display font-black text-neutral-900 text-lg mb-1">4</div>
+              <span className="block text-xs font-semibold text-neutral-900">Facturación Manual</span>
+              <span className="text-[10px] text-neutral-500">El vendedor recibe en Telegram y cierra por WhatsApp</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Maps Section - Iconic Boutique HN */}
+        <div className="mt-8 border-t border-neutral-200 pt-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <span className="p-2 bg-neutral-900 text-amber-400 rounded-xl">📍</span>
+            <h3 className="font-display font-bold text-lg text-neutral-900">
+              Ubicación Física de Iconic Boutique HN
+            </h3>
+          </div>
+          <p className="text-xs text-neutral-600">
+            Encuéntranos en Tegucigalpa, Honduras. Nuestra boutique física cuenta con probadores exclusivos de fragancias de diseñador 100% originales.
+          </p>
+          <div className="rounded-2xl overflow-hidden border border-neutral-200 shadow-sm bg-neutral-100">
+            <iframe 
+              src="https://www.google.com/maps/embed?pb=!1m16!1m12!1m3!1d1042.0810210725676!2d-87.18681700757827!3d14.085964687074538!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!2m1!1sIconic%20Boutique%2C%20tegucigalpa!5e0!3m2!1ses-419!2shn!4v1783549286926!5m2!1ses-419!2shn" 
+              width="100%" 
+              height="300" 
+              style={{ border: 0 }} 
+              allowFullScreen={true} 
+              loading="lazy" 
+              referrerPolicy="strict-origin-when-cross-origin"
+              title="Mapa de ubicación física de Iconic Boutique HN en Tegucigalpa, Honduras"
+            ></iframe>
+          </div>
+        </div>
+
+        {/* Launch Steps & Pricing Section */}
+        <div className="mt-8 border-t border-neutral-200 pt-6 grid gap-6 sm:grid-cols-2">
+          
+          {/* Next Steps Card */}
+          <div className="border border-neutral-200 bg-neutral-50/50 rounded-2xl p-5 space-y-3">
+            <h4 className="font-display font-bold text-base text-neutral-900 flex items-center gap-1.5">
+              🚀 Pasos de Lanzamiento Rápido
+            </h4>
+            <ol className="space-y-2 text-xs text-neutral-600 list-decimal pl-4">
+              <li>
+                <strong>Dominio y Servidor (.com / .hn):</strong> Adquirir un dominio como <code>iconicboutiquehn.com</code> y alojarlo en una plataforma veloz como Vercel o Cloud Run.
+              </li>
+              <li>
+                <strong>Carga de Catálogo en Segundos:</strong> Utilizar el <strong>Importador de Texto / CSV</strong> o el escáner de facturas PDF con IA para subir toda su base de datos actual de perfumes en minutos.
+              </li>
+              <li>
+                <strong>Publicidad en Redes Sociales:</strong> Enlazar los botones de WhatsApp de la página en campañas de Facebook Ads e Instagram Ads dirigidas a Tegucigalpa, San Pedro Sula y el resto del país.
+              </li>
+              <li>
+                <strong>Precios VIP para Distribuidores:</strong> Asignar cuentas de <code>Cliente VIP</code> a sus distribuidores de confianza para que coticen de manera autónoma con el margen correcto.
+              </li>
+            </ol>
+          </div>
+
+          {/* Pricing Quote Card */}
+          <div className="border border-neutral-200 bg-neutral-50/50 rounded-2xl p-5 space-y-3">
+            <h4 className="font-display font-bold text-base text-neutral-900 flex items-center gap-1.5">
+              💼 Valor de Mercado de este Software
+            </h4>
+            <p className="text-xs text-neutral-600">
+              Desglose de costos profesionales en el mercado hondureño para un desarrollo personalizado con estas características:
+            </p>
+            <ul className="space-y-1.5 text-[11px] font-mono text-neutral-700">
+              <li className="flex justify-between border-b border-neutral-100 pb-1">
+                <span>🖥️ Plataforma Web & SPA:</span>
+                <span className="font-bold">L. 37,000 - L. 61,000</span>
+              </li>
+              <li className="flex justify-between border-b border-neutral-100 pb-1">
+                <span>🧠 Escáner PDF con IA:</span>
+                <span className="font-bold">L. 12,300 - L. 24,700</span>
+              </li>
+              <li className="flex justify-between border-b border-neutral-100 pb-1">
+                <span>📊 Gestión de Inventario & Barras:</span>
+                <span className="font-bold">L. 19,700 - L. 37,000</span>
+              </li>
+              <li className="flex justify-between pt-1.5 text-xs font-extrabold text-neutral-900">
+                <span>Costo Profesional Promedio:</span>
+                <span className="text-emerald-600 font-bold">L. 69,000 - L. 122,700 HNL</span>
+              </li>
+            </ul>
+            <p className="text-[10px] text-neutral-400 italic">
+              * Nota: Desarrollado bajo arquitectura React Premium con optimizaciones móviles para garantizar conversiones.
+            </p>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/pages/Barcodes.jsx">
+import React, { useState } from 'react';
+import { useStore } from '../store';
+import { generateBarcodeSVG } from '../utils/barcode';
+import { Printer, Tags, Grid, Eye, Check, Square, CheckSquare } from 'lucide-react';
+
+export default function BarcodeLabels() {
+  const { products } = useStore();
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const selectAll = () => {
+    if (selectedIds.length === products.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(products.map(p => p.id));
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const selectedProducts = products.filter(p => selectedIds.includes(p.id));
+
+  return (
+    <div className="space-y-6 fade-in-up">
+      
+      {/* Print Instructions */}
+      <style>{`
+        @media print {
+          /* Hide non-printable elements completely */
+          header, footer, nav, .no-print {
+            display: none !important;
+          }
+          
+          /* Reset layout styles for printing */
+          body, html, #root {
+            background-color: white !important;
+            color: black !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            height: auto !important;
+            min-height: 0 !important;
+          }
+          
+          main {
+            max-width: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            display: block !important;
+          }
+          
+          /* Ensure print area is shown */
+          #print-area {
+            display: block !important;
+            width: 100% !important;
+            position: relative !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          
+          .print-card {
+            width: 60mm;
+            height: 40mm;
+            padding: 3mm;
+            border: 1px solid #000;
+            margin: 0 auto !important;
+            display: flex !important;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            page-break-after: always;
+            break-after: page;
+            page-break-inside: avoid;
+            break-inside: avoid;
+            background: white !important;
+            color: black !important;
+            box-sizing: border-box;
+          }
+        }
+        
+        @page {
+          size: 60mm 40mm;
+          margin: 0;
+        }
+      `}</style>
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 no-print">
+        <div>
+          <h2 className="font-display text-2xl font-bold text-neutral-900 tracking-tight">
+            Generador de Etiquetas con Código de Barra
+          </h2>
+          <p className="text-xs text-neutral-500">
+            Imprime etiquetas térmicas de estantería (60x40mm) para tus perfumes con códigos escaneables y precios en Lempiras.
+          </p>
+        </div>
+
+        <button
+          onClick={handlePrint}
+          disabled={selectedIds.length === 0}
+          className="inline-flex items-center gap-1.5 rounded-xl bg-neutral-900 px-5 py-2.5 text-xs font-bold text-white hover:bg-neutral-800 cursor-pointer disabled:opacity-40 shadow-sm transition-all"
+        >
+          <Printer className="h-4 w-4" />
+          Imprimir Etiquetas ({selectedIds.length})
+        </button>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-3 no-print">
+        
+        {/* Left column: Selection panel (Col span 2) */}
+        <div className="md:col-span-2 space-y-4">
+          <div className="bg-white rounded-3xl border border-neutral-200 overflow-hidden shadow-sm">
+            <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
+              <span className="text-xs font-bold text-neutral-700">Seleccionar Perfumes para Imprimir</span>
+              <button
+                onClick={selectAll}
+                className="text-xs text-neutral-600 hover:text-neutral-900 font-semibold flex items-center gap-1.5"
+              >
+                {selectedIds.length === products.length ? (
+                  <>
+                    <CheckSquare className="h-4 w-4" />
+                    Deseleccionar Todos
+                  </>
+                ) : (
+                  <>
+                    <Square className="h-4 w-4" />
+                    Seleccionar Todos ({products.length})
+                  </>
+                )}
+              </button>
+            </div>
+
+            <ul className="divide-y divide-neutral-100 text-xs">
+              {products.map(p => {
+                const isSelected = selectedIds.includes(p.id);
+                return (
+                  <li 
+                    key={p.id}
+                    onClick={() => toggleSelect(p.id)}
+                    className="p-4 flex items-center justify-between hover:bg-neutral-50/30 cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`h-5 w-5 rounded border flex items-center justify-center transition-colors ${
+                        isSelected ? 'bg-neutral-900 border-neutral-900 text-white' : 'border-neutral-300'
+                      }`}>
+                        {isSelected && <Check className="h-3.5 w-3.5" />}
+                      </div>
+                      <div>
+                        <span className="block font-bold text-neutral-900">{p.name}</span>
+                        <span className="text-[10px] uppercase font-bold text-neutral-400 leading-none">{p.brand} ({p.size})</span>
+                      </div>
+                    </div>
+                    <div className="text-right font-mono">
+                      <span className="block text-xs font-bold text-neutral-800">L. {p.pricePublic.toLocaleString()}</span>
+                      <span className="block text-[10px] text-amber-600 font-bold">L. {p.pricePromotional.toLocaleString()} VIP</span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
+
+        {/* Right column: Label Template Preview */}
+        <div className="space-y-4">
+          <div className="bg-white rounded-3xl border border-neutral-200 p-6 shadow-sm">
+            <h3 className="font-display font-bold text-neutral-900 text-sm mb-3 flex items-center gap-1.5">
+              <Eye className="h-4 w-4 text-neutral-500" />
+              Vista Previa de Impresión
+            </h3>
+            <p className="text-xs text-neutral-500 leading-relaxed mb-4">
+              Usa hojas de etiquetas térmicas de 60x40mm. Al pulsar imprimir se formateará de forma automática para impresoras térmicas (Zebra, Munbyn, Xprinter).
+            </p>
+
+            {selectedProducts.length === 0 ? (
+              <div className="border border-dashed border-neutral-200 rounded-2xl p-8 text-center text-neutral-400 font-medium">
+                Selecciona al menos un perfume para ver el diseño de la etiqueta.
+              </div>
+            ) : (
+              <div className="space-y-4 bg-neutral-100 p-4 rounded-2xl overflow-y-auto max-h-96">
+                {selectedProducts.map(p => (
+                  <div key={p.id} className="mx-auto bg-white border border-neutral-300 p-3 flex flex-col items-center justify-between text-black rounded shadow-sm w-[60mm] h-[40mm]">
+                    <div className="w-full text-center">
+                      <span className="block text-[9px] uppercase font-bold tracking-tight text-neutral-500 leading-none">Brother's Perfumes</span>
+                      <span className="block text-[11px] font-black tracking-tight text-neutral-900 line-clamp-1">{p.name}</span>
+                      <span className="block text-[9px] text-neutral-400 font-bold leading-none uppercase font-mono">{p.brand} - {p.size}</span>
+                    </div>
+                    
+                    {/* Real vector barcode */}
+                    <div 
+                      className="w-full h-14 overflow-hidden"
+                      dangerouslySetInnerHTML={{ __html: generateBarcodeSVG(p.barcode) }}
+                    />
+
+                    <div className="w-full flex justify-between items-center px-1 font-mono text-[9px] border-t border-neutral-100 pt-1">
+                      <span>Púb: <strong>L.{p.pricePublic.toLocaleString()}</strong></span>
+                      <span className="text-amber-700">VIP: <strong>L.{p.pricePromotional.toLocaleString()}</strong></span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+      </div>
+
+      {/* Actual Hidden Area targeted by print media stylesheet */}
+      <div id="print-area" className="hidden print:block">
+        {selectedProducts.map(p => (
+          <div key={p.id} className="print-card">
+            <div style={{ textAlign: 'center', width: '100%' }}>
+              <span style={{ display: 'block', fontSize: '8px', textTransform: 'uppercase', fontWeight: 'bold', color: '#555', letterSpacing: '1px', lineHeight: '1' }}>Brother's Perfumes</span>
+              <span style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#000', margin: '1px 0' }}>{p.name}</span>
+              <span style={{ display: 'block', fontSize: '8px', color: '#444', textTransform: 'uppercase', fontFamily: 'monospace' }}>{p.brand} - {p.size}</span>
+            </div>
+            
+            <div 
+              style={{ width: '100%', height: '55px', overflow: 'hidden' }}
+              dangerouslySetInnerHTML={{ __html: generateBarcodeSVG(p.barcode) }}
+            />
+
+            <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', fontFamily: 'monospace', fontSize: '9px', borderTop: '1px solid #ddd', paddingTop: '2px' }}>
+              <span>Púb: <strong>L.{p.pricePublic.toLocaleString()}</strong></span>
+              <span>VIP: <strong>L.{p.pricePromotional.toLocaleString()}</strong></span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+    </div>
+  );
+}
+</file>
+
+<file path="src/pages/Home.jsx">
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { useStore } from '../store';
+import HondurasGuide from '../components/HondurasGuide';
+import { Sparkles, Truck, Percent, Award, ArrowRight } from 'lucide-react';
+
+export default function Home() {
+  const { user } = useStore();
+
+  return (
+    <div className="space-y-12 fade-in-up">
+      {/* Hero Section */}
+      <div className="relative overflow-hidden rounded-3xl bg-neutral-900 text-white p-8 sm:p-12 md:p-16 shadow-lg">
+        {/* Abstract elegant decoration */}
+        <div className="absolute top-0 right-0 h-96 w-96 rounded-full bg-gradient-to-br from-neutral-800 to-transparent opacity-50 -mr-20 -mt-20 blur-2xl" />
+        
+        <div className="relative max-w-2xl space-y-6">
+          <span className="inline-flex items-center gap-1 rounded-full bg-neutral-800 px-3 py-1 text-xs font-semibold text-neutral-300">
+            <Sparkles className="h-3 w-3 text-amber-400 animate-pulse" />
+            Perfumes Importados Originales en Honduras
+          </span>
+          
+          <h1 className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight leading-none text-white">
+            Seducción en cada gota, calidad garantizada.
+          </h1>
+          
+          <p className="text-sm sm:text-base text-neutral-300 leading-relaxed">
+            Descubre nuestro catálogo exclusivo de fragancias de diseñador. Ofrecemos precios especiales para público general y tarifas promocionales altamente competitivas para revendedores y mayoristas VIP en Honduras.
+          </p>
+
+          <div className="flex flex-wrap gap-3 pt-2">
+            <Link
+              to="/catalog"
+              className="inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-xs font-black text-neutral-950 hover:bg-neutral-100 cursor-pointer shadow active:scale-95 transition-all"
+            >
+              Explorar Catálogo
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            
+            {!user && (
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-2 rounded-2xl bg-neutral-800 border border-neutral-700 px-6 py-3.5 text-xs font-semibold text-neutral-200 hover:bg-neutral-700 cursor-pointer active:scale-95 transition-all"
+              >
+                Registrarse como Distribuidor VIP
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Feature Bento overview */}
+      <div className="grid gap-6 sm:grid-cols-3">
+        <div className="bg-white border border-neutral-200 rounded-2xl p-5 hover:shadow-sm transition-shadow">
+          <div className="p-2.5 bg-neutral-900 text-white rounded-xl w-fit mb-4">
+            <Truck className="h-5 w-5" />
+          </div>
+          <h2 className="font-display font-bold text-neutral-900 text-base mb-1">Envíos a Todo Honduras</h2>
+          <p className="text-xs text-neutral-500">Coordinamos despachos seguros por Rapido Cargo o CAEX, o delivery en moto en Tegucigalpa y SPS.</p>
+        </div>
+        
+        <div className="bg-white border border-neutral-200 rounded-2xl p-5 hover:shadow-sm transition-shadow">
+          <div className="p-2.5 bg-neutral-900 text-white rounded-xl w-fit mb-4">
+            <Percent className="h-5 w-5" />
+          </div>
+          <h2 className="font-display font-bold text-neutral-900 text-base mb-1">Ofertas Exclusivas VIP</h2>
+          <p className="text-xs text-neutral-500">Los clientes mayoristas tienen acceso inmediato a precios promocionales con descuentos de hasta L. 600.</p>
+        </div>
+
+        <div className="bg-white border border-neutral-200 rounded-2xl p-5 hover:shadow-sm transition-shadow">
+          <div className="p-2.5 bg-neutral-900 text-white rounded-xl w-fit mb-4">
+            <Award className="h-5 w-5 animate-pulse text-amber-500" />
+          </div>
+          <h2 className="font-display font-bold text-neutral-900 text-base mb-1">100% Originales Sella</h2>
+          <p className="text-xs text-neutral-500">Garantía absoluta de autenticidad en cada frasco de diseñador importado directo de USA.</p>
+        </div>
+      </div>
+
+      {/* Honduras Guide Panel */}
+      <HondurasGuide />
+    </div>
+  );
+}
+</file>
+
+<file path="src/utils/barcode.js">
+/**
+ * Highly compliant Code 128 Barcode SVG Generator (Code B)
+ * Generates actual readable Code 128 barcodes as vector SVG.
+ */
+
+const CODE128_PATTERNS = [
+  "212222", "222122", "222221", "121223", "121322", "131222", "122213", "122312", "132212", "221213", // 0-9
+  "221312", "231212", "112232", "122132", "122231", "113222", "123122", "123221", "223211", "221132", // 10-19
+  "221231", "213212", "223112", "312131", "311222", "321122", "321221", "312212", "322112", "322211", // 20-29
+  "212123", "212321", "232121", "111323", "131123", "131321", "112313", "132113", "132311", "211313", // 30-39
+  "231113", "231311", "112133", "112331", "132131", "113123", "113321", "133121", "313121", "211331", // 40-49
+  "231131", "213113", "213311", "213131", "311123", "311321", "331121", "312113", "312311", "332111", // 50-59
+  "314111", "221411", "431111", "111224", "111422", "121124", "121421", "141122", "141221", "112214", // 60-69
+  "112412", "122114", "122411", "142112", "142211", "241211", "221114", "413111", "241112", "134111", // 70-79
+  "111242", "121142", "121241", "114212", "124112", "124211", "411212", "421112", "421211", "212141", // 80-89
+  "214121", "412121", "111143", "111341", "131141", "114113", "114311", "411113", "411311", "113141", // 90-99
+  "114131", "311141", "411131", "211412", "211214", "211232", "2331112" // 100-106
+];
+
+const START_CODE_B = 104;
+const STOP_CODE = 106;
+
+export function generateBarcodeSVG(text) {
+  if (text === null || text === undefined) return "";
+  const stringText = String(text);
+  // Filter ASCII values for Code 128 Code B (values 32 to 127)
+  const cleanText = stringText.replace(/[^\x20-\x7F]/g, "");
+  if (!cleanText) return "";
+
+  const indices = [START_CODE_B];
+  
+  // Convert characters to code values
+  for (let i = 0; i < cleanText.length; i++) {
+    indices.push(cleanText.charCodeAt(i) - 32);
+  }
+
+  // Calculate checksum
+  let checksum = indices[0];
+  for (let i = 1; i < indices.length; i++) {
+    checksum += indices[i] * i;
+  }
+  indices.push(checksum % 103);
+  indices.push(STOP_CODE);
+
+  // Convert pattern digits to bar widths
+  let binaryString = "";
+  for (const index of indices) {
+    const pattern = CODE128_PATTERNS[index];
+    if (!pattern) continue;
+    for (let j = 0; j < pattern.length; j++) {
+      const width = parseInt(pattern[j], 10);
+      const isBar = j % 2 === 0;
+      binaryString += (isBar ? "1" : "0").repeat(width);
+    }
+  }
+
+  // Build the SVG paths
+  const barWidth = 2;
+  const height = 70;
+  const quietZone = 10;
+  const width = binaryString.length * barWidth + quietZone * 2;
+
+  let svgContent = `<svg width="100%" height="100%" viewBox="0 0 ${width} ${height + 25}" xmlns="http://www.w3.org/2000/svg" style="background:white; padding:10px; border-radius:4px;">`;
+  
+  // Render bars
+  let x = quietZone;
+  for (let i = 0; i < binaryString.length; i++) {
+    const char = binaryString[i];
+    if (char === "1" || char === "2") {
+      const isThick = char === "2" ? barWidth : barWidth; // standard width
+      svgContent += `<rect x="${x}" y="5" width="${barWidth}" height="${height}" fill="#000000" />`;
+    }
+    x += barWidth;
+  }
+
+  // Render Human Readable Text
+  svgContent += `<text x="${width / 2}" y="${height + 20}" font-family="monospace" font-size="12" font-weight="bold" text-anchor="middle" fill="#000000">${text}</text>`;
+  svgContent += "</svg>";
+
+  return svgContent;
+}
+</file>
+
+<file path="src/utils/supabase.js">
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://nsubmnvkojsmoykfcjgl.supabase.co';
+const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_FIp9glGAZJ1hLMp2pEKtcQ_BwSQPR1e';
+
+export const supabase = createClient(supabaseUrl, supabaseKey);
+</file>
+
+<file path="index.html">
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Iconic Boutique HN - Catálogo de fragancias de diseñador 100% originales en Honduras. Precios VIP para distribuidores, cotizaciones automáticas y gestión de inventario." />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <title>Perfumes Brother's HN - Inventario, Ofertas y Cotización</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+</file>
+
+<file path="package.json">
+{
+  "name": "react-example",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx server.js",
+    "build": "vite build && esbuild server.js --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "start": "node dist/server.cjs",
+    "clean": "rm -rf dist server.js",
+    "lint": "echo 'No types to check'"
+  },
+  "dependencies": {
+    "@google/genai": "^2.4.0",
+    "@supabase/supabase-js": "^2.110.1",
+    "@tailwindcss/vite": "^4.1.14",
+    "@vitejs/plugin-react": "^5.0.4",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.23.24",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "react-router-dom": "^7.18.1",
+    "recharts": "^3.9.2",
+    "vite": "^6.2.3",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.14.0",
+    "autoprefixer": "^10.4.21",
+    "esbuild": "^0.25.0",
+    "tailwindcss": "^4.1.14",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.3"
+  }
+}
+</file>
+
 <file path="src/components/CatalogView.jsx">
 import React, { useState } from 'react';
 import { useStore } from '../store';
@@ -2726,608 +3055,6 @@ export default function CatalogView({ initialShowFavorites = false }) {
             </div>
 
           </div>
-        </div>
-      )}
-
-    </div>
-  );
-}
-</file>
-
-<file path="src/pages/Barcodes.jsx">
-import React, { useState } from 'react';
-import { useStore } from '../store';
-import { generateBarcodeSVG } from '../utils/barcode';
-import { Printer, Tags, Grid, Eye, Check, Square, CheckSquare } from 'lucide-react';
-
-export default function BarcodeLabels() {
-  const { products } = useStore();
-  const [selectedIds, setSelectedIds] = useState([]);
-
-  const toggleSelect = (id) => {
-    setSelectedIds(prev => 
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
-  };
-
-  const selectAll = () => {
-    if (selectedIds.length === products.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(products.map(p => p.id));
-    }
-  };
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const selectedProducts = products.filter(p => selectedIds.includes(p.id));
-
-  return (
-    <div className="space-y-6 fade-in-up">
-      
-      {/* Print Instructions */}
-      <style>{`
-        @media print {
-          /* Hide non-printable elements completely */
-          header, footer, nav, .no-print {
-            display: none !important;
-          }
-          
-          /* Reset layout styles for printing */
-          body, html, #root {
-            background-color: white !important;
-            color: black !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            height: auto !important;
-            min-height: 0 !important;
-          }
-          
-          main {
-            max-width: none !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            width: 100% !important;
-            display: block !important;
-          }
-          
-          /* Ensure print area is shown */
-          #print-area {
-            display: block !important;
-            width: 100% !important;
-            position: relative !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          
-          .print-card {
-            width: 60mm;
-            height: 40mm;
-            padding: 3mm;
-            border: 1px solid #000;
-            margin: 0 auto !important;
-            display: flex !important;
-            flex-direction: column;
-            align-items: center;
-            justify-content: space-between;
-            page-break-after: always;
-            break-after: page;
-            page-break-inside: avoid;
-            break-inside: avoid;
-            background: white !important;
-            color: black !important;
-            box-sizing: border-box;
-          }
-        }
-        
-        @page {
-          size: 60mm 40mm;
-          margin: 0;
-        }
-      `}</style>
-
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 no-print">
-        <div>
-          <h2 className="font-display text-2xl font-bold text-neutral-900 tracking-tight">
-            Generador de Etiquetas con Código de Barra
-          </h2>
-          <p className="text-xs text-neutral-500">
-            Imprime etiquetas térmicas de estantería (60x40mm) para tus perfumes con códigos escaneables y precios en Lempiras.
-          </p>
-        </div>
-
-        <button
-          onClick={handlePrint}
-          disabled={selectedIds.length === 0}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-neutral-900 px-5 py-2.5 text-xs font-bold text-white hover:bg-neutral-800 cursor-pointer disabled:opacity-40 shadow-sm transition-all"
-        >
-          <Printer className="h-4 w-4" />
-          Imprimir Etiquetas ({selectedIds.length})
-        </button>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-3 no-print">
-        
-        {/* Left column: Selection panel (Col span 2) */}
-        <div className="md:col-span-2 space-y-4">
-          <div className="bg-white rounded-3xl border border-neutral-200 overflow-hidden shadow-sm">
-            <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
-              <span className="text-xs font-bold text-neutral-700">Seleccionar Perfumes para Imprimir</span>
-              <button
-                onClick={selectAll}
-                className="text-xs text-neutral-600 hover:text-neutral-900 font-semibold flex items-center gap-1.5"
-              >
-                {selectedIds.length === products.length ? (
-                  <>
-                    <CheckSquare className="h-4 w-4" />
-                    Deseleccionar Todos
-                  </>
-                ) : (
-                  <>
-                    <Square className="h-4 w-4" />
-                    Seleccionar Todos ({products.length})
-                  </>
-                )}
-              </button>
-            </div>
-
-            <ul className="divide-y divide-neutral-100 text-xs">
-              {products.map(p => {
-                const isSelected = selectedIds.includes(p.id);
-                return (
-                  <li 
-                    key={p.id}
-                    onClick={() => toggleSelect(p.id)}
-                    className="p-4 flex items-center justify-between hover:bg-neutral-50/30 cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`h-5 w-5 rounded border flex items-center justify-center transition-colors ${
-                        isSelected ? 'bg-neutral-900 border-neutral-900 text-white' : 'border-neutral-300'
-                      }`}>
-                        {isSelected && <Check className="h-3.5 w-3.5" />}
-                      </div>
-                      <div>
-                        <span className="block font-bold text-neutral-900">{p.name}</span>
-                        <span className="text-[10px] uppercase font-bold text-neutral-400 leading-none">{p.brand} ({p.size})</span>
-                      </div>
-                    </div>
-                    <div className="text-right font-mono">
-                      <span className="block text-xs font-bold text-neutral-800">L. {p.pricePublic.toLocaleString()}</span>
-                      <span className="block text-[10px] text-amber-600 font-bold">L. {p.pricePromotional.toLocaleString()} VIP</span>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        </div>
-
-        {/* Right column: Label Template Preview */}
-        <div className="space-y-4">
-          <div className="bg-white rounded-3xl border border-neutral-200 p-6 shadow-sm">
-            <h3 className="font-display font-bold text-neutral-900 text-sm mb-3 flex items-center gap-1.5">
-              <Eye className="h-4 w-4 text-neutral-500" />
-              Vista Previa de Impresión
-            </h3>
-            <p className="text-xs text-neutral-500 leading-relaxed mb-4">
-              Usa hojas de etiquetas térmicas de 60x40mm. Al pulsar imprimir se formateará de forma automática para impresoras térmicas (Zebra, Munbyn, Xprinter).
-            </p>
-
-            {selectedProducts.length === 0 ? (
-              <div className="border border-dashed border-neutral-200 rounded-2xl p-8 text-center text-neutral-400 font-medium">
-                Selecciona al menos un perfume para ver el diseño de la etiqueta.
-              </div>
-            ) : (
-              <div className="space-y-4 bg-neutral-100 p-4 rounded-2xl overflow-y-auto max-h-96">
-                {selectedProducts.map(p => (
-                  <div key={p.id} className="mx-auto bg-white border border-neutral-300 p-3 flex flex-col items-center justify-between text-black rounded shadow-sm w-[60mm] h-[40mm]">
-                    <div className="w-full text-center">
-                      <span className="block text-[9px] uppercase font-bold tracking-tight text-neutral-500 leading-none">Brother's Perfumes</span>
-                      <span className="block text-[11px] font-black tracking-tight text-neutral-900 line-clamp-1">{p.name}</span>
-                      <span className="block text-[9px] text-neutral-400 font-bold leading-none uppercase font-mono">{p.brand} - {p.size}</span>
-                    </div>
-                    
-                    {/* Real vector barcode */}
-                    <div 
-                      className="w-full h-14 overflow-hidden"
-                      dangerouslySetInnerHTML={{ __html: generateBarcodeSVG(p.barcode) }}
-                    />
-
-                    <div className="w-full flex justify-between items-center px-1 font-mono text-[9px] border-t border-neutral-100 pt-1">
-                      <span>Púb: <strong>L.{p.pricePublic.toLocaleString()}</strong></span>
-                      <span className="text-amber-700">VIP: <strong>L.{p.pricePromotional.toLocaleString()}</strong></span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-      </div>
-
-      {/* Actual Hidden Area targeted by print media stylesheet */}
-      <div id="print-area" className="hidden print:block">
-        {selectedProducts.map(p => (
-          <div key={p.id} className="print-card">
-            <div style={{ textAlign: 'center', width: '100%' }}>
-              <span style={{ display: 'block', fontSize: '8px', textTransform: 'uppercase', fontWeight: 'bold', color: '#555', letterSpacing: '1px', lineHeight: '1' }}>Brother's Perfumes</span>
-              <span style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#000', margin: '1px 0' }}>{p.name}</span>
-              <span style={{ display: 'block', fontSize: '8px', color: '#444', textTransform: 'uppercase', fontFamily: 'monospace' }}>{p.brand} - {p.size}</span>
-            </div>
-            
-            <div 
-              style={{ width: '100%', height: '55px', overflow: 'hidden' }}
-              dangerouslySetInnerHTML={{ __html: generateBarcodeSVG(p.barcode) }}
-            />
-
-            <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', fontFamily: 'monospace', fontSize: '9px', borderTop: '1px solid #ddd', paddingTop: '2px' }}>
-              <span>Púb: <strong>L.{p.pricePublic.toLocaleString()}</strong></span>
-              <span>VIP: <strong>L.{p.pricePromotional.toLocaleString()}</strong></span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-    </div>
-  );
-}
-</file>
-
-<file path="src/pages/Cart.jsx">
-import React, { useState } from 'react';
-import { useStore } from '../store';
-import { Link } from 'react-router-dom';
-import { ShoppingBag, Trash2, ArrowLeft, MessageSquare, CheckCircle2, Phone, User as UserIcon, Loader2, Award } from 'lucide-react';
-import { isProductSet } from '../utils/productHelper';
-
-export default function CartView() {
-  const { cart, user, updateCartQuantity, removeFromCart, submitOrder, loading, error } = useStore();
-  const [clientName, setClientName] = useState(user?.name || '');
-  const [clientPhone, setClientPhone] = useState('');
-  const [phoneError, setPhoneError] = useState('');
-  const [confirmedOrder, setConfirmedOrder] = useState(null);
-
-  const isClient = user?.role === 'client';
-  
-  const getPrice = (item) => {
-    return isClient ? item.product.pricePromotional : item.product.pricePublic;
-  };
-
-  const total = cart.reduce((acc, item) => acc + (getPrice(item) * item.quantity), 0);
-
-  const handleQuantityChange = (productId, currentQty, change) => {
-    updateCartQuantity(productId, currentQty + change);
-  };
-
-  const handleCheckout = async (e) => {
-    e.preventDefault();
-    setPhoneError('');
-
-    if (!clientName.trim()) {
-      return;
-    }
-
-    // Clean phone number (Honduras numbers are usually 8 digits, e.g., 9988-7766)
-    const cleanPhone = clientPhone.replace(/[^\d]/g, '');
-    if (cleanPhone.length !== 8) {
-      setPhoneError('Por favor ingrese un número de teléfono válido de Honduras (8 dígitos, ej: 99448822)');
-      return;
-    }
-
-    const order = await submitOrder(clientName.trim(), cleanPhone);
-    if (order) {
-      setConfirmedOrder(order);
-    }
-  };
-
-  // Pre-format WhatsApp link for the customer
-  const getWhatsAppConfirmationLink = (order) => {
-    const itemsText = order.items
-      .map((i) => {
-        const prefix = isProductSet(i) ? '🎁 [SET] ' : '';
-        return `• ${i.quantity}x ${prefix}${i.brand} ${i.name} (${i.size}) - L. ${i.pricePaid.toLocaleString()}`;
-      })
-      .join('\n');
-
-    const text = `¡Hola Iconic Boutique HN! 🇭🇳✨
-
-Acabo de realizar una cotización de perfumes mediante su sitio web. Mi número de orden es *${order.id}*.
-
-*Detalle de mi orden:*\n${itemsText}\n
-*Total:* *L. ${order.total.toLocaleString()} HNL*
-*Mi Nombre:* ${order.clientName}
-*Mi Teléfono:* +504 ${order.clientPhone}
-
-Por favor, ayúdenme con el método de pago y la facturación manual para coordinar mi entrega. ¡Quedo atento!`;
-
-    const encodedText = encodeURIComponent(text);
-    // WhatsApp API redirect link to the official number: +504 9830-9309
-    return `https://wa.me/50498309309?text=${encodedText}`;
-  };
-
-  // If order was successfully processed, show a gorgeous confirmation card!
-  if (confirmedOrder) {
-    return (
-      <div className="max-w-xl mx-auto py-8 text-center fade-in-up space-y-6">
-        <div className="bg-white rounded-3xl border border-emerald-200 p-8 shadow-md">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 mb-4 animate-bounce">
-            <CheckCircle2 className="h-8 w-8" />
-          </div>
-          
-          <h2 className="font-display text-2xl font-bold text-neutral-900 tracking-tight sm:text-3xl">
-            ¡Cotización Procesada con Éxito!
-          </h2>
-          <p className="text-xs text-neutral-500 font-bold font-mono mt-1 uppercase tracking-wider">
-            Código de Orden: <span className="bg-neutral-100 px-2.5 py-1 rounded text-neutral-900">{confirmedOrder.id}</span>
-          </p>
-          
-          <div className="border-t border-b border-neutral-100 py-4 my-6 text-left space-y-2.5">
-            <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-wider font-mono">Detalles de Facturación Manual</h4>
-            <p className="text-xs text-neutral-700"><strong>Cliente:</strong> {confirmedOrder.clientName}</p>
-            <p className="text-xs text-neutral-700"><strong>Teléfono:</strong> +504 {confirmedOrder.clientPhone}</p>
-            <p className="text-xs text-neutral-700"><strong>Total a pagar:</strong> <span className="font-mono font-bold text-neutral-900">L. {confirmedOrder.total.toLocaleString()} HNL</span></p>
-          </div>
-
-          <div className="bg-amber-50 rounded-2xl border border-amber-100 p-4 text-xs text-amber-900 text-left space-y-2 mb-6">
-            <p className="font-bold">✨ ¡Importante para cerrar su compra! ✨</p>
-            <p className="leading-relaxed text-neutral-700">
-              Dado que la facturación es manual, nuestro equipo de ventas en Honduras debe verificar existencias y coordinar el envío. 
-              Por favor, haga clic en el botón verde de abajo para enviar los detalles de su orden instantáneamente por WhatsApp.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <a
-              href={getWhatsAppConfirmationLink(confirmedOrder)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] hover:bg-[#20ba5a] text-white py-3.5 text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
-            >
-              <MessageSquare className="h-5 w-5" />
-              Enviar Orden por WhatsApp
-            </a>
-
-            <button
-              onClick={() => { setConfirmedOrder(null); setView('catalog'); }}
-              className="text-xs text-neutral-500 hover:text-neutral-900 underline font-medium block mx-auto cursor-pointer"
-            >
-              Regresar al Catálogo
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6 fade-in-up">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => setView('catalog')}
-          className="p-2 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 cursor-pointer shadow-sm"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </button>
-        <div>
-          <h2 className="font-display text-2xl font-bold text-neutral-900 tracking-tight">
-            Su Carrito de Cotización
-          </h2>
-          <p className="text-xs text-neutral-500">
-            Revisa las fragancias seleccionadas antes de proceder a la facturación manual.
-          </p>
-        </div>
-      </div>
-
-      {cart.length === 0 ? (
-        <div className="rounded-3xl border border-neutral-200 bg-white p-12 text-center max-w-xl mx-auto">
-          <ShoppingBag className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
-          <h3 className="font-display font-bold text-neutral-900 text-lg">El carrito está vacío</h3>
-          <p className="text-xs text-neutral-500 mt-1 max-w-sm mx-auto mb-6">
-            Explore nuestro catálogo de perfumes originales de marcas exclusivas y agregue fragancias para cotizar.
-          </p>
-          <Link
-            to="/catalog"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-neutral-900 px-5 py-3 text-xs font-bold text-white hover:bg-neutral-800 cursor-pointer shadow-sm"
-          >
-            Ver Perfumes
-          </Link>
-        </div>
-      ) : (
-        <div className="grid gap-6 lg:grid-cols-3">
-          
-          {/* Cart list (Left side - Col span 2) */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="bg-white rounded-3xl border border-neutral-200 overflow-hidden shadow-sm">
-              <ul className="divide-y divide-neutral-100">
-                {cart.map((item) => {
-                  const itemPrice = getPrice(item);
-                  return (
-                    <li key={item.product.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-neutral-50/20">
-                      
-                      {/* Product Details thumbnail */}
-                      <div className="flex items-center gap-4">
-                        <div className="h-16 w-16 flex-shrink-0 rounded-xl bg-neutral-100 overflow-hidden border border-neutral-200">
-                          <img
-                            src={item.product.imageUrl || 'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=150&q=80'}
-                            alt={item.product.name}
-                            referrerPolicy="no-referrer"
-                            className="h-full w-full object-cover object-center"
-                          />
-                        </div>
-                        <div>
-                          <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                            <span className="block text-[10px] uppercase font-bold text-neutral-400 font-mono leading-none">
-                              {item.product.brand}
-                            </span>
-                            {isProductSet(item.product) && (
-                              <span className="bg-indigo-50 text-indigo-700 text-[9px] font-black px-1.5 py-0.5 rounded border border-indigo-100 uppercase tracking-wide">
-                                🎁 SET
-                              </span>
-                            )}
-                          </div>
-                          <h4 className="font-display font-bold text-sm text-neutral-900 leading-tight">
-                            {item.product.name}
-                          </h4>
-                          <span className="block text-xs text-neutral-500 mt-0.5">
-                            Tamaño: {item.product.size} | Disp. {item.product.stock}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Quantities adjuster */}
-                      <div className="flex items-center justify-between sm:justify-end gap-6">
-                        
-                        <div className="flex items-center border border-neutral-200 rounded-xl bg-white overflow-hidden shadow-sm h-9">
-                          <button
-                            type="button"
-                            onClick={() => handleQuantityChange(item.product.id, item.quantity, -1)}
-                            className="px-3 hover:bg-neutral-100 text-neutral-500 font-bold text-sm cursor-pointer"
-                          >
-                            -
-                          </button>
-                          <span className="px-3 font-mono text-xs font-bold text-neutral-950">
-                            {item.quantity}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleQuantityChange(item.product.id, item.quantity, 1)}
-                            disabled={item.quantity >= item.product.stock}
-                            className="px-3 hover:bg-neutral-100 text-neutral-500 font-bold text-sm cursor-pointer disabled:opacity-30"
-                          >
-                            +
-                          </button>
-                        </div>
-
-                        {/* Price segment */}
-                        <div className="text-right font-mono">
-                          <span className="block text-xs text-neutral-400">Total</span>
-                          <span className="font-bold text-sm text-neutral-900">
-                            L. {(itemPrice * item.quantity).toLocaleString()} HNL
-                          </span>
-                        </div>
-
-                        {/* Remove item trigger */}
-                        <button
-                          onClick={() => removeFromCart(item.product.id)}
-                          className="p-2 text-neutral-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
-                          title="Eliminar del carrito"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-
-                      </div>
-
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          </div>
-
-          {/* Checkout billing form (Right side) */}
-          <div className="space-y-4">
-            <div className="bg-white rounded-3xl border border-neutral-200 p-6 shadow-sm">
-              <h3 className="font-display font-bold text-neutral-900 text-lg mb-4 border-b border-neutral-100 pb-3">
-                Resumen de Cotización
-              </h3>
-
-              {isClient && (
-                <div className="bg-emerald-50 text-emerald-800 p-3 rounded-xl border border-emerald-100 text-xs font-medium flex items-center gap-1.5 mb-4">
-                  <Award className="h-4 w-4" />
-                  <span>Aplicado descuento de Cliente VIP de Honduras</span>
-                </div>
-              )}
-
-              <div className="space-y-2 border-b border-neutral-100 pb-4 mb-4 font-mono text-xs text-neutral-600">
-                <div className="flex justify-between">
-                  <span>Subtotal:</span>
-                  <span className="font-bold">L. {total.toLocaleString()} HNL</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Envío (Delivery / Cargo):</span>
-                  <span className="text-neutral-400">Coordinar con vendedor</span>
-                </div>
-                <div className="flex justify-between text-base font-black text-neutral-950 pt-2 border-t border-neutral-50">
-                  <span>TOTAL ESTIMADO:</span>
-                  <span>L. {total.toLocaleString()} HNL</span>
-                </div>
-              </div>
-
-              {/* Contact billing details form */}
-              <form onSubmit={handleCheckout} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-neutral-600 uppercase mb-1 flex items-center gap-1">
-                    <UserIcon className="h-3.5 w-3.5" />
-                    Nombre Completo del Cliente *
-                  </label>
-                  <input
-                    type="text"
-                    value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
-                    placeholder="ej. Juan Carlos López"
-                    className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-xs focus:border-neutral-900 focus:outline-none"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-neutral-600 uppercase mb-1 flex items-center gap-1">
-                    <Phone className="h-3.5 w-3.5" />
-                    Número de Celular *
-                  </label>
-                  <div className="flex">
-                    <span className="inline-flex items-center px-3 border border-r-0 border-neutral-200 bg-neutral-50 rounded-l-xl text-xs text-neutral-500 font-semibold">
-                      +504
-                    </span>
-                    <input
-                      type="tel"
-                      value={clientPhone}
-                      onChange={(e) => { setClientPhone(e.target.value); setPhoneError(''); }}
-                      placeholder="ej. 99002233"
-                      className="w-full rounded-r-xl border border-neutral-200 px-3 py-2 text-xs focus:border-neutral-900 focus:outline-none font-mono"
-                      maxLength={12}
-                      required
-                    />
-                  </div>
-                  {phoneError && (
-                    <span className="block text-[10px] text-red-600 font-semibold mt-1">
-                      {phoneError}
-                    </span>
-                  )}
-                </div>
-
-                {error && (
-                  <div className="rounded-xl border border-red-100 bg-red-50 p-3 text-[11px] text-red-800">
-                    {error}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-900 text-white py-3.5 text-xs font-bold hover:bg-neutral-800 shadow-sm active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Procesando Orden...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-4 w-4" />
-                      Procesar Orden de Compra
-                    </>
-                  )}
-                </button>
-              </form>
-
-            </div>
-          </div>
-
         </div>
       )}
 
@@ -3970,394 +3697,6 @@ export default function Dashboard() {
 }
 </file>
 
-<file path="src/utils/barcode.js">
-/**
- * Highly compliant Code 128 Barcode SVG Generator (Code B)
- * Generates actual readable Code 128 barcodes as vector SVG.
- */
-
-const CODE128_PATTERNS = [
-  "212222", "222122", "222221", "121223", "121322", "131222", "122213", "122312", "132212", "221213", // 0-9
-  "221312", "231212", "112232", "122132", "122231", "113222", "123122", "123221", "223211", "221132", // 10-19
-  "221231", "213212", "223112", "312131", "311222", "321122", "321221", "312212", "322112", "322211", // 20-29
-  "212123", "212321", "232121", "111323", "131123", "131321", "112313", "132113", "132311", "211313", // 30-39
-  "231113", "231311", "112133", "112331", "132131", "113123", "113321", "133121", "313121", "211331", // 40-49
-  "231131", "213113", "213311", "213131", "311123", "311321", "331121", "312113", "312311", "332111", // 50-59
-  "314111", "221411", "431111", "111224", "111422", "121124", "121421", "141122", "141221", "112214", // 60-69
-  "112412", "122114", "122411", "142112", "142211", "241211", "221114", "413111", "241112", "134111", // 70-79
-  "111242", "121142", "121241", "114212", "124112", "124211", "411212", "421112", "421211", "212141", // 80-89
-  "214121", "412121", "111143", "111341", "131141", "114113", "114311", "411113", "411311", "113141", // 90-99
-  "114131", "311141", "411131", "211412", "211214", "211232", "2331112" // 100-106
-];
-
-const START_CODE_B = 104;
-const STOP_CODE = 106;
-
-export function generateBarcodeSVG(text) {
-  if (text === null || text === undefined) return "";
-  const stringText = String(text);
-  // Filter ASCII values for Code 128 Code B (values 32 to 127)
-  const cleanText = stringText.replace(/[^\x20-\x7F]/g, "");
-  if (!cleanText) return "";
-
-  const indices = [START_CODE_B];
-  
-  // Convert characters to code values
-  for (let i = 0; i < cleanText.length; i++) {
-    indices.push(cleanText.charCodeAt(i) - 32);
-  }
-
-  // Calculate checksum
-  let checksum = indices[0];
-  for (let i = 1; i < indices.length; i++) {
-    checksum += indices[i] * i;
-  }
-  indices.push(checksum % 103);
-  indices.push(STOP_CODE);
-
-  // Convert pattern digits to bar widths
-  let binaryString = "";
-  for (const index of indices) {
-    const pattern = CODE128_PATTERNS[index];
-    if (!pattern) continue;
-    for (let j = 0; j < pattern.length; j++) {
-      const width = parseInt(pattern[j], 10);
-      const isBar = j % 2 === 0;
-      binaryString += (isBar ? "1" : "0").repeat(width);
-    }
-  }
-
-  // Build the SVG paths
-  const barWidth = 2;
-  const height = 70;
-  const quietZone = 10;
-  const width = binaryString.length * barWidth + quietZone * 2;
-
-  let svgContent = `<svg width="100%" height="100%" viewBox="0 0 ${width} ${height + 25}" xmlns="http://www.w3.org/2000/svg" style="background:white; padding:10px; border-radius:4px;">`;
-  
-  // Render bars
-  let x = quietZone;
-  for (let i = 0; i < binaryString.length; i++) {
-    const char = binaryString[i];
-    if (char === "1" || char === "2") {
-      const isThick = char === "2" ? barWidth : barWidth; // standard width
-      svgContent += `<rect x="${x}" y="5" width="${barWidth}" height="${height}" fill="#000000" />`;
-    }
-    x += barWidth;
-  }
-
-  // Render Human Readable Text
-  svgContent += `<text x="${width / 2}" y="${height + 20}" font-family="monospace" font-size="12" font-weight="bold" text-anchor="middle" fill="#000000">${text}</text>`;
-  svgContent += "</svg>";
-
-  return svgContent;
-}
-</file>
-
-<file path="package.json">
-{
-  "name": "react-example",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "tsx server.js",
-    "build": "vite build && esbuild server.js --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
-    "start": "node dist/server.cjs",
-    "clean": "rm -rf dist server.js",
-    "lint": "echo 'No types to check'"
-  },
-  "dependencies": {
-    "@google/genai": "^2.4.0",
-    "@supabase/supabase-js": "^2.110.1",
-    "@tailwindcss/vite": "^4.1.14",
-    "@vitejs/plugin-react": "^5.0.4",
-    "dotenv": "^17.2.3",
-    "express": "^4.21.2",
-    "lucide-react": "^0.546.0",
-    "motion": "^12.23.24",
-    "react": "^19.0.1",
-    "react-dom": "^19.0.1",
-    "react-router-dom": "^7.18.1",
-    "recharts": "^3.9.2",
-    "vite": "^6.2.3",
-    "zustand": "^5.0.14"
-  },
-  "devDependencies": {
-    "@types/express": "^4.17.21",
-    "@types/node": "^22.14.0",
-    "autoprefixer": "^10.4.21",
-    "esbuild": "^0.25.0",
-    "tailwindcss": "^4.1.14",
-    "tsx": "^4.21.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.3"
-  }
-}
-</file>
-
-<file path="src/pages/Catalog.jsx">
-import CatalogView from '../components/CatalogView';
-
-export default function Catalog() {
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <CatalogView />
-    </div>
-  );
-}
-</file>
-
-<file path="src/pages/Login.jsx">
-import React, { useState } from 'react';
-import { useStore } from '../store';
-import { useNavigate } from 'react-router-dom';
-import { Key, UserPlus, Lock, ShieldCheck, Sparkles, Loader2, Info } from 'lucide-react';
-
-export default function LoginView() {
-  const { login, register, loading, error, setError } = useStore();
-  const navigate = useNavigate();
-  const [isRegister, setIsRegister] = useState(false);
-  
-  // Inputs state
-  const [userId, setUserId] = useState('');
-  const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-
-  const [showSeedHint, setShowSeedHint] = useState(true);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError(null);
-
-    if (isRegister) {
-      if (!userId || !name || !password || !confirmPassword) {
-        setError('Por favor complete todos los campos.');
-        return;
-      }
-      if (password !== confirmPassword) {
-        setError('Las contraseñas no coinciden.');
-        return;
-      }
-      const ok = await register(userId.trim(), name.trim(), password);
-      if (ok) {
-        alert('¡Cuenta creada correctamente! Bienvenido a Iconic Boutique HN.');
-        navigate('/catalog');
-      }
-    } else {
-      if (!userId || !password) {
-        setError('Por favor complete todos los campos.');
-        return;
-      }
-      const ok = await login(userId.trim(), password);
-      if (ok) {
-        navigate('/catalog');
-      }
-    }
-  };
-
-  // Quick fill seed accounts for testing
-  const handleQuickFill = (uId, pass) => {
-    setUserId(uId);
-    setPassword(pass);
-    setIsRegister(false);
-    setError(null);
-  };
-
-  return (
-    <div className="max-w-md mx-auto py-6 fade-in-up space-y-6">
-      
-      {/* Seed Accounts Helper (Extremely helpful for previewing different roles!) */}
-      {showSeedHint && !isRegister && (
-        <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
-              <Info className="h-4 w-4" />
-              Cuentas de Demostración para Prueba
-            </span>
-            <button
-              onClick={() => setShowSeedHint(false)}
-              className="text-[10px] text-blue-500 hover:text-blue-950 underline font-semibold"
-            >
-              Ocultar
-            </button>
-          </div>
-          <p className="text-[11px] text-blue-700 leading-relaxed">
-            Hemos pre-cargado tres roles del negocio en Honduras para que pruebes las diferentes vistas:
-          </p>
-          <div className="grid gap-2 text-[10px] font-mono">
-            <button
-              onClick={() => handleQuickFill('admin', 'admin123')}
-              className="bg-white border border-blue-100 p-2 rounded-lg text-left hover:bg-neutral-50/80 cursor-pointer flex justify-between"
-            >
-              <span>👑 <strong>Dueño (Admin):</strong> id: <code>admin</code></span>
-              <span className="font-bold text-blue-700 hover:underline">Autocompletar</span>
-            </button>
-            <button
-              onClick={() => handleQuickFill('vendedor', 'vend123')}
-              className="bg-white border border-blue-100 p-2 rounded-lg text-left hover:bg-neutral-50/80 cursor-pointer flex justify-between"
-            >
-              <span>💼 <strong>Vendedor (Staff):</strong> id: <code>vendedor</code></span>
-              <span className="font-bold text-blue-700 hover:underline">Autocompletar</span>
-            </button>
-            <button
-              onClick={() => handleQuickFill('cliente', 'cliente123')}
-              className="bg-white border border-blue-100 p-2 rounded-lg text-left hover:bg-neutral-50/80 cursor-pointer flex justify-between"
-            >
-              <span>🤝 <strong>Cliente VIP (Distribuidor):</strong> id: <code>cliente</code></span>
-              <span className="font-bold text-blue-700 hover:underline">Autocompletar</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Main card */}
-      <div className="bg-white rounded-3xl border border-neutral-200 p-6 sm:p-8 shadow-sm">
-        
-        {/* Toggle Headings */}
-        <div className="flex border-b border-neutral-100 pb-4 mb-6">
-          <button
-            onClick={() => { setIsRegister(false); setError(null); }}
-            className={`flex-1 text-center pb-2 text-sm font-bold tracking-tight border-b-2 cursor-pointer transition-colors ${
-              !isRegister
-                ? 'border-neutral-900 text-neutral-900'
-                : 'border-transparent text-neutral-400 hover:text-neutral-600'
-            }`}
-          >
-            Iniciar Sesión
-          </button>
-          <button
-            onClick={() => { setIsRegister(true); setError(null); }}
-            className={`flex-1 text-center pb-2 text-sm font-bold tracking-tight border-b-2 cursor-pointer transition-colors ${
-              isRegister
-                ? 'border-neutral-900 text-neutral-900'
-                : 'border-transparent text-neutral-400 hover:text-neutral-600'
-            }`}
-          >
-            Crear Cuenta VIP
-          </button>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          
-          <div>
-            <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">
-              Correo Electrónico *
-            </label>
-            <input
-              type="text"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              placeholder="ej: tu@correo.com"
-              className="w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-xs focus:border-neutral-900 focus:outline-none font-mono"
-              required
-            />
-          </div>
-
-          {isRegister && (
-            <div>
-              <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">
-                Nombre Completo del Cliente *
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="ej: Juan Carlos López"
-                className="w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-xs focus:border-neutral-900 focus:outline-none"
-                required
-              />
-            </div>
-          )}
-
-          <div>
-            <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">
-              Contraseña *
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-xs focus:border-neutral-900 focus:outline-none"
-              required
-            />
-            {!isRegister && (
-              <div className="flex justify-end mt-1.5">
-                <Link to="/forgot-password" className="text-xs font-semibold text-neutral-500 hover:text-neutral-900">
-                  ¿Olvidaste tu contraseña?
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {isRegister && (
-            <div>
-              <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">
-                Confirmar Contraseña *
-              </label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-xs focus:border-neutral-900 focus:outline-none"
-                required
-              />
-            </div>
-          )}
-
-          {error && (
-            <div className="rounded-xl border border-red-100 bg-red-50 p-3 text-xs text-red-800 font-medium">
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-neutral-900 text-white py-3 text-xs font-bold hover:bg-neutral-800 shadow-sm transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Procesando...
-              </>
-            ) : isRegister ? (
-              <>
-                <UserPlus className="h-4 w-4" />
-                Registrar Cuenta y Acceder
-              </>
-            ) : (
-              <>
-                <Key className="h-4 w-4" />
-                Ingresar al Sistema
-              </>
-            )}
-          </button>
-
-          {isRegister && (
-            <div className="text-center pt-2">
-              <span className="text-[10px] text-neutral-400 font-semibold uppercase leading-none block">
-                ✓ Registro Libre y Gratuito
-              </span>
-              <p className="text-[10px] text-neutral-500 mt-1">
-                Cualquier usuario de Honduras puede crear una cuenta VIP de forma automática para obtener tarifas preferenciales de distribuidor.
-              </p>
-            </div>
-          )}
-
-        </form>
-
-      </div>
-
-    </div>
-  );
-}
-</file>
-
 <file path="src/pages/Orders.jsx">
 import React, { useState } from 'react';
 import { useStore } from '../store';
@@ -4964,212 +4303,738 @@ Para coordinar la facturación manual, método de pago (transferencia Ficohsa/At
 }
 </file>
 
-<file path="src/App.jsx">
-import React, { useEffect, lazy, Suspense } from 'react';
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useStore } from './store';
-import Navbar from './components/Navbar';
+<file path="vite.config.js">
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { defineConfig } from 'vite';
 
-// Import Pages
-import Home from './pages/Home';
-import Login from './pages/Login';
-import Catalog from './pages/Catalog';
-import Ofertas from './pages/Ofertas';
-import Orders from './pages/Orders';
-import Config from './pages/Config';
-import Cart from './pages/Cart';
-import Favorites from './pages/Favorites';
-import ForgotPassword from './pages/ForgotPassword';
-import UpdatePassword from './pages/UpdatePassword';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Inventory = lazy(() => import('./pages/Inventory'));
-const Barcodes = lazy(() => import('./pages/Barcodes'));
+export default defineConfig(() => {
+  return {
+    plugins: [react(), tailwindcss()],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, '.'),
+      },
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              // Split heavy dependencies into smaller separate chunks
+              if (id.includes('lucide-react')) return 'vendor-lucide';
+              if (id.includes('@supabase')) return 'vendor-supabase';
+              if (id.includes('recharts')) return 'vendor-recharts';
+              if (id.includes('react-router') || id.includes('react-router-dom')) return 'vendor-router';
+              
+              // Fallback for smaller dependencies
+              return 'vendor-core';
+            }
+          },
+        },
+      },
+    },
+    server: {
+      hmr: process.env.DISABLE_HMR !== 'true',
+      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+    },
+  };
+});
+</file>
 
-// Auth Guard Wrapper
-const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { user } = useStore();
-  
-  console.log('[ProtectedRoute] Checking access for path:', window.location.hash || window.location.pathname, 'User:', user, 'AllowedRoles:', allowedRoles);
+<file path="src/pages/Cart.jsx">
+import React, { useState } from "react";
+import { useStore } from "../store";
+import { Link } from "react-router-dom";
+import {
+  ShoppingBag,
+  Trash2,
+  ArrowLeft,
+  MessageSquare,
+  CheckCircle2,
+  Phone,
+  User as UserIcon,
+  Loader2,
+  Award,
+} from "lucide-react";
+import { isProductSet } from "../utils/productHelper";
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
+export default function CartView() {
+  const {
+    cart,
+    user,
+    updateCartQuantity,
+    removeFromCart,
+    submitOrder,
+    loading,
+    error,
+  } = useStore();
+  const [clientName, setClientName] = useState(user?.name || "");
+  const [clientPhone, setClientPhone] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+  const [confirmedOrder, setConfirmedOrder] = useState(null);
 
-  // Normalize 'dueño' and 'owner' to be completely interchangeable
-  const userRole = user.role;
-  const normalizedUserRole = userRole === 'dueño' ? 'owner' : userRole;
-  const normalizedAllowedRoles = (allowedRoles || []).map(r => r === 'dueño' ? 'owner' : r);
+  const isClient = user?.role === "client";
 
-  if (allowedRoles && !normalizedAllowedRoles.includes(normalizedUserRole)) {
-    console.warn('[ProtectedRoute] Access Denied! Redirecting to home. Normalized user role:', normalizedUserRole, 'Allowed normalized roles:', normalizedAllowedRoles);
-    return <Navigate to="/" replace />;
-  }
-  return children;
-};
+  const getPrice = (item) => {
+    return isClient ? item.product.pricePromotional : item.product.pricePublic;
+  };
 
-// Public Only Wrapper (for Login)
-const PublicOnlyRoute = ({ children }) => {
-  const { user } = useStore();
-  if (user) {
-    return <Navigate to="/catalog" replace />;
-  }
-  return children;
-};
+  const total = cart.reduce(
+    (acc, item) => acc + getPrice(item) * item.quantity,
+    0,
+  );
 
-export default function App() {
-  const { fetchProducts, fetchOrders, fetchTelegramConfig, restoreSession, checkingSession } = useStore();
+  const handleQuantityChange = (productId, currentQty, change) => {
+    updateCartQuantity(productId, currentQty + change);
+  };
 
-  useEffect(() => {
-    const init = async () => {
-      // First try to restore existing session
-      await restoreSession();
-      // Fetch backend data
-      fetchProducts();
-      fetchTelegramConfig();
-      fetchOrders();
-    };
-    init();
-  }, []);
+  const handleCheckout = async (e) => {
+    e.preventDefault();
+    setPhoneError("");
 
-  if (checkingSession) {
+    if (!clientName.trim()) {
+      return;
+    }
+
+    // Clean phone number (Honduras numbers are usually 8 digits, e.g., 9988-7766)
+    const cleanPhone = clientPhone.replace(/[^\d]/g, "");
+    if (cleanPhone.length !== 8) {
+      setPhoneError(
+        "Por favor ingrese un número de teléfono válido de Honduras (8 dígitos, ej: 99448822)",
+      );
+      return;
+    }
+
+    const order = await submitOrder(clientName.trim(), cleanPhone);
+    if (order) {
+      setConfirmedOrder(order);
+    }
+  };
+
+  // Pre-format WhatsApp link for the customer
+  const getWhatsAppConfirmationLink = (order) => {
+    const itemsText = order.items
+      .map((i) => {
+        const prefix = isProductSet(i) ? "🎁 [SET] " : "";
+        return `• ${i.quantity}x ${prefix}${i.brand} ${i.name} (${i.size}) - L. ${i.pricePaid.toLocaleString()}`;
+      })
+      .join("\n");
+
+    const text = `¡Hola Iconic Boutique HN! 🇭🇳✨
+
+Acabo de realizar una cotización de perfumes mediante su sitio web. Mi número de orden es *${order.id}*.
+
+*Detalle de mi orden:*\n${itemsText}\n
+*Total:* *L. ${order.total.toLocaleString()} HNL*
+*Mi Nombre:* ${order.clientName}
+*Mi Teléfono:* +504 ${order.clientPhone}
+
+Por favor, ayúdenme con el método de pago y la facturación manual para coordinar mi entrega. ¡Quedo atento!`;
+
+    const encodedText = encodeURIComponent(text);
+    // WhatsApp API redirect link to the official number: +504 9830-9309
+    return `https://wa.me/50498309309?text=${encodedText}`;
+  };
+
+  // If order was successfully processed, show a gorgeous confirmation card!
+  if (confirmedOrder) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans">
-        <div className="flex flex-col items-center">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600"></div>
-          <p className="mt-4 text-xs font-semibold text-neutral-500 uppercase tracking-widest font-mono">
-            Iconic Boutique HN
+      <div className="max-w-xl mx-auto py-8 text-center fade-in-up space-y-6">
+        <div className="bg-white rounded-3xl border border-emerald-200 p-8 shadow-md">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 mb-4 animate-bounce">
+            <CheckCircle2 className="h-8 w-8" />
+          </div>
+
+          <h2 className="font-display text-2xl font-bold text-neutral-900 tracking-tight sm:text-3xl">
+            ¡Cotización Procesada con Éxito!
+          </h2>
+          <p className="text-xs text-neutral-500 font-bold font-mono mt-1 uppercase tracking-wider">
+            Código de Orden:{" "}
+            <span className="bg-neutral-100 px-2.5 py-1 rounded text-neutral-900">
+              {confirmedOrder.id}
+            </span>
           </p>
-          <p className="mt-1 text-xs text-neutral-400">
-            Cargando sesión...
-          </p>
+
+          <div className="border-t border-b border-neutral-100 py-4 my-6 text-left space-y-2.5">
+            <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-wider font-mono">
+              Detalles de Facturación Manual
+            </h4>
+            <p className="text-xs text-neutral-700">
+              <strong>Cliente:</strong> {confirmedOrder.clientName}
+            </p>
+            <p className="text-xs text-neutral-700">
+              <strong>Teléfono:</strong> +504 {confirmedOrder.clientPhone}
+            </p>
+            <p className="text-xs text-neutral-700">
+              <strong>Total a pagar:</strong>{" "}
+              <span className="font-mono font-bold text-neutral-900">
+                L. {confirmedOrder.total.toLocaleString()} HNL
+              </span>
+            </p>
+          </div>
+
+          <div className="bg-amber-50 rounded-2xl border border-amber-100 p-4 text-xs text-amber-900 text-left space-y-2 mb-6">
+            <p className="font-bold">
+              ✨ ¡Importante para cerrar su compra! ✨
+            </p>
+            <p className="leading-relaxed text-neutral-700">
+              Dado que la facturación es manual, nuestro equipo de ventas en
+              Honduras debe verificar existencias y coordinar el envío. Por
+              favor, haga clic en el botón verde de abajo para enviar los
+              detalles de su orden instantáneamente por WhatsApp.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <a
+              href={getWhatsAppConfirmationLink(confirmedOrder)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] hover:bg-[#20ba5a] text-white py-3.5 text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
+            >
+              <MessageSquare className="h-5 w-5" />
+              Enviar Orden por WhatsApp
+            </a>
+
+            <button
+              onClick={() => {
+                setConfirmedOrder(null);
+                setView("catalog");
+              }}
+              className="text-xs text-neutral-500 hover:text-neutral-900 underline font-medium block mx-auto cursor-pointer"
+            >
+              Regresar al Catálogo
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <Router>
-      <div className="min-h-screen bg-neutral-50 flex flex-col font-sans">
-        
-        {/* Navigation bar Header */}
-        <Navbar />
+    <div className="space-y-6 fade-in-up">
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => setView("catalog")}
+          className="p-2 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 cursor-pointer shadow-sm"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </button>
+        <div>
+          <h2 className="font-display text-2xl font-bold text-neutral-900 tracking-tight">
+            Su Carrito de Cotización
+          </h2>
+          <p className="text-xs text-neutral-500">
+            Revisa las fragancias seleccionadas antes de proceder a la
+            facturación manual.
+          </p>
+        </div>
+      </div>
 
-        {/* Main Content stage area */}
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-          <Suspense fallback={
-            <div className="flex flex-col items-center justify-center py-24">
-              <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600"></div>
-              <p className="mt-4 text-xs font-semibold text-neutral-500 uppercase tracking-widest font-mono">Cargando módulo...</p>
+      {cart.length === 0 ? (
+        <div className="rounded-3xl border border-neutral-200 bg-white p-12 text-center max-w-xl mx-auto">
+          <ShoppingBag className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
+          <h3 className="font-display font-bold text-neutral-900 text-lg">
+            El carrito está vacío
+          </h3>
+          <p className="text-xs text-neutral-500 mt-1 max-w-sm mx-auto mb-6">
+            Explore nuestro catálogo de perfumes originales de marcas exclusivas
+            y agregue fragancias para cotizar.
+          </p>
+          <Link
+            to="/catalog"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-neutral-900 px-5 py-3 text-xs font-bold text-white hover:bg-neutral-800 cursor-pointer shadow-sm"
+          >
+            Ver Perfumes
+          </Link>
+        </div>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Cart list (Left side - Col span 2) */}
+          <div className="lg:col-span-2 space-y-4">
+            <div className="bg-white rounded-3xl border border-neutral-200 overflow-hidden shadow-sm">
+              <ul className="divide-y divide-neutral-100">
+                {cart.map((item) => {
+                  const itemPrice = getPrice(item);
+                  return (
+                    <li
+                      key={item.product.id}
+                      className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-neutral-50/20"
+                    >
+                      {/* Product Details thumbnail */}
+                      <div className="flex items-center gap-4">
+                        <div className="h-16 w-16 flex-shrink-0 rounded-xl bg-neutral-100 overflow-hidden border border-neutral-200">
+                          <img
+                            src={
+                              item.product.imageUrl ||
+                              "https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=150&q=80"
+                            }
+                            alt={item.product.name}
+                            loading="lazy" /* Add this property! */
+                            referrerPolicy="no-referrer"
+                            className="h-full w-full object-cover object-center"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                            <span className="block text-[10px] uppercase font-bold text-neutral-400 font-mono leading-none">
+                              {item.product.brand}
+                            </span>
+                            {isProductSet(item.product) && (
+                              <span className="bg-indigo-50 text-indigo-700 text-[9px] font-black px-1.5 py-0.5 rounded border border-indigo-100 uppercase tracking-wide">
+                                🎁 SET
+                              </span>
+                            )}
+                          </div>
+                          <h4 className="font-display font-bold text-sm text-neutral-900 leading-tight">
+                            {item.product.name}
+                          </h4>
+                          <span className="block text-xs text-neutral-500 mt-0.5">
+                            Tamaño: {item.product.size} | Disp.{" "}
+                            {item.product.stock}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Quantities adjuster */}
+                      <div className="flex items-center justify-between sm:justify-end gap-6">
+                        <div className="flex items-center border border-neutral-200 rounded-xl bg-white overflow-hidden shadow-sm h-9">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleQuantityChange(
+                                item.product.id,
+                                item.quantity,
+                                -1,
+                              )
+                            }
+                            className="px-3 hover:bg-neutral-100 text-neutral-500 font-bold text-sm cursor-pointer"
+                          >
+                            -
+                          </button>
+                          <span className="px-3 font-mono text-xs font-bold text-neutral-950">
+                            {item.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleQuantityChange(
+                                item.product.id,
+                                item.quantity,
+                                1,
+                              )
+                            }
+                            disabled={item.quantity >= item.product.stock}
+                            className="px-3 hover:bg-neutral-100 text-neutral-500 font-bold text-sm cursor-pointer disabled:opacity-30"
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        {/* Price segment */}
+                        <div className="text-right font-mono">
+                          <span className="block text-xs text-neutral-400">
+                            Total
+                          </span>
+                          <span className="font-bold text-sm text-neutral-900">
+                            L. {(itemPrice * item.quantity).toLocaleString()}{" "}
+                            HNL
+                          </span>
+                        </div>
+
+                        {/* Remove item trigger */}
+                        <button
+                          onClick={() => removeFromCart(item.product.id)}
+                          className="p-2 text-neutral-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                          title="Eliminar del carrito"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
-          }>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route 
-                path="/login" 
-                element={
-                  <PublicOnlyRoute>
-                    <Login />
-                  </PublicOnlyRoute>
-                } 
-              />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/update-password" element={<UpdatePassword />} />
-              <Route path="/catalog" element={<Catalog />} />
-              <Route path="/favorites" element={<Favorites />} />
-              <Route path="/ofertas" element={<Ofertas />} />
-              <Route path="/cart" element={<Cart />} />
-              
-              {/* Employee Protected Routes */}
-              <Route 
-                path="/dashboard" 
-                element={
-                  <ProtectedRoute allowedRoles={['owner', 'vendedor']}>
-                    <Dashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/inventory" 
-                element={
-                  <ProtectedRoute allowedRoles={['owner', 'vendedor']}>
-                    <Inventory />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/orders" 
-                element={
-                  <ProtectedRoute allowedRoles={['owner', 'vendedor', 'client']}>
-                    <Orders />
-                  </ProtectedRoute>
-                } 
-              />
-
-              {/* Owner Protected Routes */}
-              <Route 
-                path="/barcodes" 
-                element={
-                  <ProtectedRoute allowedRoles={['owner']}>
-                    <Barcodes />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/config" 
-                element={
-                  <ProtectedRoute allowedRoles={['owner']}>
-                    <Config />
-                  </ProtectedRoute>
-                } 
-              />
-
-              {/* Fallback Catch-All */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
-        </main>
-
-        {/* Footer */}
-        <footer className="bg-white border-t border-neutral-200 py-8 text-center no-print space-y-4">
-          <div className="flex justify-center gap-6 text-xs font-semibold text-neutral-600">
-            <a 
-              href="https://www.facebook.com/profile.php?id=61557724910199&ref=NONE_xav_ig_profile_page_web#" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="hover:text-neutral-900 transition-colors flex items-center gap-1"
-            >
-              Facebook
-            </a>
-            <a 
-              href="https://www.instagram.com/iconicboutiquehn/" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="hover:text-neutral-900 transition-colors flex items-center gap-1"
-            >
-              Instagram
-            </a>
-            <a 
-              href="https://wa.me/50498309309" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="text-emerald-600 hover:text-emerald-700 font-bold transition-colors flex items-center gap-1"
-            >
-              WhatsApp Business (+504 9830-9309)
-            </a>
           </div>
+
+          {/* Checkout billing form (Right side) */}
+          <div className="space-y-4">
+            <div className="bg-white rounded-3xl border border-neutral-200 p-6 shadow-sm">
+              <h3 className="font-display font-bold text-neutral-900 text-lg mb-4 border-b border-neutral-100 pb-3">
+                Resumen de Cotización
+              </h3>
+
+              {isClient && (
+                <div className="bg-emerald-50 text-emerald-800 p-3 rounded-xl border border-emerald-100 text-xs font-medium flex items-center gap-1.5 mb-4">
+                  <Award className="h-4 w-4" />
+                  <span>Aplicado descuento de Cliente VIP de Honduras</span>
+                </div>
+              )}
+
+              <div className="space-y-2 border-b border-neutral-100 pb-4 mb-4 font-mono text-xs text-neutral-600">
+                <div className="flex justify-between">
+                  <span>Subtotal:</span>
+                  <span className="font-bold">
+                    L. {total.toLocaleString()} HNL
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Envío (Delivery / Cargo):</span>
+                  <span className="text-neutral-400">
+                    Coordinar con vendedor
+                  </span>
+                </div>
+                <div className="flex justify-between text-base font-black text-neutral-950 pt-2 border-t border-neutral-50">
+                  <span>TOTAL ESTIMADO:</span>
+                  <span>L. {total.toLocaleString()} HNL</span>
+                </div>
+              </div>
+
+              {/* Contact billing details form */}
+              <form onSubmit={handleCheckout} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-neutral-600 uppercase mb-1 flex items-center gap-1">
+                    <UserIcon className="h-3.5 w-3.5" />
+                    Nombre Completo del Cliente *
+                  </label>
+                  <input
+                    type="text"
+                    value={clientName}
+                    onChange={(e) => setClientName(e.target.value)}
+                    placeholder="ej. Juan Carlos López"
+                    className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-xs focus:border-neutral-900 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-neutral-600 uppercase mb-1 flex items-center gap-1">
+                    <Phone className="h-3.5 w-3.5" />
+                    Número de Celular *
+                  </label>
+                  <div className="flex">
+                    <span className="inline-flex items-center px-3 border border-r-0 border-neutral-200 bg-neutral-50 rounded-l-xl text-xs text-neutral-500 font-semibold">
+                      +504
+                    </span>
+                    <input
+                      type="tel"
+                      value={clientPhone}
+                      onChange={(e) => {
+                        setClientPhone(e.target.value);
+                        setPhoneError("");
+                      }}
+                      placeholder="ej. 99002233"
+                      className="w-full rounded-r-xl border border-neutral-200 px-3 py-2 text-xs focus:border-neutral-900 focus:outline-none font-mono"
+                      maxLength={12}
+                      required
+                    />
+                  </div>
+                  {phoneError && (
+                    <span className="block text-[10px] text-red-600 font-semibold mt-1">
+                      {phoneError}
+                    </span>
+                  )}
+                </div>
+
+                {error && (
+                  <div className="rounded-xl border border-red-100 bg-red-50 p-3 text-[11px] text-red-800">
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-900 text-white py-3.5 text-xs font-bold hover:bg-neutral-800 shadow-sm active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Procesando Orden...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-4 w-4" />
+                      Procesar Orden de Compra
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="src/pages/Catalog.jsx">
+import CatalogView from '../components/CatalogView';
+
+export default function Catalog() {
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <CatalogView />
+    </div>
+  );
+}
+</file>
+
+<file path="src/pages/Login.jsx">
+import React, { useState } from 'react';
+import { useStore } from '../store';
+import { useNavigate,Link } from 'react-router-dom';
+import { Key, UserPlus, Lock, ShieldCheck, Sparkles, Loader2, Info } from 'lucide-react';
+
+export default function LoginView() {
+  const { login, register, loading, error, setError } = useStore();
+  const navigate = useNavigate();
+  const [isRegister, setIsRegister] = useState(false);
+  
+  // Inputs state
+  const [userId, setUserId] = useState('');
+  const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const [showSeedHint, setShowSeedHint] = useState(true);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+
+    if (isRegister) {
+      if (!userId || !name || !password || !confirmPassword) {
+        setError('Por favor complete todos los campos.');
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError('Las contraseñas no coinciden.');
+        return;
+      }
+      const ok = await register(userId.trim(), name.trim(), password);
+      if (ok) {
+        alert('¡Cuenta creada correctamente! Bienvenido a Iconic Boutique HN.');
+        navigate('/catalog');
+      }
+    } else {
+      if (!userId || !password) {
+        setError('Por favor complete todos los campos.');
+        return;
+      }
+      const ok = await login(userId.trim(), password);
+      if (ok) {
+        navigate('/catalog');
+      }
+    }
+  };
+
+  // Quick fill seed accounts for testing
+  const handleQuickFill = (uId, pass) => {
+    setUserId(uId);
+    setPassword(pass);
+    setIsRegister(false);
+    setError(null);
+  };
+
+  return (
+    <div className="max-w-md mx-auto py-6 fade-in-up space-y-6">
+      
+      {/* Seed Accounts Helper (Extremely helpful for previewing different roles!) */}
+      {showSeedHint && !isRegister && (
+        <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+              <Info className="h-4 w-4" />
+              Cuentas de Demostración para Prueba
+            </span>
+            <button
+              onClick={() => setShowSeedHint(false)}
+              className="text-[10px] text-blue-500 hover:text-blue-950 underline font-semibold"
+            >
+              Ocultar
+            </button>
+          </div>
+          <p className="text-[11px] text-blue-700 leading-relaxed">
+            Hemos pre-cargado tres roles del negocio en Honduras para que pruebes las diferentes vistas:
+          </p>
+          <div className="grid gap-2 text-[10px] font-mono">
+            <button
+              onClick={() => handleQuickFill('admin', 'admin123')}
+              className="bg-white border border-blue-100 p-2 rounded-lg text-left hover:bg-neutral-50/80 cursor-pointer flex justify-between"
+            >
+              <span>👑 <strong>Dueño (Admin):</strong> id: <code>admin</code></span>
+              <span className="font-bold text-blue-700 hover:underline">Autocompletar</span>
+            </button>
+            <button
+              onClick={() => handleQuickFill('vendedor', 'vend123')}
+              className="bg-white border border-blue-100 p-2 rounded-lg text-left hover:bg-neutral-50/80 cursor-pointer flex justify-between"
+            >
+              <span>💼 <strong>Vendedor (Staff):</strong> id: <code>vendedor</code></span>
+              <span className="font-bold text-blue-700 hover:underline">Autocompletar</span>
+            </button>
+            <button
+              onClick={() => handleQuickFill('cliente', 'cliente123')}
+              className="bg-white border border-blue-100 p-2 rounded-lg text-left hover:bg-neutral-50/80 cursor-pointer flex justify-between"
+            >
+              <span>🤝 <strong>Cliente VIP (Distribuidor):</strong> id: <code>cliente</code></span>
+              <span className="font-bold text-blue-700 hover:underline">Autocompletar</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Main card */}
+      <div className="bg-white rounded-3xl border border-neutral-200 p-6 sm:p-8 shadow-sm">
+        
+        {/* Toggle Headings */}
+        <div className="flex border-b border-neutral-100 pb-4 mb-6">
+          <button
+            onClick={() => { setIsRegister(false); setError(null); }}
+            className={`flex-1 text-center pb-2 text-sm font-bold tracking-tight border-b-2 cursor-pointer transition-colors ${
+              !isRegister
+                ? 'border-neutral-900 text-neutral-900'
+                : 'border-transparent text-neutral-400 hover:text-neutral-600'
+            }`}
+          >
+            Iniciar Sesión
+          </button>
+          <button
+            onClick={() => { setIsRegister(true); setError(null); }}
+            className={`flex-1 text-center pb-2 text-sm font-bold tracking-tight border-b-2 cursor-pointer transition-colors ${
+              isRegister
+                ? 'border-neutral-900 text-neutral-900'
+                : 'border-transparent text-neutral-400 hover:text-neutral-600'
+            }`}
+          >
+            Crear Cuenta VIP
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          
           <div>
-            <p className="text-[11px] font-semibold text-neutral-600 uppercase tracking-widest font-mono">
-              © {new Date().getFullYear()} Iconic Boutique HN • Tegucigalpa, Honduras
-            </p>
-            <p className="text-[10px] text-neutral-600 mt-1 max-w-lg mx-auto leading-relaxed">
-              Importación directa de fragancias 100% originales sella de las marcas más prestigiosas de diseñador. Cotizaciones automáticas, pedidos mayoristas VIP y facturación profesional en Lempiras (HNL).
-            </p>
+            <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">
+              Correo Electrónico *
+            </label>
+            <input
+              type="text"
+              value={userId}
+              onChange={(e) => setUserId(e.target.value)}
+              placeholder="ej: tu@correo.com"
+              className="w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-xs focus:border-neutral-900 focus:outline-none font-mono"
+              required
+            />
           </div>
-        </footer>
+
+          {isRegister && (
+            <div>
+              <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">
+                Nombre Completo del Cliente *
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="ej: Juan Carlos López"
+                className="w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-xs focus:border-neutral-900 focus:outline-none"
+                required
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">
+              Contraseña *
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-xs focus:border-neutral-900 focus:outline-none"
+              required
+            />
+            {!isRegister && (
+              <div className="flex justify-end mt-1.5">
+                <Link to="/forgot-password" className="text-xs font-semibold text-neutral-500 hover:text-neutral-900">
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {isRegister && (
+            <div>
+              <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">
+                Confirmar Contraseña *
+              </label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-xs focus:border-neutral-900 focus:outline-none"
+                required
+              />
+            </div>
+          )}
+
+          {error && (
+            <div className="rounded-xl border border-red-100 bg-red-50 p-3 text-xs text-red-800 font-medium">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-neutral-900 text-white py-3 text-xs font-bold hover:bg-neutral-800 shadow-sm transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Procesando...
+              </>
+            ) : isRegister ? (
+              <>
+                <UserPlus className="h-4 w-4" />
+                Registrar Cuenta y Acceder
+              </>
+            ) : (
+              <>
+                <Key className="h-4 w-4" />
+                Ingresar al Sistema
+              </>
+            )}
+          </button>
+
+          {isRegister && (
+            <div className="text-center pt-2">
+              <span className="text-[10px] text-neutral-400 font-semibold uppercase leading-none block">
+                ✓ Registro Libre y Gratuito
+              </span>
+              <p className="text-[10px] text-neutral-500 mt-1">
+                Cualquier usuario de Honduras puede crear una cuenta VIP de forma automática para obtener tarifas preferenciales de distribuidor.
+              </p>
+            </div>
+          )}
+
+        </form>
 
       </div>
-    </Router>
+
+    </div>
   );
 }
 </file>
@@ -7968,6 +7833,216 @@ export const useStore = create((set, get) => ({
     };
   }
 }));
+</file>
+
+<file path="src/App.jsx">
+import React, { useEffect, lazy, Suspense } from 'react';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useStore } from './store';
+import Navbar from './components/Navbar';
+
+// Use lazy() to defer non-critical JavaScript until the route is visited
+const Home = lazy(() => import('./pages/Home'));
+const Login = lazy(() => import('./pages/Login'));
+const Catalog = lazy(() => import('./pages/Catalog'));
+const Ofertas = lazy(() => import('./pages/Ofertas'));
+const Orders = lazy(() => import('./pages/Orders'));
+const Config = lazy(() => import('./pages/Config'));
+const Cart = lazy(() => import('./pages/Cart'));
+const Favorites = lazy(() => import('./pages/Favorites'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const UpdatePassword = lazy(() => import('./pages/UpdatePassword'));
+
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Inventory = lazy(() => import('./pages/Inventory'));
+const Barcodes = lazy(() => import('./pages/Barcodes'));
+
+// Auth Guard Wrapper
+const ProtectedRoute = ({ children, allowedRoles }) => {
+  const { user } = useStore();
+  
+  console.log('[ProtectedRoute] Checking access for path:', window.location.hash || window.location.pathname, 'User:', user, 'AllowedRoles:', allowedRoles);
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Normalize 'dueño' and 'owner' to be completely interchangeable
+  const userRole = user.role;
+  const normalizedUserRole = userRole === 'dueño' ? 'owner' : userRole;
+  const normalizedAllowedRoles = (allowedRoles || []).map(r => r === 'dueño' ? 'owner' : r);
+
+  if (allowedRoles && !normalizedAllowedRoles.includes(normalizedUserRole)) {
+    console.warn('[ProtectedRoute] Access Denied! Redirecting to home. Normalized user role:', normalizedUserRole, 'Allowed normalized roles:', normalizedAllowedRoles);
+    return <Navigate to="/" replace />;
+  }
+  return children;
+};
+
+// Public Only Wrapper (for Login)
+const PublicOnlyRoute = ({ children }) => {
+  const { user } = useStore();
+  if (user) {
+    return <Navigate to="/catalog" replace />;
+  }
+  return children;
+};
+
+export default function App() {
+  const { fetchProducts, fetchOrders, fetchTelegramConfig, restoreSession, checkingSession } = useStore();
+
+  useEffect(() => {
+    const init = async () => {
+      // First try to restore existing session
+      await restoreSession();
+      // Fetch backend data
+      fetchProducts();
+      fetchTelegramConfig();
+      fetchOrders();
+    };
+    init();
+  }, []);
+
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans">
+        <div className="flex flex-col items-center">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600"></div>
+          <p className="mt-4 text-xs font-semibold text-neutral-500 uppercase tracking-widest font-mono">
+            Iconic Boutique HN
+          </p>
+          <p className="mt-1 text-xs text-neutral-400">
+            Cargando sesión...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Router>
+      <div className="min-h-screen bg-neutral-50 flex flex-col font-sans">
+        
+        {/* Navigation bar Header */}
+        <Navbar />
+
+        {/* Main Content stage area */}
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+          <Suspense fallback={
+            <div className="flex flex-col items-center justify-center py-24">
+              <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600"></div>
+              <p className="mt-4 text-xs font-semibold text-neutral-500 uppercase tracking-widest font-mono">Cargando módulo...</p>
+            </div>
+          }>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route 
+                path="/login" 
+                element={
+                  <PublicOnlyRoute>
+                    <Login />
+                  </PublicOnlyRoute>
+                } 
+              />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/update-password" element={<UpdatePassword />} />
+              <Route path="/catalog" element={<Catalog />} />
+              <Route path="/favorites" element={<Favorites />} />
+              <Route path="/ofertas" element={<Ofertas />} />
+              <Route path="/cart" element={<Cart />} />
+              
+              {/* Employee Protected Routes */}
+              <Route 
+                path="/dashboard" 
+                element={
+                  <ProtectedRoute allowedRoles={['owner', 'vendedor']}>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/inventory" 
+                element={
+                  <ProtectedRoute allowedRoles={['owner', 'vendedor']}>
+                    <Inventory />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/orders" 
+                element={
+                  <ProtectedRoute allowedRoles={['owner', 'vendedor', 'client']}>
+                    <Orders />
+                  </ProtectedRoute>
+                } 
+              />
+
+              {/* Owner Protected Routes */}
+              <Route 
+                path="/barcodes" 
+                element={
+                  <ProtectedRoute allowedRoles={['owner']}>
+                    <Barcodes />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/config" 
+                element={
+                  <ProtectedRoute allowedRoles={['owner']}>
+                    <Config />
+                  </ProtectedRoute>
+                } 
+              />
+
+              {/* Fallback Catch-All */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </main>
+
+        {/* Footer */}
+        <footer className="bg-white border-t border-neutral-200 py-8 text-center no-print space-y-4">
+          <div className="flex justify-center gap-6 text-xs font-semibold text-neutral-600">
+            <a 
+              href="https://www.facebook.com/profile.php?id=61557724910199&ref=NONE_xav_ig_profile_page_web#" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="hover:text-neutral-900 transition-colors flex items-center gap-1"
+            >
+              Facebook
+            </a>
+            <a 
+              href="https://www.instagram.com/iconicboutiquehn/" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="hover:text-neutral-900 transition-colors flex items-center gap-1"
+            >
+              Instagram
+            </a>
+            <a 
+              href="https://wa.me/50498309309" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-emerald-600 hover:text-emerald-700 font-bold transition-colors flex items-center gap-1"
+            >
+              WhatsApp Business (+504 9830-9309)
+            </a>
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-neutral-600 uppercase tracking-widest font-mono">
+              © {new Date().getFullYear()} Iconic Boutique HN • Tegucigalpa, Honduras
+            </p>
+            <p className="text-[10px] text-neutral-600 mt-1 max-w-lg mx-auto leading-relaxed">
+              Importación directa de fragancias 100% originales sella de las marcas más prestigiosas de diseñador. Cotizaciones automáticas, pedidos mayoristas VIP y facturación profesional en Lempiras (HNL).
+            </p>
+          </div>
+        </footer>
+
+      </div>
+    </Router>
+  );
+}
 </file>
 
 </files>
