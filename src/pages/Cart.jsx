@@ -1,23 +1,44 @@
-import React, { useState } from 'react';
-import { useStore } from '../store';
-import { Link } from 'react-router-dom';
-import { ShoppingBag, Trash2, ArrowLeft, MessageSquare, CheckCircle2, Phone, User as UserIcon, Loader2, Award } from 'lucide-react';
-import { isProductSet } from '../utils/productHelper';
+import React, { useState } from "react";
+import { useStore } from "../store";
+import { Link } from "react-router-dom";
+import {
+  ShoppingBag,
+  Trash2,
+  ArrowLeft,
+  MessageSquare,
+  CheckCircle2,
+  Phone,
+  User as UserIcon,
+  Loader2,
+  Award,
+} from "lucide-react";
+import { isProductSet } from "../utils/productHelper";
 
 export default function CartView() {
-  const { cart, user, updateCartQuantity, removeFromCart, submitOrder, loading, error } = useStore();
-  const [clientName, setClientName] = useState(user?.name || '');
-  const [clientPhone, setClientPhone] = useState('');
-  const [phoneError, setPhoneError] = useState('');
+  const {
+    cart,
+    user,
+    updateCartQuantity,
+    removeFromCart,
+    submitOrder,
+    loading,
+    error,
+  } = useStore();
+  const [clientName, setClientName] = useState(user?.name || "");
+  const [clientPhone, setClientPhone] = useState("");
+  const [phoneError, setPhoneError] = useState("");
   const [confirmedOrder, setConfirmedOrder] = useState(null);
 
-  const isClient = user?.role === 'client';
-  
+  const isClient = user?.role === "client";
+
   const getPrice = (item) => {
     return isClient ? item.product.pricePromotional : item.product.pricePublic;
   };
 
-  const total = cart.reduce((acc, item) => acc + (getPrice(item) * item.quantity), 0);
+  const total = cart.reduce(
+    (acc, item) => acc + getPrice(item) * item.quantity,
+    0,
+  );
 
   const handleQuantityChange = (productId, currentQty, change) => {
     updateCartQuantity(productId, currentQty + change);
@@ -25,16 +46,18 @@ export default function CartView() {
 
   const handleCheckout = async (e) => {
     e.preventDefault();
-    setPhoneError('');
+    setPhoneError("");
 
     if (!clientName.trim()) {
       return;
     }
 
     // Clean phone number (Honduras numbers are usually 8 digits, e.g., 9988-7766)
-    const cleanPhone = clientPhone.replace(/[^\d]/g, '');
+    const cleanPhone = clientPhone.replace(/[^\d]/g, "");
     if (cleanPhone.length !== 8) {
-      setPhoneError('Por favor ingrese un número de teléfono válido de Honduras (8 dígitos, ej: 99448822)');
+      setPhoneError(
+        "Por favor ingrese un número de teléfono válido de Honduras (8 dígitos, ej: 99448822)",
+      );
       return;
     }
 
@@ -48,10 +71,10 @@ export default function CartView() {
   const getWhatsAppConfirmationLink = (order) => {
     const itemsText = order.items
       .map((i) => {
-        const prefix = isProductSet(i) ? '🎁 [SET] ' : '';
+        const prefix = isProductSet(i) ? "🎁 [SET] " : "";
         return `• ${i.quantity}x ${prefix}${i.brand} ${i.name} (${i.size}) - L. ${i.pricePaid.toLocaleString()}`;
       })
-      .join('\n');
+      .join("\n");
 
     const text = `¡Hola Iconic Boutique HN! 🇭🇳✨
 
@@ -77,26 +100,44 @@ Por favor, ayúdenme con el método de pago y la facturación manual para coordi
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 mb-4 animate-bounce">
             <CheckCircle2 className="h-8 w-8" />
           </div>
-          
+
           <h2 className="font-display text-2xl font-bold text-neutral-900 tracking-tight sm:text-3xl">
             ¡Cotización Procesada con Éxito!
           </h2>
           <p className="text-xs text-neutral-500 font-bold font-mono mt-1 uppercase tracking-wider">
-            Código de Orden: <span className="bg-neutral-100 px-2.5 py-1 rounded text-neutral-900">{confirmedOrder.id}</span>
+            Código de Orden:{" "}
+            <span className="bg-neutral-100 px-2.5 py-1 rounded text-neutral-900">
+              {confirmedOrder.id}
+            </span>
           </p>
-          
+
           <div className="border-t border-b border-neutral-100 py-4 my-6 text-left space-y-2.5">
-            <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-wider font-mono">Detalles de Facturación Manual</h4>
-            <p className="text-xs text-neutral-700"><strong>Cliente:</strong> {confirmedOrder.clientName}</p>
-            <p className="text-xs text-neutral-700"><strong>Teléfono:</strong> +504 {confirmedOrder.clientPhone}</p>
-            <p className="text-xs text-neutral-700"><strong>Total a pagar:</strong> <span className="font-mono font-bold text-neutral-900">L. {confirmedOrder.total.toLocaleString()} HNL</span></p>
+            <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-wider font-mono">
+              Detalles de Facturación Manual
+            </h4>
+            <p className="text-xs text-neutral-700">
+              <strong>Cliente:</strong> {confirmedOrder.clientName}
+            </p>
+            <p className="text-xs text-neutral-700">
+              <strong>Teléfono:</strong> +504 {confirmedOrder.clientPhone}
+            </p>
+            <p className="text-xs text-neutral-700">
+              <strong>Total a pagar:</strong>{" "}
+              <span className="font-mono font-bold text-neutral-900">
+                L. {confirmedOrder.total.toLocaleString()} HNL
+              </span>
+            </p>
           </div>
 
           <div className="bg-amber-50 rounded-2xl border border-amber-100 p-4 text-xs text-amber-900 text-left space-y-2 mb-6">
-            <p className="font-bold">✨ ¡Importante para cerrar su compra! ✨</p>
+            <p className="font-bold">
+              ✨ ¡Importante para cerrar su compra! ✨
+            </p>
             <p className="leading-relaxed text-neutral-700">
-              Dado que la facturación es manual, nuestro equipo de ventas en Honduras debe verificar existencias y coordinar el envío. 
-              Por favor, haga clic en el botón verde de abajo para enviar los detalles de su orden instantáneamente por WhatsApp.
+              Dado que la facturación es manual, nuestro equipo de ventas en
+              Honduras debe verificar existencias y coordinar el envío. Por
+              favor, haga clic en el botón verde de abajo para enviar los
+              detalles de su orden instantáneamente por WhatsApp.
             </p>
           </div>
 
@@ -112,7 +153,10 @@ Por favor, ayúdenme con el método de pago y la facturación manual para coordi
             </a>
 
             <button
-              onClick={() => { setConfirmedOrder(null); setView('catalog'); }}
+              onClick={() => {
+                setConfirmedOrder(null);
+                setView("catalog");
+              }}
               className="text-xs text-neutral-500 hover:text-neutral-900 underline font-medium block mx-auto cursor-pointer"
             >
               Regresar al Catálogo
@@ -127,7 +171,7 @@ Por favor, ayúdenme con el método de pago y la facturación manual para coordi
     <div className="space-y-6 fade-in-up">
       <div className="flex items-center gap-3">
         <button
-          onClick={() => setView('catalog')}
+          onClick={() => setView("catalog")}
           className="p-2 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 cursor-pointer shadow-sm"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -137,7 +181,8 @@ Por favor, ayúdenme con el método de pago y la facturación manual para coordi
             Su Carrito de Cotización
           </h2>
           <p className="text-xs text-neutral-500">
-            Revisa las fragancias seleccionadas antes de proceder a la facturación manual.
+            Revisa las fragancias seleccionadas antes de proceder a la
+            facturación manual.
           </p>
         </div>
       </div>
@@ -145,9 +190,12 @@ Por favor, ayúdenme con el método de pago y la facturación manual para coordi
       {cart.length === 0 ? (
         <div className="rounded-3xl border border-neutral-200 bg-white p-12 text-center max-w-xl mx-auto">
           <ShoppingBag className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
-          <h3 className="font-display font-bold text-neutral-900 text-lg">El carrito está vacío</h3>
+          <h3 className="font-display font-bold text-neutral-900 text-lg">
+            El carrito está vacío
+          </h3>
           <p className="text-xs text-neutral-500 mt-1 max-w-sm mx-auto mb-6">
-            Explore nuestro catálogo de perfumes originales de marcas exclusivas y agregue fragancias para cotizar.
+            Explore nuestro catálogo de perfumes originales de marcas exclusivas
+            y agregue fragancias para cotizar.
           </p>
           <Link
             to="/catalog"
@@ -158,7 +206,6 @@ Por favor, ayúdenme con el método de pago y la facturación manual para coordi
         </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-3">
-          
           {/* Cart list (Left side - Col span 2) */}
           <div className="lg:col-span-2 space-y-4">
             <div className="bg-white rounded-3xl border border-neutral-200 overflow-hidden shadow-sm">
@@ -166,18 +213,25 @@ Por favor, ayúdenme con el método de pago y la facturación manual para coordi
                 {cart.map((item) => {
                   const itemPrice = getPrice(item);
                   return (
-                    <li key={item.product.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-neutral-50/20">
-                      
+                    <li
+                      key={item.product.id}
+                      className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-neutral-50/20"
+                    >
                       {/* Product Details thumbnail */}
                       <div className="flex items-center gap-4">
                         <div className="h-16 w-16 flex-shrink-0 rounded-xl bg-neutral-100 overflow-hidden border border-neutral-200">
                           <img
-                            src={item.product.imageUrl || 'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=150&q=80'}
+                            src={
+                              item.product.imageUrl ||
+                              "https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=150&q=80"
+                            }
                             alt={item.product.name}
+                            loading="lazy" /* Add this property! */
                             referrerPolicy="no-referrer"
                             className="h-full w-full object-cover object-center"
                           />
                         </div>
+
                         <div>
                           <div className="flex flex-wrap items-center gap-1.5 mb-1">
                             <span className="block text-[10px] uppercase font-bold text-neutral-400 font-mono leading-none">
@@ -193,18 +247,24 @@ Por favor, ayúdenme con el método de pago y la facturación manual para coordi
                             {item.product.name}
                           </h4>
                           <span className="block text-xs text-neutral-500 mt-0.5">
-                            Tamaño: {item.product.size} | Disp. {item.product.stock}
+                            Tamaño: {item.product.size} | Disp.{" "}
+                            {item.product.stock}
                           </span>
                         </div>
                       </div>
 
                       {/* Quantities adjuster */}
                       <div className="flex items-center justify-between sm:justify-end gap-6">
-                        
                         <div className="flex items-center border border-neutral-200 rounded-xl bg-white overflow-hidden shadow-sm h-9">
                           <button
                             type="button"
-                            onClick={() => handleQuantityChange(item.product.id, item.quantity, -1)}
+                            onClick={() =>
+                              handleQuantityChange(
+                                item.product.id,
+                                item.quantity,
+                                -1,
+                              )
+                            }
                             className="px-3 hover:bg-neutral-100 text-neutral-500 font-bold text-sm cursor-pointer"
                           >
                             -
@@ -214,7 +274,13 @@ Por favor, ayúdenme con el método de pago y la facturación manual para coordi
                           </span>
                           <button
                             type="button"
-                            onClick={() => handleQuantityChange(item.product.id, item.quantity, 1)}
+                            onClick={() =>
+                              handleQuantityChange(
+                                item.product.id,
+                                item.quantity,
+                                1,
+                              )
+                            }
                             disabled={item.quantity >= item.product.stock}
                             className="px-3 hover:bg-neutral-100 text-neutral-500 font-bold text-sm cursor-pointer disabled:opacity-30"
                           >
@@ -224,9 +290,12 @@ Por favor, ayúdenme con el método de pago y la facturación manual para coordi
 
                         {/* Price segment */}
                         <div className="text-right font-mono">
-                          <span className="block text-xs text-neutral-400">Total</span>
+                          <span className="block text-xs text-neutral-400">
+                            Total
+                          </span>
                           <span className="font-bold text-sm text-neutral-900">
-                            L. {(itemPrice * item.quantity).toLocaleString()} HNL
+                            L. {(itemPrice * item.quantity).toLocaleString()}{" "}
+                            HNL
                           </span>
                         </div>
 
@@ -238,9 +307,7 @@ Por favor, ayúdenme con el método de pago y la facturación manual para coordi
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
-
                       </div>
-
                     </li>
                   );
                 })}
@@ -265,11 +332,15 @@ Por favor, ayúdenme con el método de pago y la facturación manual para coordi
               <div className="space-y-2 border-b border-neutral-100 pb-4 mb-4 font-mono text-xs text-neutral-600">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span className="font-bold">L. {total.toLocaleString()} HNL</span>
+                  <span className="font-bold">
+                    L. {total.toLocaleString()} HNL
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Envío (Delivery / Cargo):</span>
-                  <span className="text-neutral-400">Coordinar con vendedor</span>
+                  <span className="text-neutral-400">
+                    Coordinar con vendedor
+                  </span>
                 </div>
                 <div className="flex justify-between text-base font-black text-neutral-950 pt-2 border-t border-neutral-50">
                   <span>TOTAL ESTIMADO:</span>
@@ -306,7 +377,10 @@ Por favor, ayúdenme con el método de pago y la facturación manual para coordi
                     <input
                       type="tel"
                       value={clientPhone}
-                      onChange={(e) => { setClientPhone(e.target.value); setPhoneError(''); }}
+                      onChange={(e) => {
+                        setClientPhone(e.target.value);
+                        setPhoneError("");
+                      }}
                       placeholder="ej. 99002233"
                       className="w-full rounded-r-xl border border-neutral-200 px-3 py-2 text-xs focus:border-neutral-900 focus:outline-none font-mono"
                       maxLength={12}
@@ -344,13 +418,10 @@ Por favor, ayúdenme con el método de pago y la facturación manual para coordi
                   )}
                 </button>
               </form>
-
             </div>
           </div>
-
         </div>
       )}
-
     </div>
   );
 }

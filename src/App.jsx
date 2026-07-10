@@ -3,17 +3,17 @@ import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { useStore } from './store';
 import Navbar from './components/Navbar';
 
-// Import Pages
-import Home from './pages/Home';
-import Login from './pages/Login';
-import Catalog from './pages/Catalog';
-import Ofertas from './pages/Ofertas';
-import Orders from './pages/Orders';
-import Config from './pages/Config';
-import Cart from './pages/Cart';
-import Favorites from './pages/Favorites';
-import ForgotPassword from './pages/ForgotPassword';
-import UpdatePassword from './pages/UpdatePassword';
+// Use lazy() to defer non-critical JavaScript until the route is visited
+const Home = lazy(() => import('./pages/Home'));
+const Login = lazy(() => import('./pages/Login'));
+const Catalog = lazy(() => import('./pages/Catalog'));
+const Ofertas = lazy(() => import('./pages/Ofertas'));
+const Orders = lazy(() => import('./pages/Orders'));
+const Config = lazy(() => import('./pages/Config'));
+const Cart = lazy(() => import('./pages/Cart'));
+const Favorites = lazy(() => import('./pages/Favorites'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const UpdatePassword = lazy(() => import('./pages/UpdatePassword'));
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Inventory = lazy(() => import('./pages/Inventory'));
