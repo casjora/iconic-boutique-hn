@@ -329,7 +329,7 @@ export default function Dashboard() {
           {orders.length > 0 && (
             <button
               onClick={() => setIsDemoMode(false)}
-              className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-sm transition-all text-xs flex-shrink-0 cursor-pointer self-start sm:self-center"
+              className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-sm transition-all text-xs shrink-0 cursor-pointer self-start sm:self-center"
             >
               Cambiar a Datos Reales ({orders.length} órdenes)
             </button>
