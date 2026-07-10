@@ -1,12 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { useStore } from '../store';
-import { generateBarcodeSVG } from '.././utils/barcode';
-import { isProductSet } from '.././utils/porductHelper';
-
+import { generateBarcodeSVG } from '../utils/barcode';
+import { isProductSet } from '../utils/porductHelper';
 import { Plus, Edit2, Trash2, FileUp, Sparkles, Loader2, CheckCircle2, RefreshCw, X, AlertCircle, FileText, ClipboardList, Copy, Check, Server } from 'lucide-react';
+import ImageGuide from '../components/ImageGuide';
 
 export default function InventoryManager() {
-  const { products, addProduct, updateProduct, deleteProduct, uploadPdf, loading, error, setError } = useStore();
+  const { user, products, addProduct, updateProduct, deleteProduct, uploadPdf, loading, error, setError } = useStore();
+  const isOwner = user?.role === 'owner';
   const [editingProduct, setEditingProduct] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [pdfUploading, setPdfUploading] = useState(false);
@@ -34,6 +35,7 @@ export default function InventoryManager() {
   const [category, setCategory] = useState('Masculino');
   const [barcode, setBarcode] = useState('');
   const [description, setDescription] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
 
   const resetForm = () => {
     setName('');
@@ -46,6 +48,7 @@ export default function InventoryManager() {
     setCategory('Masculino');
     setBarcode('');
     setDescription('');
+    setImageUrl('');
     setEditingProduct(null);
     setShowForm(false);
   };
@@ -62,6 +65,7 @@ export default function InventoryManager() {
     setCategory(product.category);
     setBarcode(product.barcode);
     setDescription(product.description || '');
+    setImageUrl(product.image_url || '');
     setShowForm(true);
   };
 
@@ -82,7 +86,8 @@ export default function InventoryManager() {
       stock: Number(stock),
       category,
       barcode,
-      description
+      description,
+      image_url: imageUrl
     };
 
     let success = false;
@@ -820,9 +825,9 @@ ON CONFLICT (id) DO UPDATE SET
           </div>
 
           <div className="relative flex py-1 items-center">
-            <div className="flex-grow border-t border-neutral-200"></div>
-            <span className="flex-shrink mx-4 text-neutral-400 text-[10px] font-bold uppercase">O PEGAR TEXTO DIRECTAMENTE</span>
-            <div className="flex-grow border-t border-neutral-200"></div>
+            <div className="grow border-t border-neutral-200"></div>
+            <span className="shrink mx-4 text-neutral-400 text-[10px] font-bold uppercase">O PEGAR TEXTO DIRECTAMENTE</span>
+            <div className="grow border-t border-neutral-200"></div>
           </div>
 
           <textarea
@@ -881,7 +886,7 @@ ON CONFLICT (id) DO UPDATE SET
                   <th className="px-4 py-2">Perfume / Marca</th>
                   <th className="px-4 py-2">Tamaño</th>
                   <th className="px-4 py-2">Categoría</th>
-                  <th className="px-4 py-2 text-right">Costo (HNL)</th>
+                  {isOwner && <th className="px-4 py-2 text-right">Costo (HNL)</th>}
                   <th className="px-4 py-2 text-right">P. Detalle (HNL)</th>
                   <th className="px-4 py-2 text-right">P. VIP (HNL)</th>
                   <th className="px-4 py-2 text-center">Stock</th>
@@ -895,7 +900,7 @@ ON CONFLICT (id) DO UPDATE SET
                       <td className="px-4 py-2">
                         <span className="font-bold text-neutral-900 block flex items-center gap-1.5">
                           {isSet && (
-                            <span className="bg-indigo-50 text-indigo-700 text-[9px] font-black px-1.5 py-0.5 rounded border border-indigo-100 flex-shrink-0">
+                            <span className="bg-indigo-50 text-indigo-700 text-[9px] font-black px-1.5 py-0.5 rounded border border-indigo-100 shrink-0">
                               🎁 SET
                             </span>
                           )}
@@ -905,7 +910,7 @@ ON CONFLICT (id) DO UPDATE SET
                       </td>
                       <td className="px-4 py-2 font-mono">{p.size}</td>
                       <td className="px-4 py-2 text-neutral-500">{p.category}</td>
-                      <td className="px-4 py-2 text-right font-mono">L. {p.cost.toLocaleString()}</td>
+                      {isOwner && <td className="px-4 py-2 text-right font-mono">L. {p.cost.toLocaleString()}</td>}
                       <td className="px-4 py-2 text-right font-mono font-bold text-emerald-600">L. {p.pricePublic.toLocaleString()}</td>
                       <td className="px-4 py-2 text-right font-mono font-bold text-amber-600">L. {p.pricePromotional.toLocaleString()}</td>
                       <td className="px-4 py-2 text-center font-mono font-bold">{p.stock}</td>
@@ -973,7 +978,7 @@ ON CONFLICT (id) DO UPDATE SET
                   <th className="px-4 py-3">Perfume / Marca</th>
                   <th className="px-4 py-3">Tamaño</th>
                   <th className="px-4 py-3">Categoría</th>
-                  <th className="px-4 py-3">Costo de Compra</th>
+                  {isOwner && <th className="px-4 py-3">Costo de Compra</th>}
                   <th className="px-4 py-3">P. Público (HN)</th>
                   <th className="px-4 py-3">P. Cliente VIP</th>
                   <th className="px-4 py-3">Stock</th>
@@ -989,7 +994,7 @@ ON CONFLICT (id) DO UPDATE SET
                     </td>
                     <td className="px-4 py-3 font-mono">{p.size}</td>
                     <td className="px-4 py-3">{p.category}</td>
-                    <td className="px-4 py-3 font-bold text-neutral-900">L. {p.cost.toLocaleString()}</td>
+                    {isOwner && <td className="px-4 py-3 font-bold text-neutral-900">L. {p.cost.toLocaleString()}</td>}
                     <td className="px-4 py-3 text-emerald-600 font-bold">L. {p.pricePublic.toLocaleString()}</td>
                     <td className="px-4 py-3 text-amber-600 font-bold">L. {p.pricePromotional.toLocaleString()}</td>
                     <td className="px-4 py-3 font-mono font-semibold">{p.stock}</td>
@@ -1080,17 +1085,19 @@ ON CONFLICT (id) DO UPDATE SET
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-4">
-              <div>
-                <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">Costo Unitario (L. HNL)</label>
-                <input
-                  type="number"
-                  value={cost}
-                  onChange={(e) => setCost(Number(e.target.value))}
-                  placeholder="Costo de compra"
-                  className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-xs focus:border-neutral-900 focus:outline-none font-mono"
-                />
-              </div>
+            <div className={`grid gap-4 ${isOwner ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
+              {isOwner && (
+                <div>
+                  <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">Costo Unitario (L. HNL)</label>
+                  <input
+                    type="number"
+                    value={cost}
+                    onChange={(e) => setCost(Number(e.target.value))}
+                    placeholder="Costo de compra"
+                    className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-xs focus:border-neutral-900 focus:outline-none font-mono"
+                  />
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">Precio Detalle / Público (L. HNL) *</label>
                 <input
@@ -1126,7 +1133,7 @@ ON CONFLICT (id) DO UPDATE SET
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-4">
               <div>
                 <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">Género / Categoría *</label>
                 <select
@@ -1169,6 +1176,16 @@ ON CONFLICT (id) DO UPDATE SET
                   className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-xs focus:border-neutral-900 focus:outline-none"
                 />
               </div>
+              <div>
+                <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">URL de la Imagen (Supabase)</label>
+                <input
+                  type="text"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="Pegue aquí el enlace de Supabase Storage"
+                  className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-xs focus:border-neutral-900 focus:outline-none font-mono text-neutral-600 truncate"
+                />
+              </div>
             </div>
 
             <div className="flex justify-end gap-2 border-t border-neutral-100 pt-3 mt-4">
@@ -1201,7 +1218,7 @@ ON CONFLICT (id) DO UPDATE SET
                 <th className="px-6 py-4">Nombre del Producto</th>
                 <th className="px-6 py-4">Género</th>
                 <th className="px-6 py-4">Tamaño</th>
-                <th className="px-6 py-4">Costo de Compra (HNL)</th>
+                {isOwner && <th className="px-6 py-4">Costo de Compra (HNL)</th>}
                 <th className="px-6 py-4">Precio Detalle / Público (HNL)</th>
                 <th className="px-6 py-4">Precio VIP / Distribuidor (HNL)</th>
                 <th className="px-6 py-4">Cantidad de Inventario</th>
@@ -1212,7 +1229,7 @@ ON CONFLICT (id) DO UPDATE SET
             <tbody className="divide-y divide-neutral-100 text-neutral-700">
               {products.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-8 text-center text-neutral-400 font-medium">
+                  <td colSpan={isOwner ? 9 : 8} className="px-6 py-8 text-center text-neutral-400 font-medium">
                     No hay perfumes registrados en el inventario. Agrega uno manualmente o carga una factura en PDF.
                   </td>
                 </tr>
@@ -1224,7 +1241,7 @@ ON CONFLICT (id) DO UPDATE SET
                       <td className="px-6 py-4">
                         <span className="block font-bold text-neutral-950 flex items-center gap-1.5">
                           {isSet && (
-                            <span className="bg-indigo-100 text-indigo-800 text-[9px] font-black px-1.5 py-0.5 rounded border border-indigo-200 uppercase tracking-wide flex-shrink-0">
+                            <span className="bg-indigo-100 text-indigo-800 text-[9px] font-black px-1.5 py-0.5 rounded border border-indigo-200 uppercase tracking-wide shrink-0">
                               🎁 SET
                             </span>
                           )}
@@ -1238,9 +1255,11 @@ ON CONFLICT (id) DO UPDATE SET
                         </span>
                       </td>
                       <td className="px-6 py-4 font-mono">{p.size}</td>
-                      <td className="px-6 py-4 font-mono font-bold text-neutral-900">
-                        L. {(Number(p.cost) || 0).toLocaleString()}
-                      </td>
+                      {isOwner && (
+                        <td className="px-6 py-4 font-mono font-bold text-neutral-900">
+                          L. {(Number(p.cost) || 0).toLocaleString()}
+                        </td>
+                      )}
                       <td className="px-6 py-4 font-mono font-bold text-emerald-600">
                         L. {(Number(p.pricePublic) || 0).toLocaleString()}
                       </td>
@@ -1359,6 +1378,11 @@ ON CONFLICT (id) DO UPDATE SET
           </div>
         </div>
       )}
+
+      {/* Image Upload and Storage Guidelines */}
+      <div className="mt-8">
+        <ImageGuide />
+      </div>
 
     </div>
   );

@@ -1,25 +1,33 @@
 import React, { useState } from 'react';
 import { useStore } from '../store';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Sparkles, AlertTriangle, Check, Award, Gift } from 'lucide-react';
-import { isProductSet } from '.././utils/porductHelper';
+import { ShoppingCart, Sparkles, AlertTriangle, Check, Award, Gift, Heart } from 'lucide-react';
+import { isProductSet } from '../utils/porductHelper';
 
 export default function PerfumeCard({ product }) {
-  const { user, addToCart } = useStore();
+  const { user, addToCart, favorites, toggleFavorite } = useStore();
   const [added, setAdded] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   const isAuthenticated = !!user;
   const isEmployee = user?.role === 'owner' || user?.role === 'vendedor';
+  const isOwner = user?.role === 'owner';
 
   const saving = product.pricePublic - product.pricePromotional;
   const isOutOfStock = product.stock <= 0;
   const isSet = isProductSet(product);
+  const isFavorite = favorites?.includes(product.id) || false;
 
   const handleAddToCart = () => {
     if (isOutOfStock) return;
     addToCart(product, 1);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
+  };
+
+  const handleToggleFavorite = (e) => {
+    e.preventDefault();
+    toggleFavorite(product.id);
   };
 
   // Get gender category styling
@@ -43,6 +51,19 @@ export default function PerfumeCard({ product }) {
   return (
     <div className={`group relative flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md ${isSet ? 'border-indigo-200 ring-1 ring-indigo-50/50' : 'border-neutral-200'}`}>
       
+      {/* Favorite Toggle Button */}
+      <button
+        onClick={handleToggleFavorite}
+        className={`absolute top-4 right-4 z-20 p-2 rounded-full border shadow-sm backdrop-blur-md transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer ${
+          isFavorite
+            ? 'bg-rose-50 border-rose-200 text-rose-600'
+            : 'bg-white/90 border-neutral-200 text-neutral-400 hover:text-neutral-600 hover:bg-white'
+        }`}
+        title={isFavorite ? 'Quitar de Favoritos' : 'Agregar a Favoritos'}
+      >
+        <Heart className="h-4 w-4" fill={isFavorite ? "currentColor" : "none"} />
+      </button>
+
       {/* Category Tag & Stock Status */}
       <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-1.5">
         <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${getCategoryStyles()}`}>
@@ -63,11 +84,21 @@ export default function PerfumeCard({ product }) {
 
       {/* Product Image Area */}
       <div className="relative aspect-square w-full bg-neutral-100 overflow-hidden">
+        {!imageLoaded && (
+          <div className="absolute inset-0 bg-neutral-200 animate-pulse flex flex-col items-center justify-center p-4 text-center">
+            <div className="h-6 w-6 rounded-full border-2 border-neutral-300 border-t-neutral-600 animate-spin mb-1"></div>
+            <span className="text-[10px] font-mono text-neutral-400">cargando imagen...</span>
+          </div>
+        )}
         <img
           src={getProductImage()}
           alt={product.name}
+          loading="lazy"
+          onLoad={() => setImageLoaded(true)}
           referrerPolicy="no-referrer"
-          className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+          className={`h-full w-full object-cover object-center transition-all duration-500 group-hover:scale-105 ${
+            imageLoaded ? 'opacity-100' : 'opacity-0'
+          }`}
         />
         {isOutOfStock && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-[2px]">
@@ -135,8 +166,8 @@ export default function PerfumeCard({ product }) {
           )}
         </div>
 
-        {/* Cost - ONLY shown to owner/vendedor */}
-        {isEmployee && (
+        {/* Cost - ONLY shown to owner */}
+        {isOwner && (
           <div className="mt-2 rounded bg-neutral-50 p-1.5 border border-neutral-100 text-[10px] font-mono text-neutral-500 flex justify-between">
             <span>Costo de Compra (Fórmula L27):</span>
             <span className="font-bold text-neutral-800">L. {product.cost.toLocaleString()} HNL</span>
