@@ -182,6 +182,7 @@ export default function HondurasGuide() {
               allowFullScreen={true} 
               loading="lazy" 
               referrerPolicy="strict-origin-when-cross-origin"
+              title="Mapa de ubicación física de Iconic Boutique HN en Tegucigalpa, Honduras"
             ></iframe>
           </div>
         </div>

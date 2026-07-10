@@ -1,4 +1,4 @@
-import CatalogView from '../components/CatalogView'; // Asegúrate de que la ruta a tu componente sea la correcta
+import CatalogView from '../components/CatalogView';
 
 export default function Catalog() {
   return (

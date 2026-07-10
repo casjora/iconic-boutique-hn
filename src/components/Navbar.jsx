@@ -1,7 +1,7 @@
 import React from 'react';
 import { useStore } from '../store';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingBag, Key, LogOut, Package, FileSpreadsheet, Settings, Percent, Tags, HelpCircle, TrendingUp,Heart } from 'lucide-react';
+import { ShoppingBag, Key, LogOut, Package, FileSpreadsheet, Settings, Percent, Tags, HelpCircle, TrendingUp, Heart } from 'lucide-react';
 
 export default function Navbar() {
   const { user, cart, logout } = useStore();
@@ -34,7 +34,7 @@ export default function Navbar() {
             <span className="block font-display font-extrabold text-base tracking-tight text-neutral-900 leading-tight">
               Iconic Boutique HN
             </span>
-            <span className="block text-[10px] font-bold text-amber-600 uppercase tracking-wider leading-none">
+            <span className="block text-[10px] font-bold text-amber-800 uppercase tracking-wider leading-none">
               Fragancias Originales
             </span>
           </div>
@@ -146,6 +146,7 @@ export default function Navbar() {
           <Link
             to="/"
             title="Guía de Implementación en Honduras"
+            aria-label="Guía de Implementación en Honduras"
             className="p-2 text-neutral-500 hover:text-neutral-900 rounded-full hover:bg-neutral-100 transition-colors"
           >
             <HelpCircle className="h-5 w-5" />
@@ -154,6 +155,7 @@ export default function Navbar() {
           {/* Cart Trigger */}
           <Link
             to="/cart"
+            aria-label="Ver carrito de cotización"
             className={`relative p-2.5 rounded-full transition-all ${
               currentPath === '/cart' ? 'bg-neutral-900 text-white' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
             }`}
@@ -202,7 +204,7 @@ export default function Navbar() {
       <div className="flex md:hidden border-t border-neutral-100 bg-neutral-50 overflow-x-auto py-2 px-4 gap-2 scrollbar-none">
         <Link
           to="/catalog"
-          className={`shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+          className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
             currentPath === '/catalog' ? 'bg-neutral-900 text-white font-semibold' : 'bg-white text-neutral-600 border border-neutral-200'
           }`}
         >
@@ -210,7 +212,7 @@ export default function Navbar() {
         </Link>
         <Link
           to="/ofertas"
-          className={`shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors flex items-center gap-1 ${
+          className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors flex items-center gap-1 ${
             currentPath === '/ofertas' ? 'bg-amber-100 text-amber-900 font-semibold border border-amber-200' : 'bg-white text-neutral-600 border border-neutral-200'
           }`}
         >
@@ -221,7 +223,7 @@ export default function Navbar() {
           <>
             <Link
               to="/dashboard"
-              className={`shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+              className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
                 currentPath === '/dashboard' ? 'bg-neutral-900 text-white font-semibold' : 'bg-white text-neutral-600 border border-neutral-200'
               }`}
             >
@@ -229,7 +231,7 @@ export default function Navbar() {
             </Link>
             <Link
               to="/inventory"
-              className={`shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+              className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
                 currentPath === '/inventory' ? 'bg-neutral-900 text-white font-semibold' : 'bg-white text-neutral-600 border border-neutral-200'
               }`}
             >
@@ -237,7 +239,7 @@ export default function Navbar() {
             </Link>
             <Link
               to="/orders"
-              className={`shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+              className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
                 currentPath === '/orders' ? 'bg-neutral-900 text-white font-semibold' : 'bg-white text-neutral-600 border border-neutral-200'
               }`}
             >
@@ -249,7 +251,7 @@ export default function Navbar() {
           <>
             <Link
               to="/favorites"
-              className={`shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+              className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
                 currentPath === '/favorites' ? 'bg-neutral-900 text-white font-semibold' : 'bg-white text-neutral-600 border border-neutral-200'
               }`}
             >
@@ -257,7 +259,7 @@ export default function Navbar() {
             </Link>
             <Link
               to="/orders"
-              className={`shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+              className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
                 currentPath === '/orders' ? 'bg-neutral-900 text-white font-semibold' : 'bg-white text-neutral-600 border border-neutral-200'
               }`}
             >
@@ -269,7 +271,7 @@ export default function Navbar() {
           <>
             <Link
               to="/barcodes"
-              className={`shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+              className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
                 currentPath === '/barcodes' ? 'bg-neutral-900 text-white font-semibold' : 'bg-white text-neutral-600 border border-neutral-200'
               }`}
             >
@@ -277,7 +279,7 @@ export default function Navbar() {
             </Link>
             <Link
               to="/config"
-              className={`shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+              className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
                 currentPath === '/config' ? 'bg-neutral-900 text-white font-semibold' : 'bg-white text-neutral-600 border border-neutral-200'
               }`}
             >

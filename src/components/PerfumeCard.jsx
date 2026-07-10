@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useStore } from '../store';
 import { Link } from 'react-router-dom';
 import { ShoppingCart, Sparkles, AlertTriangle, Check, Award, Gift, Heart } from 'lucide-react';
-import { isProductSet } from '../utils/porductHelper';
+import { isProductSet } from '../utils/productHelper';
 
 export default function PerfumeCard({ product }) {
   const { user, addToCart, favorites, toggleFavorite } = useStore();

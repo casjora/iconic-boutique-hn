@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useStore } from '../store';
 import { Link } from 'react-router-dom';
 import { ShoppingBag, Trash2, ArrowLeft, MessageSquare, CheckCircle2, Phone, User as UserIcon, Loader2, Award } from 'lucide-react';
-import { isProductSet } from '.././utils/porductHelper';
+import { isProductSet } from '../utils/productHelper';
 
 export default function CartView() {
   const { cart, user, updateCartQuantity, removeFromCart, submitOrder, loading, error } = useStore();

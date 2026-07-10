@@ -1,6 +1,8 @@
 {
-  "name": "Iconic Boutique HN",
+  "name": "Remix: Iconic Boutique HN",
   "description": "Aplicación web premium para venta, cotización y gestión de inventario de perfumes y lociones originales en Honduras con cotización por WhatsApp/Telegram, carga de PDF con IA y precios VIP para distribuidores de Iconic Boutique.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

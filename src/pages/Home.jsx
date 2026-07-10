@@ -55,7 +55,7 @@ export default function Home() {
           <div className="p-2.5 bg-neutral-900 text-white rounded-xl w-fit mb-4">
             <Truck className="h-5 w-5" />
           </div>
-          <h3 className="font-display font-bold text-neutral-900 text-base mb-1">Envíos a Todo Honduras</h3>
+          <h2 className="font-display font-bold text-neutral-900 text-base mb-1">Envíos a Todo Honduras</h2>
           <p className="text-xs text-neutral-500">Coordinamos despachos seguros por Rapido Cargo o CAEX, o delivery en moto en Tegucigalpa y SPS.</p>
         </div>
         
@@ -63,7 +63,7 @@ export default function Home() {
           <div className="p-2.5 bg-neutral-900 text-white rounded-xl w-fit mb-4">
             <Percent className="h-5 w-5" />
           </div>
-          <h3 className="font-display font-bold text-neutral-900 text-base mb-1">Ofertas Exclusivas VIP</h3>
+          <h2 className="font-display font-bold text-neutral-900 text-base mb-1">Ofertas Exclusivas VIP</h2>
           <p className="text-xs text-neutral-500">Los clientes mayoristas tienen acceso inmediato a precios promocionales con descuentos de hasta L. 600.</p>
         </div>
 
@@ -71,7 +71,7 @@ export default function Home() {
           <div className="p-2.5 bg-neutral-900 text-white rounded-xl w-fit mb-4">
             <Award className="h-5 w-5 animate-pulse text-amber-500" />
           </div>
-          <h3 className="font-display font-bold text-neutral-900 text-base mb-1">100% Originales Sella</h3>
+          <h2 className="font-display font-bold text-neutral-900 text-base mb-1">100% Originales Sella</h2>
           <p className="text-xs text-neutral-500">Garantía absoluta de autenticidad en cada frasco de diseñador importado directo de USA.</p>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../store';
 import { Link } from 'react-router-dom';
-import { isProductSet } from '../utils/porductHelper';
+import { isProductSet } from '../utils/productHelper';
 import PerfumeCard from '../components/PerfumeCard';
 import { 
   Search, 

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from './utils/supabase';
-import { isProductSet } from './utils/porductHelper';
+import { isProductSet } from './utils/productHelper';
 
 // Helper to map DB products (snake_case) to Frontend products (camelCase)
 const mapProductFromDb = (p) => ({
