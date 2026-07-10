@@ -77,21 +77,21 @@ export default function LoginView() {
           </p>
           <div className="grid gap-2 text-[10px] font-mono">
             <button
-              onClick={() => handleQuickFill('casjora@gmail.com', 'R@fae!12')}
+              onClick={() => handleQuickFill('admin', 'admin123')}
               className="bg-white border border-blue-100 p-2 rounded-lg text-left hover:bg-neutral-50/80 cursor-pointer flex justify-between"
             >
               <span>👑 <strong>Dueño (Admin):</strong> id: <code>admin</code></span>
               <span className="font-bold text-blue-700 hover:underline">Autocompletar</span>
             </button>
             <button
-              onClick={() => handleQuickFill('rlquality.multiservices@gmail.com', 'a12345')}
+              onClick={() => handleQuickFill('vendedor', 'vend123')}
               className="bg-white border border-blue-100 p-2 rounded-lg text-left hover:bg-neutral-50/80 cursor-pointer flex justify-between"
             >
               <span>💼 <strong>Vendedor (Staff):</strong> id: <code>vendedor</code></span>
               <span className="font-bold text-blue-700 hover:underline">Autocompletar</span>
             </button>
             <button
-              onClick={() => handleQuickFill('casjorahn@gmail.com', 'a12345')}
+              onClick={() => handleQuickFill('cliente', 'cliente123')}
               className="bg-white border border-blue-100 p-2 rounded-lg text-left hover:bg-neutral-50/80 cursor-pointer flex justify-between"
             >
               <span>🤝 <strong>Cliente VIP (Distribuidor):</strong> id: <code>cliente</code></span>
@@ -133,13 +133,13 @@ export default function LoginView() {
           
           <div>
             <label className="block text-xs font-bold text-neutral-600 uppercase mb-1">
-              Usuario ID (Identificador de acceso) *
+              Correo Electrónico *
             </label>
             <input
               type="text"
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
-              placeholder="ej: juancarlos o distribuidorhnd"
+              placeholder="ej: tu@correo.com"
               className="w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-xs focus:border-neutral-900 focus:outline-none font-mono"
               required
             />
@@ -173,6 +173,13 @@ export default function LoginView() {
               className="w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-xs focus:border-neutral-900 focus:outline-none"
               required
             />
+            {!isRegister && (
+              <div className="flex justify-end mt-1.5">
+                <Link to="/forgot-password" className="text-xs font-semibold text-neutral-500 hover:text-neutral-900">
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              </div>
+            )}
           </div>
 
           {isRegister && (

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../store';
+import { useNavigate } from 'react-router-dom';
 import { 
   MessageCircle, 
   CheckCircle2, 
@@ -15,15 +16,18 @@ import {
   Minus, 
   Save, 
   X,
-  PackageOpen
+  PackageOpen,
+  RotateCcw
 } from 'lucide-react';
 
 export default function OrderList() {
+  const navigate = useNavigate();
   const { 
     orders, 
     products, 
     updateOrderStatus, 
     updateOrderDetails, 
+    repeatOrder,
     loading, 
     error, 
     user 
@@ -190,7 +194,33 @@ Para coordinar la facturación manual, método de pago (transferencia Ficohsa/At
     }
   };
 
-  const filteredOrders = orders.filter(o => filterStatus === 'todos' || o.status === filterStatus);
+  const handleRepeatOrder = (order) => {
+    if (!order.items || order.items.length === 0) {
+      alert('Esta orden no tiene productos válidos.');
+      return;
+    }
+    
+    if (window.confirm('¿Desea agregar todos los productos de esta orden anterior a su carrito actual? Esto reemplazará su carrito.')) {
+      const result = repeatOrder(order.items);
+      if (result.success) {
+        let msg = `¡Se han agregado ${result.addedCount} productos al carrito!`;
+        if (result.itemsSkipped > 0) {
+          msg += ` (${result.itemsSkipped} omitidos por falta de stock)`;
+        }
+        if (result.stockAdjusted) {
+          msg += ` (Algunos productos se ajustaron al inventario disponible)`;
+        }
+        alert(msg);
+        navigate('/cart');
+      } else {
+        alert('No se pudo repetir la orden debido a que ninguno de los productos cuenta con stock disponible en este momento.');
+      }
+    }
+  };
+
+  const filteredOrders = orders
+    .filter(o => isEmployee || o.buyerId === user?.uid)
+    .filter(o => filterStatus === 'todos' || o.status === filterStatus);
 
   return (
     <div className="space-y-6 fade-in-up">
@@ -481,7 +511,7 @@ Para coordinar la facturación manual, método de pago (transferencia Ficohsa/At
                     
                     {/* Left side actions: Complete or Cancel order */}
                     <div className="flex gap-2">
-                      {order.status === 'pendiente' && (
+                      {isEmployee && order.status === 'pendiente' && (
                         <>
                           <button
                             onClick={() => handleStatusChange(order.id, 'completado')}
@@ -501,43 +531,62 @@ Para coordinar la facturación manual, método de pago (transferencia Ficohsa/At
                           </button>
                         </>
                       )}
-                      {order.status !== 'pendiente' && (
+                      {isEmployee && order.status !== 'pendiente' && (
                         <span className="text-[11px] text-neutral-400 font-medium flex items-center gap-1">
                           <PackageOpen className="h-3.5 w-3.5 text-neutral-300" />
                           Esta orden ha sido finalizada como <strong className="uppercase font-mono text-neutral-500">{order.status}</strong> y ya no permite modificaciones de stock.
                         </span>
                       )}
+                      {!isEmployee && (
+                        <span className="text-xs text-neutral-500 font-medium flex items-center gap-1.5">
+                          <Clock className="h-4 w-4 text-neutral-400" />
+                          <span>Esta cotización se encuentra en estado <strong className="uppercase font-bold font-mono text-amber-600">{order.status}</strong>.</span>
+                        </span>
+                      )}
                     </div>
 
                     {/* Right side external actions: WhatsApp Chat Link and copy data */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
                       <button
-                        onClick={() => copyToClipboard(order)}
-                        className="inline-flex items-center gap-1 border border-neutral-200 hover:bg-neutral-50 px-3 py-1.5 rounded-xl text-xs font-semibold text-neutral-700 cursor-pointer"
-                        title="Copiar detalles al portapapeles"
+                        onClick={() => handleRepeatOrder(order)}
+                        className="inline-flex items-center gap-1.5 bg-neutral-900 hover:bg-neutral-800 text-white px-4 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+                        title="Agregar todos estos artículos al carrito actual"
                       >
-                        {copiedId === order.id ? (
-                          <>
-                            <Check className="h-4 w-4 text-emerald-600" />
-                            Copiado
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-4 w-4 text-neutral-400" />
-                            Copiar Datos
-                          </>
-                        )}
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        <span>Repetir Orden Anterior</span>
                       </button>
 
-                      <a
-                        href={getWhatsAppLink(order)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 bg-[#25D366] hover:bg-[#20ba5a] text-white px-4 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-all"
-                      >
-                        <MessageCircle className="h-4 w-4" />
-                        Contactar por WhatsApp
-                      </a>
+                      {isEmployee && (
+                        <>
+                          <button
+                            onClick={() => copyToClipboard(order)}
+                            className="inline-flex items-center gap-1 border border-neutral-200 hover:bg-neutral-50 px-3 py-1.5 rounded-xl text-xs font-semibold text-neutral-700 cursor-pointer"
+                            title="Copiar detalles al portapapeles"
+                          >
+                            {copiedId === order.id ? (
+                              <>
+                                <Check className="h-4 w-4 text-emerald-600" />
+                                Copiado
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-4 w-4 text-neutral-400" />
+                                Copiar Datos
+                              </>
+                            )}
+                          </button>
+
+                          <a
+                            href={getWhatsAppLink(order)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 bg-[#25D366] hover:bg-[#20ba5a] text-white px-4 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-all"
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                            Contactar por WhatsApp
+                          </a>
+                        </>
+                      )}
                     </div>
 
                   </div>

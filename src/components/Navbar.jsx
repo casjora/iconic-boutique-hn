@@ -1,7 +1,7 @@
 import React from 'react';
 import { useStore } from '../store';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingBag, Key, LogOut, Package, FileSpreadsheet, Settings, Percent, Tags, HelpCircle, TrendingUp } from 'lucide-react';
+import { ShoppingBag, Key, LogOut, Package, FileSpreadsheet, Settings, Percent, Tags, HelpCircle, TrendingUp,Heart } from 'lucide-react';
 
 export default function Navbar() {
   const { user, cart, logout } = useStore();
@@ -89,6 +89,29 @@ export default function Navbar() {
               >
                 <FileSpreadsheet className="h-4 w-4" />
                 Órdenes
+              </Link>
+            </>
+          )}
+
+          {user && !isEmployee && (
+            <>
+              <Link
+                to="/favorites"
+                className={`px-3 py-2 text-sm font-medium rounded-md flex items-center gap-1.5 transition-colors ${
+                  currentPath === '/favorites' ? 'bg-neutral-900 text-white' : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
+                }`}
+              >
+                <Heart className="h-4 w-4" />
+                Mis Favoritos
+              </Link>
+              <Link
+                to="/orders"
+                className={`px-3 py-2 text-sm font-medium rounded-md flex items-center gap-1.5 transition-colors ${
+                  currentPath === '/orders' ? 'bg-neutral-900 text-white' : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
+                }`}
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                Mis Órdenes
               </Link>
             </>
           )}
@@ -219,6 +242,26 @@ export default function Navbar() {
               }`}
             >
               Órdenes
+            </Link>
+          </>
+        )}
+        {user && !isEmployee && (
+          <>
+            <Link
+              to="/favorites"
+              className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                currentPath === '/favorites' ? 'bg-neutral-900 text-white font-semibold' : 'bg-white text-neutral-600 border border-neutral-200'
+              }`}
+            >
+              Mis Favoritos
+            </Link>
+            <Link
+              to="/orders"
+              className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                currentPath === '/orders' ? 'bg-neutral-900 text-white font-semibold' : 'bg-white text-neutral-600 border border-neutral-200'
+              }`}
+            >
+              Mis Órdenes
             </Link>
           </>
         )}

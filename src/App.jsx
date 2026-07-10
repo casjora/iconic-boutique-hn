@@ -14,6 +14,9 @@ import Config from './pages/Config';
 import Cart from './pages/Cart';
 import Barcodes from './pages/Barcodes';
 import Dashboard from './pages/Dashboard';
+import Favorites from './pages/Favorites';
+import ForgotPassword from './pages/ForgotPassword';
+import UpdatePassword from './pages/UpdatePassword';
 
 // Auth Guard Wrapper
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -96,7 +99,10 @@ export default function App() {
                 </PublicOnlyRoute>
               } 
             />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/update-password" element={<UpdatePassword />} />
             <Route path="/catalog" element={<Catalog />} />
+            <Route path="/favorites" element={<Favorites />} />
             <Route path="/ofertas" element={<Ofertas />} />
             <Route path="/cart" element={<Cart />} />
             
@@ -120,7 +126,7 @@ export default function App() {
             <Route 
               path="/orders" 
               element={
-                <ProtectedRoute allowedRoles={['owner', 'vendedor']}>
+                <ProtectedRoute allowedRoles={['owner', 'vendedor', 'client']}>
                   <Orders />
                 </ProtectedRoute>
               } 

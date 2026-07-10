@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useStore } from '../store';
-import PerfumeCard from './PerfumeCard';
+import { Link } from 'react-router-dom';
+import { isProductSet } from '../utils/porductHelper';
+import PerfumeCard from '../components/PerfumeCard';
 import { 
   Search, 
   Sparkles, 
@@ -9,10 +11,11 @@ import {
   Printer, 
   FileSpreadsheet, 
   X,
-  FileCheck2
+  FileCheck2,
+  Heart
 } from 'lucide-react';
 
-export default function CatalogView() {
+export default function CatalogView({ initialShowFavorites = false }) {
   const { 
     products, 
     user, 
@@ -22,10 +25,24 @@ export default function CatalogView() {
     categoryFilter, 
     setCategoryFilter,
     brandFilter,
-    setBrandFilter
+    setBrandFilter,
+    favorites
   } = useStore();
 
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [showOnlyFavorites, setShowOnlyFavorites] = useState(initialShowFavorites);
+
+  // Sync state if prop changes
+  React.useEffect(() => {
+    setShowOnlyFavorites(initialShowFavorites);
+  }, [initialShowFavorites]);
+  const [visibleCount, setVisibleCount] = useState(12);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Reset pagination when any search filter changes to ensure fresh results load from the start
+  React.useEffect(() => {
+    setVisibleCount(12);
+  }, [searchTerm, categoryFilter, brandFilter, showOnlyFavorites]);
 
   const isClient = user?.role === 'client';
   const isEmployee = user?.role === 'owner' || user?.role === 'vendedor';
@@ -40,17 +57,22 @@ export default function CatalogView() {
       product.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.barcode.includes(searchTerm);
     
-    const matchesCategory = categoryFilter === 'Todos' || product.category === categoryFilter;
+    const matchesCategory = 
+      categoryFilter === 'Todos' || 
+      (categoryFilter === 'Sets 🎁' ? isProductSet(product) : product.category === categoryFilter);
+      
     const matchesBrand = brandFilter === 'Todas' || product.brand === brandFilter;
 
-    return matchesSearch && matchesCategory && matchesBrand;
+    const matchesFavorites = !showOnlyFavorites || (favorites || []).includes(product.id);
+
+    return matchesSearch && matchesCategory && matchesBrand && matchesFavorites;
   });
 
   // Export 3-column Catalog to Excel / CSV
   const downloadCSV = () => {
     const headers = ['Fragancia (Marca y Nombre)', 'Tamaño', 'Precio de Mayoreo (VIP)', 'Precio de Detalle (Publico)'];
     const rows = products.map(p => [
-      `"${p.brand} - ${p.name}"`,
+      `"${p.brand} - ${p.name}${isProductSet(p) ? ' 🎁 [SET]' : ''}"`,
       `"${p.size}"`,
       p.pricePromotional,
       p.pricePublic
@@ -111,12 +133,12 @@ export default function CatalogView() {
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setView('login')}
+          <Link
+            to="/login"
             className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
           >
             Obtener Tarifa VIP
-          </button>
+          </Link>
         </div>
       )}
 
@@ -138,13 +160,16 @@ export default function CatalogView() {
             </div>
 
             {/* Gender Filters */}
-            <div className="flex gap-1.5 overflow-x-auto">
-              {['Todos', 'Masculino', 'Femenino', 'Unisex'].map((cat) => (
+            <div className="flex gap-1.5 overflow-x-auto items-center">
+              {['Todos', 'Masculino', 'Femenino', 'Unisex', 'Sets 🎁'].map((cat) => (
                 <button
                   key={cat}
-                  onClick={() => setCategoryFilter(cat)}
+                  onClick={() => {
+                    setCategoryFilter(cat);
+                    setShowOnlyFavorites(false);
+                  }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                    categoryFilter === cat
+                    !showOnlyFavorites && categoryFilter === cat
                       ? 'bg-neutral-900 text-white shadow-sm'
                       : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
                   }`}
@@ -152,6 +177,18 @@ export default function CatalogView() {
                   {cat}
                 </button>
               ))}
+              <button
+                onClick={() => setShowOnlyFavorites(!showOnlyFavorites)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all cursor-pointer ${
+                  showOnlyFavorites
+                    ? 'bg-rose-600 text-white shadow-sm font-bold'
+                    : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-100'
+                }`}
+                title="Mostrar solo perfumes marcados como favoritos"
+              >
+                <Heart className="h-3.5 w-3.5" fill={showOnlyFavorites ? "currentColor" : "none"} />
+                <span>Favoritos ({favorites?.length || 0})</span>
+              </button>
             </div>
 
             {/* Brands Filter */}
@@ -199,11 +236,45 @@ export default function CatalogView() {
             No se encontraron perfumes que coincidan con los filtros seleccionados. Intenta de nuevo con otros términos de búsqueda.
           </div>
         ) : (
-          filteredProducts.map((p) => (
+          filteredProducts.slice(0, visibleCount).map((p) => (
             <PerfumeCard key={p.id} product={p} />
           ))
         )}
       </div>
+
+      {/* Paginated products load controls */}
+      {!showOnlyFavorites && filteredProducts.length > visibleCount && (
+        <div className="flex flex-col items-center justify-center pt-6 pb-6 print:hidden">
+          <p className="text-xs text-neutral-500 mb-3">
+            Mostrando <strong className="text-neutral-800">{Math.min(visibleCount, filteredProducts.length)}</strong> de <strong className="text-neutral-800">{filteredProducts.length}</strong> perfumes
+          </p>
+          <button
+            onClick={() => {
+              setLoadingMore(true);
+              setTimeout(() => {
+                setVisibleCount(prev => prev + 12);
+                setLoadingMore(false);
+              }, 400); // Lightweight loading feeling
+            }}
+            disabled={loadingMore}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-neutral-900 text-white font-bold text-xs hover:bg-neutral-800 transition-all cursor-pointer shadow active:scale-95 disabled:opacity-75 disabled:scale-100"
+          >
+            {loadingMore ? (
+              <>
+                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                <span>Cargando fragancias...</span>
+              </>
+            ) : (
+              <>
+                <span>Cargar más perfumes</span>
+                <span className="text-[10px] bg-neutral-700 text-neutral-200 px-1.5 py-0.5 rounded-md font-mono">
+                  +{filteredProducts.length - visibleCount}
+                </span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
 
       {/* Print View Preview Modal */}
       {showPrintModal && (
@@ -251,17 +322,21 @@ export default function CatalogView() {
                     </tr>
                   </thead>
                   <tbody>
-                    {products.map((p, index) => (
-                      <tr key={p.id} className={`border-b border-neutral-100 hover:bg-neutral-50/50 ${index % 2 === 0 ? 'bg-neutral-50/20' : ''}`}>
-                        <td className="py-2 px-2 text-neutral-900 font-semibold">
-                          <span className="text-neutral-400 font-mono text-[10px] mr-1">{(index + 1).toString().padStart(2, '0')}</span>
-                          {p.brand} - {p.name}
-                        </td>
-                        <td className="py-2 px-2 text-center text-neutral-600 font-mono">{p.size}</td>
-                        <td className="py-2 px-2 text-right font-mono font-bold text-neutral-800">L. {p.pricePromotional.toLocaleString()}</td>
-                        <td className="py-2 px-2 text-right font-mono font-extrabold text-emerald-600">L. {p.pricePublic.toLocaleString()}</td>
-                      </tr>
-                    ))}
+                    {products.map((p, index) => {
+                      const isSet = isProductSet(p);
+                      return (
+                        <tr key={p.id} className={`border-b border-neutral-100 hover:bg-neutral-50/50 ${index % 2 === 0 ? 'bg-neutral-50/20' : ''} ${isSet ? 'bg-indigo-50/20' : ''}`}>
+                          <td className="py-2 px-2 text-neutral-900 font-semibold">
+                            <span className="text-neutral-400 font-mono text-[10px] mr-1">{(index + 1).toString().padStart(2, '0')}</span>
+                            {isSet && <span className="mr-1">🎁</span>}
+                            {p.brand} - {p.name}
+                          </td>
+                          <td className="py-2 px-2 text-center text-neutral-600 font-mono">{p.size}</td>
+                          <td className="py-2 px-2 text-right font-mono font-bold text-neutral-800">L. {p.pricePromotional.toLocaleString()}</td>
+                          <td className="py-2 px-2 text-right font-mono font-extrabold text-emerald-600">L. {p.pricePublic.toLocaleString()}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

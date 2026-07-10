@@ -43,6 +43,7 @@ export const useStore = create((set, get) => ({
   products: [],
   orders: [],
   cart: [],
+  favorites: [],
   telegramConfig: { token: '', chatId: '', active: false },
   currentView: 'home',
   loading: false,
@@ -60,6 +61,7 @@ export const useStore = create((set, get) => ({
       const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
       if (sessionErr || !session || !session.user) {
         set({ user: null, checkingSession: false });
+        await get().fetchFavorites();
         return false;
       }
 
@@ -86,10 +88,12 @@ export const useStore = create((set, get) => ({
       };
 
       set({ user: loggedUser, checkingSession: false });
+      await get().fetchFavorites();
       return true;
     } catch (err) {
       console.error('Error restoring session:', err);
       set({ user: null, checkingSession: false });
+      await get().fetchFavorites();
       return false;
     }
   },
@@ -132,6 +136,7 @@ export const useStore = create((set, get) => ({
       };
 
       set({ user: loggedUser, currentView: 'catalog', loading: false });
+      await get().fetchFavorites();
       return true;
     } catch (err) {
       set({ error: err.message, loading: false });
@@ -201,6 +206,7 @@ export const useStore = create((set, get) => ({
       };
 
       set({ user: registeredUser, currentView: 'catalog', loading: false });
+      await get().fetchFavorites();
       return true;
     } catch (err) {
       set({ error: err.message, loading: false });
@@ -211,6 +217,35 @@ export const useStore = create((set, get) => ({
   logout: async () => {
     await supabase.auth.signOut();
     set({ user: null, cart: [], currentView: 'home', error: null });
+    await get().fetchFavorites();
+  },
+
+  resetPasswordForEmail: async (email) => {
+    set({ loading: true, error: null });
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/update-password`,
+      });
+      if (error) throw error;
+      set({ loading: false });
+      return { success: true };
+    } catch (err) {
+      set({ error: err.message, loading: false });
+      return { success: false, error: err.message };
+    }
+  },
+
+  updatePassword: async (newPassword) => {
+    set({ loading: true, error: null });
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      set({ loading: false });
+      return { success: true };
+    } catch (err) {
+      set({ error: err.message, loading: false });
+      return { success: false, error: err.message };
+    }
   },
 
   // Products operations
@@ -472,9 +507,17 @@ export const useStore = create((set, get) => ({
             })
             .join('\n');
 
+          let cleanedPhone = (orderCreated.clientPhone || '').replace(/\D/g, '');
+          if (cleanedPhone.length === 8) {
+            cleanedPhone = '504' + cleanedPhone;
+          }
+          const phoneLink = cleanedPhone 
+            ? `[${orderCreated.clientPhone}](https://wa.me/${cleanedPhone})`
+            : (orderCreated.clientPhone || 'Desconocido');
+
           const text = `🔔 *NUEVA ORDEN DE COMPRA RECIBIDA* 🔔\n\n` +
             `👤 *Cliente:* ${orderCreated.clientName}\n` +
-            `📞 *Teléfono:* ${orderCreated.clientPhone}\n` +
+            `📞 *Teléfono:* ${phoneLink}\n` +
             `🕒 *Fecha:* ${orderCreated.date}\n` +
             `💼 *Precios:* ${orderCreated.roleUsed === 'client' ? 'Promocional de Cliente VIP' : 'Público General'}\n` +
             `📍 *Orden ID:* \`${orderCreated.id}\`\n\n` +
@@ -697,5 +740,110 @@ export const useStore = create((set, get) => ({
   // Search & Filters
   setSearchTerm: (term) => set({ searchTerm: term }),
   setCategoryFilter: (cat) => set({ categoryFilter: cat }),
-  setBrandFilter: (brand) => set({ brandFilter: brand })
+  setBrandFilter: (brand) => set({ brandFilter: brand }),
+
+  // Favorites & Repeat Order actions
+  fetchFavorites: async () => {
+    const user = get().user;
+    if (!user || !user.uid) {
+      // Guest favorites from localStorage
+      try {
+        const guestFavs = JSON.parse(localStorage.getItem('iconic_favorites_guest') || '[]');
+        set({ favorites: guestFavs });
+      } catch (e) {
+        set({ favorites: [] });
+      }
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('favorites')
+        .select('product_id')
+        .eq('user_id', user.uid);
+      
+      if (error) throw error;
+      set({ favorites: (data || []).map(f => f.product_id) });
+    } catch (err) {
+      console.error('Error fetching favorites:', err);
+      // Fallback to localStorage
+      try {
+        const guestFavs = JSON.parse(localStorage.getItem('iconic_favorites_guest') || '[]');
+        set({ favorites: guestFavs });
+      } catch (e) {
+        set({ favorites: [] });
+      }
+    }
+  },
+
+  toggleFavorite: async (productId) => {
+    const user = get().user;
+    const currentFavs = get().favorites;
+    const isFav = currentFavs.includes(productId);
+    const updatedFavs = isFav 
+      ? currentFavs.filter(id => id !== productId) 
+      : [...currentFavs, productId];
+
+    // Always update local state first for instant responsiveness
+    set({ favorites: updatedFavs });
+
+    if (!user || !user.uid) {
+      // Guest favorites save to localStorage
+      localStorage.setItem('iconic_favorites_guest', JSON.stringify(updatedFavs));
+      return;
+    }
+
+    try {
+      if (isFav) {
+        const { error } = await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', user.uid)
+          .eq('product_id', productId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('favorites')
+          .insert({ user_id: user.uid, product_id: productId });
+        if (error) throw error;
+      }
+      // Also sync guest list just in case
+      localStorage.setItem('iconic_favorites_guest', JSON.stringify(updatedFavs));
+    } catch (err) {
+      console.error('Error toggling favorite in DB:', err);
+      // Keep local state in sync anyway
+      localStorage.setItem('iconic_favorites_guest', JSON.stringify(updatedFavs));
+    }
+  },
+
+  repeatOrder: (orderItems) => {
+    // orderItems is an array of { productId, quantity }
+    const { products } = get();
+    const itemsToSet = [];
+    let itemsSkipped = 0;
+    let stockAdjusted = false;
+
+    orderItems.forEach(item => {
+      const prod = products.find(p => p.id === item.productId);
+      if (prod && prod.stock > 0) {
+        // limit quantity by current stock
+        let qtyToAdd = item.quantity;
+        if (qtyToAdd > prod.stock) {
+          qtyToAdd = prod.stock;
+          stockAdjusted = true;
+        }
+        itemsToSet.push({ product: prod, quantity: qtyToAdd });
+      } else {
+        itemsSkipped++;
+      }
+    });
+
+    set({ cart: itemsToSet });
+    return {
+      success: itemsToSet.length > 0,
+      addedCount: itemsToSet.length,
+      itemsSkipped,
+      stockAdjusted
+    };
+  }
 }));
