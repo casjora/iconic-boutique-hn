@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../store';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate,Link } from 'react-router-dom';
 import { Key, UserPlus, Lock, ShieldCheck, Sparkles, Loader2, Info } from 'lucide-react';
 
 export default function LoginView() {
