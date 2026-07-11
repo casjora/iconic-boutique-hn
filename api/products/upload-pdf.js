@@ -1,5 +1,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import pdfStructure from 'pdf-parse';
+import { createRequire } from "module";
+
+// Solución al SyntaxError de ESM en Vercel
+const require = createRequire(import.meta.url);
+const pdfStructure = require("pdf-parse");
 
 // Configuraciones válidas según tu panel de Google AI Studio
 const API_CONFIGS = [
@@ -112,7 +116,6 @@ Campos obligatorios por cada objeto:
         }
       } catch (pageError) {
         console.error(`❌ Error crítico al extraer datos de la página ${i + 1}:`, pageError.message || pageError);
-        // El bucle continuará de forma resiliente con la página siguiente si una llegase a fallar
       }
     }
 
