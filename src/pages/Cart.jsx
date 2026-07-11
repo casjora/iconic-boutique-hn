@@ -161,78 +161,79 @@ export default function CartView() {
             const price = hasVipPrice ? item.product.pricePromotional : item.product.pricePublic;
             
             return (
-              <div key={item.product.id} className="p-5 flex gap-4 items-start relative">
+              <div key={item.product.id} className="p-4 sm:p-5 flex flex-col sm:flex-row gap-4 items-start relative">
                 
-                {/* Product Image */}
-                <div className="h-16 w-16 bg-neutral-100 rounded-xl overflow-hidden flex items-center justify-center p-1.5 flex-shrink-0 border border-neutral-100">
-                  {item.product.image_url ? (
-                    <img 
-                      src={item.product.image_url} 
-                      alt={item.product.name} 
-                      className="h-full w-full object-contain mix-blend-multiply" 
-                    />
-                  ) : (
-                    <span className="text-xl">🧴</span>
-                  )}
-                </div>
-
-                {/* Details info */}
-                <div className="flex-1 min-w-0 space-y-1">
-                  <span className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest font-mono">
-                    {item.product.brand}
-                  </span>
-                  <h3 className="font-bold text-sm text-neutral-900 truncate">
-                    {item.product.name}
-                  </h3>
-                  
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-500">
-                    <span>Tamaño: <span className="font-semibold text-neutral-700">{item.product.size || 'N/A'}</span></span>
-                    
-                    {isSet && (
-                      <span className="inline-flex items-center gap-0.5 rounded-full bg-indigo-50 px-2 py-0.5 text-[9px] font-extrabold text-indigo-700 uppercase tracking-wide border border-indigo-100">
-                        <Tag className="h-2.5 w-2.5" />
-                        Set
-                      </span>
+                <div className="flex gap-4 w-full sm:w-auto">
+                  {/* Product Image */}
+                  <div className="h-16 w-16 sm:h-20 sm:w-20 bg-neutral-100 rounded-xl overflow-hidden flex items-center justify-center p-1.5 flex-shrink-0 border border-neutral-100">
+                    {item.product.image_url ? (
+                      <img 
+                        src={item.product.image_url} 
+                        alt={item.product.name} 
+                        className="h-full w-full object-contain mix-blend-multiply" 
+                      />
+                    ) : (
+                      <span className="text-xl sm:text-2xl">🧴</span>
                     )}
                   </div>
 
-                  {/* Quantity and Price adjust line */}
-                  <div className="flex flex-wrap items-center justify-between pt-2 gap-3">
-                    <div className="flex items-center border border-neutral-200 rounded-xl bg-neutral-50">
-                      <button
-                        onClick={() => handleQtyChange(item.product.id, item.quantity - 1)}
-                        className="px-2.5 py-1 text-sm font-bold text-neutral-500 hover:text-neutral-900 cursor-pointer"
-                      >
-                        -
-                      </button>
-                      <span className="px-3 text-xs font-bold text-neutral-950 font-mono">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => handleQtyChange(item.product.id, item.quantity + 1)}
-                        className="px-2.5 py-1 text-sm font-bold text-neutral-500 hover:text-neutral-900 cursor-pointer"
-                      >
-                        +
-                      </button>
-                    </div>
-
-                    <div className="text-right">
-                      <span className="text-xs text-neutral-400 block font-semibold">Subtotal:</span>
-                      <span className="text-sm font-extrabold text-neutral-900 font-mono">
-                        L. {(price * item.quantity).toLocaleString()} HNL
-                      </span>
+                  {/* Details info (Mobile Top / Desktop Left) */}
+                  <div className="flex-1 min-w-0 space-y-1 pr-6 sm:pr-0">
+                    <span className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest font-mono truncate">
+                      {item.product.brand}
+                    </span>
+                    <h3 className="font-bold text-sm sm:text-base text-neutral-900 leading-tight">
+                      {item.product.name}
+                    </h3>
+                    
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-neutral-500 pt-1">
+                      <span>Tamaño: <span className="font-semibold text-neutral-700">{item.product.size || 'N/A'}</span></span>
+                      
+                      {isSet && (
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-indigo-50 px-2 py-0.5 text-[9px] font-extrabold text-indigo-700 uppercase tracking-wide border border-indigo-100">
+                          <Tag className="h-2.5 w-2.5" />
+                          Set
+                        </span>
+                      )}
                     </div>
                   </div>
+                </div>
 
+                {/* Quantity and Price adjust line */}
+                <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto sm:ml-auto pt-2 sm:pt-0 gap-3 sm:gap-2">
+                  <div className="flex items-center border border-neutral-200 rounded-xl bg-neutral-50 shadow-sm">
+                    <button
+                      onClick={() => handleQtyChange(item.product.id, item.quantity - 1)}
+                      className="px-3 py-1.5 sm:px-2.5 sm:py-1 text-base sm:text-sm font-bold text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-l-xl cursor-pointer transition-colors"
+                    >
+                      -
+                    </button>
+                    <span className="px-3 text-sm sm:text-xs font-bold text-neutral-950 font-mono min-w-[2.5rem] text-center">
+                      {item.quantity}
+                    </span>
+                    <button
+                      onClick={() => handleQtyChange(item.product.id, item.quantity + 1)}
+                      className="px-3 py-1.5 sm:px-2.5 sm:py-1 text-base sm:text-sm font-bold text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-r-xl cursor-pointer transition-colors"
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="text-[10px] sm:text-xs text-neutral-400 block font-semibold mb-0.5">Subtotal:</span>
+                    <span className="text-sm sm:text-base font-extrabold text-neutral-900 font-mono">
+                      L. {(price * item.quantity).toLocaleString()} HNL
+                    </span>
+                  </div>
                 </div>
 
                 {/* Trash delete button */}
                 <button
                   onClick={() => handleRemove(item.product.id)}
                   aria-label="Eliminar producto"
-                  className="absolute top-4 right-4 p-1.5 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
+                  className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 sm:p-1.5 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-5 w-5 sm:h-4 sm:w-4" />
                 </button>
 
               </div>
