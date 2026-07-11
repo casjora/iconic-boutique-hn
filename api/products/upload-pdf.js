@@ -7,6 +7,16 @@ const API_CONFIGS = [
   { apiKey: process.env.GEMINI_API_KEY, model: "gemini-3.1-flash-lite" }
 ];
 
+// Función auxiliar para decodificar texto de URL de forma segura sin arrojar URI malformed
+function safeDecodeURIComponent(str) {
+  try {
+    return decodeURIComponent(str);
+  } catch (e) {
+    // Si falla por caracteres mal formados (como % sin codificar), decodificamos usando unescape clásico
+    return unescape(str);
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -21,25 +31,34 @@ export default async function handler(req, res) {
     const cleanBase64 = pdfBase64.split(",")[1] || pdfBase64;
     const pdfBuffer = Buffer.from(cleanBase64, 'base64');
 
-    // 1. Promisificar pdf2json para extraer las páginas de texto de forma secuencial
+    // 1. Decodificación del PDF controlando rechazos explícitos para evitar timeouts
     const pagesText = await new Promise((resolve, reject) => {
       const pdfParser = new PDFParser();
       
-      pdfParser.on("pdfParser_dataError", errData => reject(errData.parserError));
+      pdfParser.on("pdfParser_dataError", errData => {
+        reject(new Error(errData?.parserError || "Error desconocido parseando el binario del PDF"));
+      });
+      
       pdfParser.on("pdfParser_dataReady", pdfData => {
-        const pages = pdfData.Pages.map(page => {
-          // pdf2json codifica los caracteres en formato URI (ej. %20), hay que decodificarlos
-          return page.Texts.map(text => decodeURIComponent(text.R[0].T)).join(' ');
-        });
-        resolve(pages);
+        try {
+          const pages = pdfData.Pages.map(page => {
+            return page.Texts.map(text => {
+              if (!text || !text.R || !text.R[0]) return "";
+              return safeDecodeURIComponent(text.R[0].T);
+            }).join(' ');
+          });
+          resolve(pages);
+        } catch (innerError) {
+          // Si algo falla dentro del mapeo, rechazamos la promesa para no colgar la ejecución
+          reject(innerError);
+        }
       });
 
       pdfParser.parseBuffer(pdfBuffer);
     });
 
-    console.log(`PDF decodificado con éxito en memoria. Total de páginas detectadas: ${pagesText.length}`);
+    console.log(`PDF decodificado con éxito. Total de páginas detectadas: ${pagesText.length}`);
 
-    // Prompt enfocado en lectura puramente óptica (sin matemáticas complejas)
     const prompt = `Analiza este extracto de texto que pertenece a una página específica de una factura de importación de perfumes.
 Extrae TODOS los artículos listados en esta sección sin omitir ninguna fila. No omitas registros por espacio o longitud.
 
@@ -75,11 +94,10 @@ Campos obligatorios por cada objeto:
     
     let totalProductosExtraidos = [];
 
-    // 2. RECORRER LAS PÁGINAS DEL TEXTO EXTRAÍDO
+    // 2. Procesamiento de páginas por lotes controlados
     for (let i = 0; i < pagesText.length; i++) {
       const textoDeLaPagina = pagesText[i];
 
-      // Sanitización: Si la página no contiene palabras clave de inventario como "QTY" o "Price", la saltamos
       if (!textoDeLaPagina.trim() || (!textoDeLaPagina.includes("QTY") && !textoDeLaPagina.includes("Price"))) {
         console.log(`Página ${i + 1} saltada automáticamente (no contiene datos de productos).`);
         continue;
@@ -102,7 +120,7 @@ Campos obligatorios por cada objeto:
           config: {
             responseMimeType: "application/json",
             responseSchema: schema,
-            temperature: 0.0 // Precisión quirúrgica absoluta
+            temperature: 0.0
           }
         });
 
@@ -113,11 +131,11 @@ Campos obligatorios por cada objeto:
           totalProductosExtraidos = totalProductosExtraidos.concat(productosPagina);
         }
       } catch (pageError) {
-        console.error(`❌ Error crítico al extraer datos de la página ${i + 1}:`, pageError.message || pageError);
+        console.error(`❌ Error al extraer datos de la página ${i + 1}:`, pageError.message || pageError);
       }
     }
 
-    // 3. PROCESAMIENTO MATEMÁTICO INTEGRAL DE LA FÓRMULA HONDURAS (JAVASCRIPT)
+    // 3. PROCESAMIENTO MATEMÁTICO INTEGRAL (JAVASCRIPT)
     console.log(`Unificación final lista. Procesando cálculos de mercado para ${totalProductosExtraidos.length} artículos...`);
     
     const productosFinalizados = totalProductosExtraidos.map(p => {
@@ -127,17 +145,14 @@ Campos obligatorios por cada objeto:
       const stock = Number(p.stock) || 1;
       const usdPrice = Number(p.unitPriceUSD) || 0;
 
-      // Ejecución limpia de la fórmula matemática de costo en Lempiras
+      // Aplicación estricta de la fórmula de costo para Honduras
       let rawCostHNL = ((usdPrice * 1.05) + 5.5) * 27;
-      
-      // Redondear exactamente al múltiplo de 5 más cercano
       const cost = Math.round(rawCostHNL / 5) * 5;
 
-      // Margen comercial estándar aproximado al 10 más cercano
+      // Precios de venta sugeridos basados en redondeos comerciales
       const pricePublic = Math.round((cost + 550) / 10) * 10;
       const pricePromotional = Math.round((cost * 1.25) / 5) * 5;
 
-      // Normalización estricta de categorías
       let category = (p.category || 'Unisex').trim();
       if (category.toLowerCase().includes('masculino') || category.toLowerCase().includes('hombre') || category.toLowerCase().includes('men')) {
         category = 'Masculino';
