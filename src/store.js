@@ -413,7 +413,7 @@ export const useStore = create((set, get) => ({
 
   submitOrder: async (clientName, clientPhone) => {
     set({ loading: true, error: null });
-    const { cart, user, products } = get();
+    const { cart, user } = get();
     if (!cart.length) {
       set({ error: 'El carrito está vacío', loading: false });
       return null;
@@ -750,7 +750,7 @@ export const useStore = create((set, get) => ({
       try {
         const guestFavs = JSON.parse(localStorage.getItem('iconic_favorites_guest') || '[]');
         set({ favorites: guestFavs });
-      } catch (e) {
+      } catch {
         set({ favorites: [] });
       }
       return;
@@ -770,7 +770,7 @@ export const useStore = create((set, get) => ({
       try {
         const guestFavs = JSON.parse(localStorage.getItem('iconic_favorites_guest') || '[]');
         set({ favorites: guestFavs });
-      } catch (e) {
+      } catch {
         set({ favorites: [] });
       }
     }

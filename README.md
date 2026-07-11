@@ -1,4 +1,4 @@
-# ⚜️ Iconic Boutique HN - Manual de Despliegue y Configuración
+## ⚜️ Iconic Boutique HN - Manual de Despliegue y Configuración
 
 ¡Bienvenido al repositorio de **Iconic Boutique HN**! Esta es una plataforma web premium de alta gama desarrollada con **React, Vite, Express, Tailwind CSS y TypeScript**, diseñada para simplificar la importación de fragancias, la cotización automatizada mediante WhatsApp, el escaneo inteligente de facturas de perfumes usando Inteligencia Artificial, y la sincronización con **Supabase** como base de datos en la nube.
 

@@ -1,7 +1,3 @@
-/**
- * Utility functions for analyzing and classifying products (e.g. detecting Sets).
- */
-
 export function isProductSet(product) {
   if (!product) return false;
   
