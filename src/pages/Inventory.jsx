@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useStore } from '../store';
 import { 
   Plus, 
@@ -6,11 +6,11 @@ import {
   Edit, 
   RefreshCw, 
   Sparkles, 
-  FileText, 
+   
   UploadCloud, 
   Loader2, 
   CheckCircle, 
-  Info,
+  
   DollarSign,
   Package,
   FileSpreadsheet
@@ -24,7 +24,8 @@ export default function Inventory() {
     updateProduct, 
     deleteProduct, 
     uploadPdf,
-    fetchProducts 
+    fetchProducts,
+    user
   } = useStore();
 
   const [loadingLocal, setLoadingLocal] = useState(false);
@@ -116,7 +117,7 @@ export default function Inventory() {
       name: formName.trim(),
       brand: formBrand.trim(),
       size: formSize.trim(),
-      cost: Number(formCost || 0),
+      cost: user?.role === 'owner' ? Number(formCost || 0) : (editingId ? (products.find(p => p.id === editingId)?.cost || 0) : 0),
       pricePublic: Number(formPricePublic || 0),
       pricePromotional: Number(formPricePromotional || 0),
       stock: Number(formStock || 0),
@@ -175,25 +176,38 @@ export default function Inventory() {
   // Bulk save the scanned perfumes
   const handleSaveScanned = async () => {
     setLoadingLocal(true);
-    let count = 0;
+    let countNew = 0;
+    let countUpdated = 0;
     for (const p of parsedProducts) {
-      const ok = await addProduct({
-        name: p.name,
-        brand: p.brand,
-        size: p.size,
-        cost: p.cost,
-        pricePublic: p.pricePublic,
-        pricePromotional: p.pricePromotional,
-        stock: p.stock,
-        category: p.category || 'Damas',
-        barcode: p.barcode || '',
-        description: p.description || '',
-        image_url: ''
-      });
-      if (ok) count++;
+      const existing = products.find(prod => 
+        prod.name.toLowerCase().trim() === p.name.toLowerCase().trim() && 
+        (prod.size || '').toLowerCase().trim() === (p.size || '').toLowerCase().trim()
+      );
+
+      if (existing) {
+        const ok = await updateProduct(existing.id, {
+          stock: existing.stock + Number(p.stock || 0)
+        });
+        if (ok) countUpdated++;
+      } else {
+        const ok = await addProduct({
+          name: p.name,
+          brand: p.brand,
+          size: p.size,
+          cost: p.cost,
+          pricePublic: p.pricePublic,
+          pricePromotional: p.pricePromotional,
+          stock: p.stock,
+          category: p.category || 'Damas',
+          barcode: p.barcode || '',
+          description: p.description || '',
+          image_url: ''
+        });
+        if (ok) countNew++;
+      }
     }
     setLoadingLocal(false);
-    alert(`Se agregaron exitosamente ${count} de ${parsedProducts.length} perfumes al inventario.`);
+    alert(`Se agregaron ${countNew} perfumes nuevos y se actualizaron ${countUpdated} existentes.`);
     setParsedProducts([]);
     setPdfSuccess(false);
     setPdfFile(null);
@@ -207,6 +221,7 @@ export default function Inventory() {
 
     const lines = importText.split('\n');
     let successCount = 0;
+    let updateCount = 0;
     let failedCount = 0;
 
     setLoadingLocal(true);
@@ -237,26 +252,38 @@ export default function Inventory() {
         continue;
       }
 
-      const ok = await addProduct({
-        name,
-        brand,
-        size,
-        cost,
-        pricePublic,
-        pricePromotional,
-        stock,
-        category,
-        barcode: '',
-        description: '',
-        image_url: ''
-      });
+      const existing = products.find(prod => 
+        prod.name.toLowerCase().trim() === name.toLowerCase() && 
+        (prod.size || '').toLowerCase().trim() === size.toLowerCase()
+      );
 
-      if (ok) successCount++;
-      else failedCount++;
+      if (existing) {
+        const ok = await updateProduct(existing.id, {
+          stock: existing.stock + stock
+        });
+        if (ok) updateCount++;
+        else failedCount++;
+      } else {
+        const ok = await addProduct({
+          name,
+          brand,
+          size,
+          cost,
+          pricePublic,
+          pricePromotional,
+          stock,
+          category,
+          barcode: '',
+          description: '',
+          image_url: ''
+        });
+        if (ok) successCount++;
+        else failedCount++;
+      }
     }
 
     setLoadingLocal(false);
-    setImportResults(`Sincronización completada: ${successCount} productos agregados con éxito. ${failedCount} líneas ignoradas.`);
+    setImportResults(`Sincronización completada: ${successCount} nuevos, ${updateCount} actualizados. ${failedCount} líneas ignoradas.`);
     setImportText('');
     fetchProducts();
   };
@@ -458,7 +485,7 @@ export default function Inventory() {
                   <th className="p-3.5">Detalles</th>
                   <th className="p-3.5">Tamaño</th>
                   <th className="p-3.5">Categoría</th>
-                  <th className="p-3.5">Costo Unitario</th>
+                  {user?.role === 'owner' && <th className="p-3.5">Costo Unitario</th>}
                   <th className="p-3.5">Público HNL</th>
                   <th className="p-3.5">Promo HNL</th>
                   <th className="p-3.5">Stock</th>
@@ -479,7 +506,9 @@ export default function Inventory() {
                       <td className="p-3.5">
                         <span className="inline-block bg-neutral-100 px-2 py-0.5 rounded text-neutral-700 font-semibold">{p.category}</span>
                       </td>
-                      <td className="p-3.5 font-mono font-semibold text-neutral-700">L. {p.cost.toLocaleString()}</td>
+                      {user?.role === 'owner' && (
+                        <td className="p-3.5 font-mono font-semibold text-neutral-700">L. {p.cost.toLocaleString()}</td>
+                      )}
                       <td className="p-3.5 font-mono font-bold text-neutral-900">L. {p.pricePublic.toLocaleString()}</td>
                       <td className="p-3.5 font-mono font-bold text-emerald-600">L. {p.pricePromotional.toLocaleString()}</td>
                       <td className="p-3.5">
@@ -597,22 +626,24 @@ export default function Inventory() {
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className={`grid gap-4 ${user?.role === 'owner' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+                {user?.role === 'owner' && (
+                  <div>
+                    <label className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2  flex items-center gap-0.5">
+                      <DollarSign className="h-3.5 w-3.5 text-neutral-400" /> Costo (HNL)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formCost}
+                      onChange={(e) => setFormCost(e.target.value)}
+                      className="block w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-mono"
+                      placeholder="L. Costo CIF"
+                    />
+                  </div>
+                )}
                 <div>
-                  <label className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2 block flex items-center gap-0.5">
-                    <DollarSign className="h-3.5 w-3.5 text-neutral-400" /> Costo (HNL)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formCost}
-                    onChange={(e) => setFormCost(e.target.value)}
-                    className="block w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-mono"
-                    placeholder="L. Costo CIF"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2 block flex items-center gap-0.5">
+                  <label className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2 flex items-center gap-0.5">
                     <DollarSign className="h-3.5 w-3.5 text-neutral-400" /> Público (HNL)
                   </label>
                   <input
@@ -625,7 +656,7 @@ export default function Inventory() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2 block flex items-center gap-0.5">
+                  <label className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2  flex items-center gap-0.5">
                     <DollarSign className="h-3.5 w-3.5 text-neutral-400" /> Promo/VIP (HNL)
                   </label>
                   <input

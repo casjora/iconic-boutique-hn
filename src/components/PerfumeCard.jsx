@@ -1,24 +1,41 @@
-import React from 'react';
 import { useStore } from '../store';
 import { ShoppingCart, Heart, Tag } from 'lucide-react';
 import { isProductSet } from '../utils/productHelper';
 import { motion } from 'motion/react';
 
 export default function PerfumeCard({ product }) {
-  const { addToCart, favorites, toggleFavorite, user } = useStore();
+  const { addToCart, favorites, toggleFavorite, user, cart, updateCartQuantity, removeFromCart } = useStore();
 
   const isFav = favorites.includes(product.id);
-  const isClient = user?.role === 'client';
+  const hasVipPrice = !!user;
   const outOfStock = product.stock <= 0;
 
   // Price calculations
-  const priceToDisplay = isClient ? product.pricePromotional : product.pricePublic;
   const isSet = isProductSet(product);
+
+  const cartItem = cart.find(item => item.product.id === product.id);
+  const quantityInCart = cartItem ? cartItem.quantity : 0;
 
   const handleAddToCart = (e) => {
     e.preventDefault();
     if (outOfStock) return;
     addToCart(product, 1);
+  };
+
+  const handleDecrease = (e) => {
+    e.preventDefault();
+    if (quantityInCart === 1) {
+      removeFromCart(product.id);
+    } else {
+      updateCartQuantity(product.id, quantityInCart - 1);
+    }
+  };
+
+  const handleIncrease = (e) => {
+    e.preventDefault();
+    if (quantityInCart < product.stock) {
+      updateCartQuantity(product.id, quantityInCart + 1);
+    }
   };
 
   const handleToggleFavorite = (e) => {
@@ -94,39 +111,73 @@ export default function PerfumeCard({ product }) {
 
         <div className="space-y-3">
           {/* Prices area */}
-          <div className="border-t border-neutral-100 pt-2 flex items-baseline justify-between">
-            <div>
-              {isClient && product.pricePromotional < product.pricePublic && (
-                <span className="block text-[10px] font-bold text-neutral-400 line-through">
-                  L. {product.pricePublic.toLocaleString()} HNL
-                </span>
-              )}
-              <span className="text-base font-black text-neutral-950 font-mono">
-                L. {priceToDisplay.toLocaleString()}
-              </span>
-              <span className="text-[10px] font-bold text-neutral-500 ml-1">HNL</span>
+          <div className="border-t border-neutral-100 pt-2 flex flex-col space-y-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-neutral-500 font-medium">Precio Detalle (Público):</span>
+              <span className="font-mono font-bold text-neutral-700">L. {product.pricePublic.toLocaleString()}</span>
             </div>
-            
-            {isClient && product.pricePromotional < product.pricePublic && (
-              <span className="bg-emerald-50 text-emerald-700 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border border-emerald-100">
-                VIP
+            {hasVipPrice ? (
+              <div className="flex items-center justify-between text-xs bg-amber-50 border border-amber-100 rounded-lg p-1.5">
+                <span className="text-amber-800 font-extrabold flex items-center gap-1">
+                  🏷️ Precio VIP:
+                </span>
+                <span className="font-mono font-black text-amber-950">
+                  L. {product.pricePromotional.toLocaleString()}
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between text-xs bg-neutral-50 border border-neutral-100 rounded-lg p-1.5 text-neutral-400">
+                <span className="font-semibold flex items-center gap-1">
+                  🔐 Precio VIP:
+                </span>
+                <span className="text-[10px] font-extrabold tracking-tight">
+                  Inicia sesión
+                </span>
+              </div>
+            )}
+            {hasVipPrice && (
+              <span className="text-[10px] font-bold text-emerald-600 text-right block mt-0.5">
+                ✓ Aplicando Tarifa VIP
               </span>
             )}
           </div>
 
-          {/* Add to Cart button */}
-          <button
-            onClick={handleAddToCart}
-            disabled={outOfStock}
-            className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 border ${
-              outOfStock
-                ? 'bg-neutral-100 border-neutral-200 text-neutral-400 cursor-not-allowed active:scale-100'
-                : 'bg-neutral-900 border-transparent text-white hover:bg-neutral-800 shadow-sm'
-            }`}
-          >
-            <ShoppingCart className="h-4 w-4" />
-            {outOfStock ? 'Agotado' : 'Añadir al Carrito'}
-          </button>
+          {/* Dynamic Add to Cart or Quantity Selector */}
+          {quantityInCart > 0 ? (
+            <div className="flex items-center justify-between border border-neutral-200 rounded-xl bg-neutral-50 overflow-hidden h-9.5 px-1">
+              <button
+                onClick={handleDecrease}
+                className="w-10 h-8 flex items-center justify-center font-bold text-neutral-500 hover:text-neutral-900 cursor-pointer active:scale-95 transition-all text-sm"
+              >
+                -
+              </button>
+              <span className="text-xs font-black text-neutral-950 font-mono">
+                {quantityInCart} u.
+              </span>
+              <button
+                onClick={handleIncrease}
+                disabled={quantityInCart >= product.stock}
+                className={`w-10 h-8 flex items-center justify-center font-bold text-neutral-500 hover:text-neutral-900 cursor-pointer active:scale-95 transition-all text-sm ${
+                  quantityInCart >= product.stock ? 'opacity-30 cursor-not-allowed' : ''
+                }`}
+              >
+                +
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleAddToCart}
+              disabled={outOfStock}
+              className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 border ${
+                outOfStock
+                  ? 'bg-neutral-100 border-neutral-200 text-neutral-400 cursor-not-allowed active:scale-100'
+                  : 'bg-neutral-900 border-transparent text-white hover:bg-neutral-800 shadow-sm'
+              }`}
+            >
+              <ShoppingCart className="h-4 w-4" />
+              {outOfStock ? 'Agotado' : 'Añadir al Carrito'}
+            </button>
+          )}
         </div>
       </div>
     </motion.div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useStore } from '../store';
 import { Link } from 'react-router-dom';
 import { Mail, ArrowRight, Loader2, KeyRound } from 'lucide-react';

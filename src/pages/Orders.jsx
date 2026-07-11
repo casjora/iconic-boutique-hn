@@ -1,12 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from '../store';
-import { FileSpreadsheet, RefreshCw, Phone, Edit, CheckCircle, XCircle, AlertCircle, ShoppingCart } from 'lucide-react';
+import { FileSpreadsheet, RefreshCw, Phone, Edit, CheckCircle, XCircle, AlertCircle, ShoppingCart, Trash2, Plus, Minus } from 'lucide-react';
 import { isProductSet } from '../utils/productHelper';
 
 export default function Orders() {
-  const { orders, fetchOrders, user, updateOrderStatus, repeatOrder } = useStore();
+  const { orders, fetchOrders, user, updateOrderStatus, repeatOrder, products, updateOrder } = useStore();
   const [loadingLocal, setLoadingLocal] = useState(false);
   const [filterStatus, setFilterStatus] = useState('Todos');
+
+  // Modal editing states
+  const [editingOrder, setEditingOrder] = useState(null);
+  const [editClientName, setEditClientName] = useState('');
+  const [editClientPhone, setEditClientPhone] = useState('');
+  const [editItems, setEditItems] = useState([]);
+  const [selectedAddProductId, setSelectedAddProductId] = useState('');
 
   const isEmployee = user?.role === 'owner' || user?.role === 'dueño' || user?.role === 'vendedor';
 
@@ -34,6 +41,75 @@ export default function Orders() {
       window.location.hash = '#/cart';
     } else {
       alert('Error: Todos los productos de esta orden se encuentran actualmente agotados.');
+    }
+  };
+
+  const handleAdjustQty = (productId, delta) => {
+    setEditItems(prev => prev.map(item => {
+      if (item.productId === productId) {
+        const newQty = Math.max(1, item.quantity + delta);
+        const productInDb = products.find(p => p.id === productId);
+        const originalItem = editingOrder.items.find(i => i.productId === productId);
+        const originalQty = originalItem ? originalItem.quantity : 0;
+        const availableStock = (productInDb ? productInDb.stock : 0) + originalQty;
+        if (newQty > availableStock) {
+          alert(`Lo sentimos, el stock total disponible para este perfume es de ${availableStock} unidades.`);
+          return item;
+        }
+        return { ...item, quantity: newQty };
+      }
+      return item;
+    }));
+  };
+
+  const handleRemoveItem = (productId) => {
+    setEditItems(prev => prev.filter(item => item.productId !== productId));
+  };
+
+  const handleAddItemToOrder = () => {
+    if (!selectedAddProductId) return;
+    const prod = products.find(p => p.id === selectedAddProductId);
+    if (!prod) return;
+    if (prod.stock <= 0) {
+      alert('Este producto no cuenta con stock disponible en tienda.');
+      return;
+    }
+    const existing = editItems.find(i => i.productId === prod.id);
+    if (existing) {
+      handleAdjustQty(prod.id, 1);
+      return;
+    }
+    const priceToUse = editingOrder.roleUsed === 'client' || editingOrder.roleUsed === 'usuario' ? prod.pricePromotional : prod.pricePublic;
+    setEditItems(prev => [
+      ...prev,
+      {
+        productId: prod.id,
+        brand: prod.brand,
+        name: prod.name,
+        size: prod.size,
+        quantity: 1,
+        pricePaid: priceToUse
+      }
+    ]);
+  };
+
+  const handleSaveModifiedOrder = async () => {
+    if (!editClientName.trim() || !editClientPhone.trim()) {
+      alert('Por favor, ingresa el nombre y teléfono del cliente.');
+      return;
+    }
+    if (editItems.length === 0) {
+      alert('La orden debe contener al menos un producto.');
+      return;
+    }
+    setLoadingLocal(true);
+    const ok = await updateOrder(editingOrder.id, editClientName.trim(), editClientPhone.trim(), editItems);
+    setLoadingLocal(false);
+    if (ok) {
+      setEditingOrder(null);
+      alert('¡Orden modificada correctamente y stock de tienda actualizado!');
+    } else {
+      alert('Ocurrió un error al guardar los cambios de la orden.');
     }
   };
 
@@ -205,7 +281,7 @@ export default function Orders() {
 
                   {/* Actions Row */}
                   <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-neutral-100">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <button
                         onClick={() => handleRepeatOrder(o)}
                         className="inline-flex items-center gap-1 px-3.5 py-2 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl shadow-sm transition-colors cursor-pointer"
@@ -213,6 +289,23 @@ export default function Orders() {
                         <ShoppingCart className="h-3.5 w-3.5" />
                         Repetir Pedido / Cargar Carrito
                       </button>
+
+                      {/* Modificar Orden Action button */}
+                      {(isEmployee || (user && o.buyerId === user.uid && o.status === 'pendiente')) && (
+                        <button
+                          onClick={() => {
+                            setEditingOrder(o);
+                            setEditClientName(o.clientName);
+                            setEditClientPhone(o.clientPhone);
+                            setEditItems(o.items.map(i => ({ ...i })));
+                            setSelectedAddProductId('');
+                          }}
+                          className="inline-flex items-center gap-1 px-3.5 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-bold rounded-xl transition-colors cursor-pointer border border-neutral-200"
+                        >
+                          <Edit className="h-3.5 w-3.5 text-neutral-500" />
+                          Modificar Orden
+                        </button>
+                      )}
                     </div>
 
                     {isEmployee && (
@@ -268,6 +361,157 @@ export default function Orders() {
           </div>
         )}
       </div>
+
+      {/* Editing Modal Dialog */}
+      {editingOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl border border-neutral-200 max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setEditingOrder(null)}
+              className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-600 font-extrabold text-lg p-1 cursor-pointer"
+            >
+              ✕
+            </button>
+
+            <div className="space-y-1">
+              <h3 className="font-display font-black text-neutral-900 text-xl flex items-center gap-2">
+                <Edit className="h-5 w-5 text-indigo-500" /> Modificar Orden
+              </h3>
+              <p className="text-xs text-neutral-500">
+                Ajusta los datos del cliente, elimina perfumes o cambia cantidades. El stock de la tienda se recalculará automáticamente al guardar.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {/* Client Info fields */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2 block">Nombre Cliente</label>
+                  <input
+                    type="text"
+                    required
+                    value={editClientName}
+                    onChange={(e) => setEditClientName(e.target.value)}
+                    className="block w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs focus:ring-2 focus:ring-neutral-950 focus:border-transparent outline-none font-semibold text-neutral-900"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2 block">Teléfono Cliente</label>
+                  <input
+                    type="text"
+                    required
+                    value={editClientPhone}
+                    onChange={(e) => setEditClientPhone(e.target.value)}
+                    className="block w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs focus:ring-2 focus:ring-neutral-950 focus:border-transparent outline-none font-mono font-semibold text-neutral-900"
+                  />
+                </div>
+              </div>
+
+              {/* Items modification lists */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-extrabold text-neutral-900 uppercase tracking-wider border-b border-neutral-100 pb-1.5">
+                  Fragancias Incluidas
+                </h4>
+                <div className="space-y-2.5 max-h-55 overflow-y-auto pr-1">
+                  {editItems.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-xs text-neutral-700 pb-2 border-b border-neutral-50 last:border-0 last:pb-0">
+                      <div className="truncate pr-4 flex-1">
+                        <span className="block font-bold text-neutral-900 leading-tight">{item.brand} {item.name}</span>
+                        <span className="text-[10px] text-neutral-400 font-mono font-bold uppercase">{item.size} • L. {item.pricePaid.toLocaleString()} c/u</span>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        {/* Qty selectors */}
+                        <div className="flex items-center border border-neutral-200 rounded-lg overflow-hidden bg-white">
+                          <button
+                            type="button"
+                            onClick={() => handleAdjustQty(item.productId, -1)}
+                            className="p-1 px-2 hover:bg-neutral-50 text-neutral-600 transition-colors cursor-pointer"
+                          >
+                            <Minus className="h-3 w-3" />
+                          </button>
+                          <span className="px-2.5 font-mono font-bold text-neutral-900">{item.quantity}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleAdjustQty(item.productId, 1)}
+                            className="p-1 px-2 hover:bg-neutral-50 text-neutral-600 transition-colors cursor-pointer"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </button>
+                        </div>
+
+                        {/* Remove item */}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(item.productId)}
+                          className="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer"
+                          title="Quitar de la orden"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Add product to order section */}
+              <div className="bg-neutral-50 rounded-2xl p-4 border border-neutral-100 space-y-2.5">
+                <label className="text-[11px] font-bold text-neutral-600 uppercase tracking-wider block">Añadir perfume a esta orden:</label>
+                <div className="flex gap-2">
+                  <select
+                    value={selectedAddProductId}
+                    onChange={(e) => setSelectedAddProductId(e.target.value)}
+                    className="flex-1 bg-white border border-neutral-200 px-3 py-2 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                  >
+                    <option value="">-- Seleccionar Perfume --</option>
+                    {products.filter(p => p.stock > 0).map(p => (
+                      <option key={p.id} value={p.id}>
+                        [{p.brand}] {p.name} ({p.size}) - Stock: {p.stock}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleAddItemToOrder}
+                    disabled={!selectedAddProductId}
+                    className="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl disabled:opacity-50 transition-colors cursor-pointer"
+                  >
+                    Añadir
+                  </button>
+                </div>
+              </div>
+
+              {/* Order total sum preview */}
+              <div className="flex justify-between items-center bg-neutral-900 text-white p-4 rounded-2xl">
+                <span className="text-[10px] font-mono uppercase tracking-widest font-bold opacity-70">Nuevo Total Calculado:</span>
+                <span className="text-base font-black font-mono">
+                  L. {editItems.reduce((sum, i) => sum + (i.pricePaid * i.quantity), 0).toLocaleString()} HNL
+                </span>
+              </div>
+            </div>
+
+            {/* Submit Action buttons */}
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setEditingOrder(null)}
+                className="flex-1 py-3 border border-neutral-200 text-xs font-bold uppercase tracking-wider text-neutral-600 rounded-xl hover:bg-neutral-50 transition-all cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveModifiedOrder}
+                disabled={loadingLocal}
+                className="flex-1 py-3 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                {loadingLocal ? 'Guardando...' : 'Guardar Cambios'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

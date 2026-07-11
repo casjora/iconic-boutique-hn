@@ -7,7 +7,6 @@ import Navbar from './components/Navbar';
 const Home = lazy(() => import('./pages/Home'));
 const Login = lazy(() => import('./pages/Login'));
 const Catalog = lazy(() => import('./pages/Catalog'));
-const Ofertas = lazy(() => import('./pages/Ofertas'));
 const Orders = lazy(() => import('./pages/Orders'));
 const Config = lazy(() => import('./pages/Config'));
 const Cart = lazy(() => import('./pages/Cart'));
@@ -51,7 +50,8 @@ const PublicOnlyRoute = ({ children }) => {
 };
 
 export default function App() {
-  const { fetchProducts, fetchOrders, fetchTelegramConfig, restoreSession, checkingSession } = useStore();
+  const { fetchProducts, fetchOrders, fetchTelegramConfig, restoreSession, checkingSession, user, logout, resendVerification, error, setError, loading } = useStore();
+  const [resendSuccess, setResendSuccess] = React.useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -65,6 +65,16 @@ export default function App() {
     init();
   }, []);
 
+  const handleResend = async () => {
+    if (!user?.email) return;
+    setResendSuccess(false);
+    const ok = await resendVerification(user.email);
+    if (ok) {
+      setResendSuccess(true);
+      setTimeout(() => setResendSuccess(false), 10000);
+    }
+  };
+
   if (checkingSession) {
     return (
       <div className="min-h-screen bg-neutral-50 flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans">
@@ -76,6 +86,60 @@ export default function App() {
           <p className="mt-1 text-xs text-neutral-400">
             Cargando sesión...
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (user && !user.emailConfirmed) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans">
+        <div className="w-full max-w-md space-y-6 bg-white p-10 rounded-3xl shadow-sm border border-neutral-200 text-center">
+          <div className="mx-auto w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-4">
+            <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 19v-8.93a2 2 0 01.89-1.664l8-5.333a2 2 0 012.22 0l8 5.333A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-black font-display text-neutral-900 tracking-tight">Valida tu correo electrónico</h2>
+          <p className="text-sm text-neutral-500 font-medium leading-relaxed">
+            Hemos enviado un enlace de confirmación a tu dirección de correo:
+          </p>
+          <p className="font-mono text-xs font-extrabold text-neutral-950 bg-neutral-100 py-3 px-4 rounded-xl border border-neutral-200 break-all select-all">
+            {user.email}
+          </p>
+          <p className="text-xs text-neutral-400 leading-relaxed">
+            Por seguridad de nuestra comunidad mayorista, debes validar tu cuenta antes de acceder al catálogo de perfumes, precios mayoristas y realizar cotizaciones en Honduras.
+          </p>
+
+          {error && (
+            <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800 flex items-start justify-between gap-2.5 relative">
+              <span className="text-left">{error}</span>
+              <button onClick={() => setError(null)} className="text-rose-500 font-bold ml-1 focus:outline-none cursor-pointer">✕</button>
+            </div>
+          )}
+
+          {resendSuccess && (
+            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800">
+              ¡Enlace de verificación reenviado! Revisa tu bandeja de entrada y spam.
+            </div>
+          )}
+
+          <div className="space-y-3 pt-4 border-t border-neutral-100">
+            <button
+              onClick={handleResend}
+              disabled={loading}
+              className="w-full flex justify-center py-3.5 px-4 border border-transparent text-xs font-bold uppercase tracking-wide rounded-xl text-white bg-neutral-900 hover:bg-neutral-800 transition-all disabled:opacity-75 cursor-pointer"
+            >
+              {loading ? 'Reenviando...' : 'Reenviar Confirmación'}
+            </button>
+
+            <button
+              onClick={() => logout()}
+              className="w-full flex justify-center py-3.5 px-4 border border-neutral-200 text-xs font-bold uppercase tracking-wide rounded-xl text-neutral-600 bg-white hover:bg-neutral-50 transition-all cursor-pointer"
+            >
+              Cerrar Sesión
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -110,7 +174,6 @@ export default function App() {
               <Route path="/update-password" element={<UpdatePassword />} />
               <Route path="/catalog" element={<Catalog />} />
               <Route path="/favorites" element={<Favorites />} />
-              <Route path="/ofertas" element={<Ofertas />} />
               <Route path="/cart" element={<Cart />} />
               
               {/* Employee Protected Routes */}

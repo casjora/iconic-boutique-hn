@@ -1,4 +1,3 @@
-import React from 'react';
 import { Image, Database, Cpu, Minimize2, CheckCircle, Info } from 'lucide-react';
 
 export default function ImageGuide() {

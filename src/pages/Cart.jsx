@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import  { useState } from 'react';
 import { useStore } from '../store';
 import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, Phone, User, ShoppingBag, ArrowLeft, Loader2, ClipboardList, Tag } from 'lucide-react';
@@ -164,7 +164,7 @@ export default function CartView() {
               <div key={item.product.id} className="p-5 flex gap-4 items-start relative">
                 
                 {/* Product Image */}
-                <div className="h-16 w-16 bg-neutral-100 rounded-xl overflow-hidden flex items-center justify-center p-1.5 flex-shrink-0 border border-neutral-100">
+                <div className="h-16 w-16 bg-neutral-100 rounded-xl overflow-hidden flex items-center justify-center p-1.5 shrink-0 border border-neutral-100">
                   {item.product.image_url ? (
                     <img 
                       src={item.product.image_url} 

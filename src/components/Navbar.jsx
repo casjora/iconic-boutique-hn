@@ -1,7 +1,6 @@
-import React from 'react';
 import { useStore } from '../store';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingBag, Key, LogOut, Package, FileSpreadsheet, Settings, Percent, Tags, HelpCircle, TrendingUp, Heart } from 'lucide-react';
+import { ShoppingBag, Key, LogOut, Package, FileSpreadsheet, Settings, Tags, HelpCircle, TrendingUp, Heart } from 'lucide-react';
 
 export default function Navbar() {
   const { user, cart, logout } = useStore();
@@ -49,16 +48,6 @@ export default function Navbar() {
             }`}
           >
             Fragancias
-          </Link>
-          
-          <Link
-            to="/ofertas"
-            className={`px-3 py-2 text-sm font-medium rounded-md flex items-center gap-1.5 transition-colors ${
-              currentPath === '/ofertas' ? 'bg-amber-100 text-amber-900 font-semibold' : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
-            }`}
-          >
-            <Percent className="h-4 w-4 text-amber-600" />
-            Ofertas VIP
           </Link>
 
           {isEmployee && (
@@ -204,26 +193,17 @@ export default function Navbar() {
       <div className="flex md:hidden border-t border-neutral-100 bg-neutral-50 overflow-x-auto py-2 px-4 gap-2 scrollbar-none">
         <Link
           to="/catalog"
-          className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+          className={`shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
             currentPath === '/catalog' ? 'bg-neutral-900 text-white font-semibold' : 'bg-white text-neutral-600 border border-neutral-200'
           }`}
         >
           Fragancias
         </Link>
-        <Link
-          to="/ofertas"
-          className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors flex items-center gap-1 ${
-            currentPath === '/ofertas' ? 'bg-amber-100 text-amber-900 font-semibold border border-amber-200' : 'bg-white text-neutral-600 border border-neutral-200'
-          }`}
-        >
-          <Percent className="h-3 w-3 text-amber-600" />
-          Ofertas VIP
-        </Link>
         {isEmployee && (
           <>
             <Link
               to="/dashboard"
-              className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+              className={`shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
                 currentPath === '/dashboard' ? 'bg-neutral-900 text-white font-semibold' : 'bg-white text-neutral-600 border border-neutral-200'
               }`}
             >
@@ -231,7 +211,7 @@ export default function Navbar() {
             </Link>
             <Link
               to="/inventory"
-              className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+              className={`shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
                 currentPath === '/inventory' ? 'bg-neutral-900 text-white font-semibold' : 'bg-white text-neutral-600 border border-neutral-200'
               }`}
             >
@@ -239,7 +219,7 @@ export default function Navbar() {
             </Link>
             <Link
               to="/orders"
-              className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+              className={`shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
                 currentPath === '/orders' ? 'bg-neutral-900 text-white font-semibold' : 'bg-white text-neutral-600 border border-neutral-200'
               }`}
             >
@@ -251,7 +231,7 @@ export default function Navbar() {
           <>
             <Link
               to="/favorites"
-              className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+              className={`shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
                 currentPath === '/favorites' ? 'bg-neutral-900 text-white font-semibold' : 'bg-white text-neutral-600 border border-neutral-200'
               }`}
             >
@@ -259,7 +239,7 @@ export default function Navbar() {
             </Link>
             <Link
               to="/orders"
-              className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+              className={`shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
                 currentPath === '/orders' ? 'bg-neutral-900 text-white font-semibold' : 'bg-white text-neutral-600 border border-neutral-200'
               }`}
             >
@@ -271,7 +251,7 @@ export default function Navbar() {
           <>
             <Link
               to="/barcodes"
-              className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+              className={`shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
                 currentPath === '/barcodes' ? 'bg-neutral-900 text-white font-semibold' : 'bg-white text-neutral-600 border border-neutral-200'
               }`}
             >
@@ -279,7 +259,7 @@ export default function Navbar() {
             </Link>
             <Link
               to="/config"
-              className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+              className={`shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
                 currentPath === '/config' ? 'bg-neutral-900 text-white font-semibold' : 'bg-white text-neutral-600 border border-neutral-200'
               }`}
             >

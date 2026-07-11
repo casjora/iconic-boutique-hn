@@ -53,7 +53,16 @@ export const useStore = create((set, get) => ({
   brandFilter: 'Todas',
 
   setView: (view) => set({ currentView: view, error: null }),
-  setError: (err) => set({ error: err }),
+  setError: (err) => {
+    set({ error: err });
+    if (err) {
+      setTimeout(() => {
+        if (get().error === err) {
+          set({ error: null });
+        }
+      }, 20000);
+    }
+  },
 
   restoreSession: async () => {
     set({ checkingSession: true });
@@ -79,12 +88,15 @@ export const useStore = create((set, get) => ({
 
       const email = session.user.email || '';
       const id = email.includes('@iconicboutique.hn') ? email.split('@')[0] : email;
+      const emailConfirmed = !!(session.user.email_confirmed_at || session.user.confirmed_at || email.endsWith('@iconicboutique.hn'));
 
       const loggedUser = {
         id: id.toLowerCase().trim(),
         name: profile.name,
         role: mappedRole,
-        uid: session.user.id
+        uid: session.user.id,
+        email,
+        emailConfirmed
       };
 
       set({ user: loggedUser, checkingSession: false });
@@ -128,11 +140,16 @@ export const useStore = create((set, get) => ({
       if (profile.role === 'dueño' || profile.role === 'owner') mappedRole = 'owner';
       else if (profile.role === 'vendedor') mappedRole = 'vendedor';
 
+      const userEmail = data.user.email || '';
+      const emailConfirmed = !!(data.user.email_confirmed_at || data.user.confirmed_at || userEmail.endsWith('@iconicboutique.hn'));
+
       const loggedUser = {
         id: id.toLowerCase().trim(),
         name: profile.name,
         role: mappedRole,
-        uid: data.user.id
+        uid: data.user.id,
+        email: userEmail,
+        emailConfirmed
       };
 
       set({ user: loggedUser, currentView: 'catalog', loading: false });
@@ -198,15 +215,39 @@ export const useStore = create((set, get) => ({
         else if (profile.role === 'vendedor') mappedRole = 'vendedor';
       }
 
+      const userEmail = data.user.email || '';
+      const emailConfirmed = !!(data.user.email_confirmed_at || data.user.confirmed_at || userEmail.endsWith('@iconicboutique.hn'));
+
       const registeredUser = {
         id: id.toLowerCase().trim(),
         name,
         role: mappedRole,
-        uid: data.user.id
+        uid: data.user.id,
+        email: userEmail,
+        emailConfirmed
       };
 
       set({ user: registeredUser, currentView: 'catalog', loading: false });
       await get().fetchFavorites();
+      return true;
+    } catch (err) {
+      set({ error: err.message, loading: false });
+      return false;
+    }
+  },
+
+  resendVerification: async (email) => {
+    set({ loading: true, error: null });
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`
+        }
+      });
+      if (error) throw error;
+      set({ loading: false });
       return true;
     } catch (err) {
       set({ error: err.message, loading: false });
@@ -421,10 +462,11 @@ export const useStore = create((set, get) => ({
 
     const isClient = user?.role === 'client';
     const isVendedor = user?.role === 'vendedor' || user?.role === 'owner';
+    const hasVipPrice = !!user;
     const roleUsed = isClient ? 'usuario' : (isVendedor ? (user?.role === 'owner' ? 'dueño' : 'vendedor') : 'publico');
 
     const total = cart.reduce((acc, curr) => {
-      const price = isClient ? curr.product.pricePromotional : curr.product.pricePublic;
+      const price = hasVipPrice ? curr.product.pricePromotional : curr.product.pricePublic;
       return acc + (price * curr.quantity);
     }, 0);
 
@@ -456,7 +498,7 @@ export const useStore = create((set, get) => ({
         order_id: orderId,
         product_id: item.product.id,
         quantity: item.quantity,
-        price_paid: isClient ? item.product.pricePromotional : item.product.pricePublic
+        price_paid: hasVipPrice ? item.product.pricePromotional : item.product.pricePublic
       }));
 
       const { error: itemsErr } = await supabase
@@ -492,7 +534,7 @@ export const useStore = create((set, get) => ({
           brand: item.product.brand,
           size: item.product.size,
           quantity: item.quantity,
-          pricePaid: isClient ? item.product.pricePromotional : item.product.pricePublic
+          pricePaid: hasVipPrice ? item.product.pricePromotional : item.product.pricePublic
         }))
       };
 
@@ -519,7 +561,7 @@ export const useStore = create((set, get) => ({
             `👤 *Cliente:* ${orderCreated.clientName}\n` +
             `📞 *Teléfono:* ${phoneLink}\n` +
             `🕒 *Fecha:* ${orderCreated.date}\n` +
-            `💼 *Precios:* ${orderCreated.roleUsed === 'client' ? 'Promocional de Cliente VIP' : 'Público General'}\n` +
+            `💼 *Precios:* ${hasVipPrice ? 'Promocional de Cliente VIP / Mayorista' : 'Público General'}\n` +
             `📍 *Orden ID:* \`${orderCreated.id}\`\n\n` +
             `📦 *Detalle de Perfumes:*\n${itemsText}\n\n` +
             `💵 *TOTAL COTIZADO:* *L. ${orderCreated.total.toLocaleString()} HNL*\n\n` +
@@ -619,6 +661,97 @@ export const useStore = create((set, get) => ({
 
       await get().fetchOrders();
       await get().fetchProducts();
+      return true;
+    } catch (err) {
+      set({ error: err.message, loading: false });
+      return false;
+    }
+  },
+
+  updateOrder: async (orderId, clientName, clientPhone, newItems) => {
+    set({ loading: true, error: null });
+    try {
+      // 1. Get old items to restore stock
+      const { data: oldItems, error: oldItemsErr } = await supabase
+        .from('order_items')
+        .select('product_id, quantity')
+        .eq('order_id', orderId);
+
+      if (oldItemsErr) throw oldItemsErr;
+
+      // Restore stock
+      if (oldItems) {
+        for (const oldItem of oldItems) {
+          const { data: prod } = await supabase
+            .from('products')
+            .select('stock')
+            .eq('id', oldItem.product_id)
+            .maybeSingle();
+          if (prod) {
+            await supabase
+              .from('products')
+              .update({ stock: Number(prod.stock || 0) + Number(oldItem.quantity) })
+              .eq('id', oldItem.product_id);
+          }
+        }
+      }
+
+      // 2. Delete old order items
+      const { error: deleteErr } = await supabase
+        .from('order_items')
+        .delete()
+        .eq('order_id', orderId);
+
+      if (deleteErr) throw deleteErr;
+
+      // 3. Insert new order items
+      const total = newItems.reduce((acc, curr) => acc + (curr.pricePaid * curr.quantity), 0);
+
+      const itemsToInsert = newItems.map(item => ({
+        order_id: orderId,
+        product_id: item.productId,
+        quantity: item.quantity,
+        price_paid: item.pricePaid
+      }));
+
+      const { error: insertErr } = await supabase
+        .from('order_items')
+        .insert(itemsToInsert);
+
+      if (insertErr) throw insertErr;
+
+      // 4. Deduct stock for new items
+      for (const item of newItems) {
+        const { data: prod } = await supabase
+          .from('products')
+          .select('stock')
+          .eq('id', item.productId)
+          .maybeSingle();
+        if (prod) {
+          const newStock = Math.max(0, Number(prod.stock || 0) - Number(item.quantity));
+          await supabase
+            .from('products')
+            .update({ stock: newStock })
+            .eq('id', item.productId);
+        }
+      }
+
+      // 5. Update parent order details
+      const { error: orderUpdateErr } = await supabase
+        .from('orders')
+        .update({
+          client_name: clientName,
+          client_phone: clientPhone,
+          total: total
+        })
+        .eq('id', orderId);
+
+      if (orderUpdateErr) throw orderUpdateErr;
+
+      // Reload lists
+      await get().fetchOrders();
+      await get().fetchProducts();
+      set({ loading: false });
       return true;
     } catch (err) {
       set({ error: err.message, loading: false });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import { Settings, Save, Bell, ShieldAlert, Loader2, PlayCircle, HelpCircle } from 'lucide-react';
 
