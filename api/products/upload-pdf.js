@@ -28,7 +28,6 @@ Reglas de campos:
 - category: Debe ser estrictamente "Masculino", "Femenino" o "Unisex".
 - barcode: Extrae el UPC real del artículo. Si no está disponible, déjalo vacío ("").`;
 
-    // Pasamos el esquema estructurado directamente al objeto config del SDK
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: [
@@ -70,11 +69,17 @@ Reglas de campos:
       }
     });
 
-    // En el nuevo SDK, se accede directamente a text
-    const aiText = response.text; 
+    const aiText = response.text();
     let parsedProducts = JSON.parse(aiText);
     
-    // Sanitización y fallback de seguridad
+    if (!Array.isArray(parsedProducts)) {
+      if (parsedProducts.products && Array.isArray(parsedProducts.products)) {
+        parsedProducts = parsedProducts.products;
+      } else {
+        parsedProducts = [parsedProducts];
+      }
+    }
+    
     parsedProducts = parsedProducts.map(p => {
       const name = (p.name || 'Perfume Desconocido').trim();
       const brand = (p.brand || 'Marca Desconocida').trim();

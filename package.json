@@ -4,11 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.js",
-    "build": "vite build && esbuild server.js --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
-    "start": "node dist/server.cjs",
+    "dev": "vite",
+    "build": "vite build",
+    "start": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "echo 'No types to check'"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
