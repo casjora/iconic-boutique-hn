@@ -29,7 +29,7 @@ Reglas de campos:
 - barcode: Extrae el UPC real del artículo. Si no está disponible, déjalo vacío ("").`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: [
         {
           role: "user",
