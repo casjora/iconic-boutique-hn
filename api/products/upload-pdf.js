@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -17,25 +17,18 @@ export default async function handler(req, res) {
     const prompt = `Analiza este documento PDF de importación/factura de perfumes de Iconic Boutique HN y extrae la lista de perfumes para agregarlos al inventario.
 
 IMPORTANTE - CONVERSIÓN DE MONEDA (FÓRMULA HONDURAS):
-- La factura del proveedor (ej. Perfume Price) suele estar en DÓLARES (USD, con precios como $22.00, $20.00, etc.).
-- Sin embargo, nuestro inventario final en Honduras requiere que los montos estén expresados en LEMPIRAS (HNL) según la fórmula exacta de Iconic Boutique.
-- FÓRMULA DE COSTO: Si el precio original está en USD, conviértelo a costo en Lempiras (HNL) aplicando:  Costo_HNL = ((Precio_USD * 1.05) + 5.5) * 27  Y DEBES aproximar el resultado al 5 más cercano (ejemplo: si da L. 772.2, aproxímalo a L. 770 o L. 775).
+- La factura del proveedor suele estar en DÓLARES (USD).
+- FÓRMULA DE COSTO: Si el precio original está en USD, conviértelo a costo en Lempiras (HNL) aplicando: Costo_HNL = ((Precio_USD * 1.05) + 5.5) * 27 Y DEBES aproximar el resultado al 5 más cercano.
 - Todos los campos 'cost', 'pricePublic' y 'pricePromotional' en el JSON devuelto DEBEN estar expresados en Lempiras de Honduras (HNL).
 
-Por favor, extrae de forma estructurada los productos del documento. Retorna un arreglo de objetos JSON en español con este formato exacto:
-- name: Nombre del perfume (ej. "Sauvage EDP").
-- brand: Marca (ej. "Dior").
-- size: Tamaño con unidad de medida (ej. "100 ml", "3.4 oz", "50 ml").
-- cost: Costo unitario de compra (número entero en HNL calculated con la fórmula: ((Precio_USD * 1.05) + 5.5) * 27 aproximado al 5 más cercano). Si no se detalla en el documento, estima un costo razonable de importación en HNL (ej. entre L. 400 y L. 1,500).
-- pricePublic: Precio de venta sugerido al detalle / público en general en HNL (calcula aplicando un margen de ganancia sobre el costo, ej. sumando L. 400 a L. 800 sobre el costo, aproximado al 5 o 10 más cercano).
-- pricePromotional: Precio de venta de mayoreo / VIP para distribuidores en HNL (debe ser mayor que el costo pero menor que el precio de detalle, sumando alrededor de un 20% a 30% de margen sobre el costo, aproximado al 5 o 10 más cercano).
-- stock: Cantidad de unidades de este producto según la factura (QTY). Si no se especifica, usa 1 por defecto.
-- category: Género del perfume. Debe ser estrictamente uno de los siguientes valores: "Masculino", "Femenino" o "Unisex".
-- barcode: Código de barra (UPC / código numérico de 12 o 13 dígitos provisto en la factura para el artículo). Es muy importante extraer el UPC real que viene en la columna UPC del documento si está disponible para evitar generar códigos genéricos. Si no está disponible en absoluto, genera un código único de 13 dígitos que comience con "740" (ej. "740283748293").
-- description: Breve descripción de la fragancia si es posible inferirla o generarla.
+Reglas de campos:
+- cost: Número entero en HNL calculado con la fórmula aproximado al 5 más cercano.
+- pricePublic: Suma L. 400 a L. 800 sobre el costo, aproximado al 5 o 10 más cercano.
+- pricePromotional: Sumando alrededor de un 20% a 30% de margen sobre el costo, aproximado al 5 o 10 más cercano.
+- category: Debe ser estrictamente "Masculino", "Femenino" o "Unisex".
+- barcode: Extrae el UPC real del artículo. Si no está disponible, déjalo vacío ("").`;
 
-Trata de extraer la mayor cantidad de información real posible de la factura del proveedor o lista de empaque, incluyendo cantidades (QTY), nombres, costos y códigos de barra reales.`;
-
+    // Pasamos el esquema estructurado directamente al objeto config del SDK
     const response = await ai.models.generateContent({
       model: "gemini-2.5-pro",
       contents: [
@@ -53,21 +46,35 @@ Trata de extraer la mayor cantidad de información real posible de la factura de
         }
       ],
       config: {
-        responseMimeType: "application/json"
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          description: "Lista de perfumes extraídos de la factura",
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              name: { type: Type.STRING },
+              brand: { type: Type.STRING },
+              size: { type: Type.STRING },
+              cost: { type: Type.INTEGER },
+              pricePublic: { type: Type.INTEGER },
+              pricePromotional: { type: Type.INTEGER },
+              stock: { type: Type.INTEGER },
+              category: { type: Type.STRING },
+              barcode: { type: Type.STRING },
+              description: { type: Type.STRING }
+            },
+            required: ["name", "brand", "cost", "pricePublic", "pricePromotional", "stock", "category"]
+          }
+        }
       }
     });
 
-    const aiText = response.text();
+    // En el nuevo SDK, se accede directamente a text
+    const aiText = response.text; 
     let parsedProducts = JSON.parse(aiText);
     
-    if (!Array.isArray(parsedProducts)) {
-      if (parsedProducts.products && Array.isArray(parsedProducts.products)) {
-        parsedProducts = parsedProducts.products;
-      } else {
-        parsedProducts = [parsedProducts];
-      }
-    }
-    
+    // Sanitización y fallback de seguridad
     parsedProducts = parsedProducts.map(p => {
       const name = (p.name || 'Perfume Desconocido').trim();
       const brand = (p.brand || 'Marca Desconocida').trim();
