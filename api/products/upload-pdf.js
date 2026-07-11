@@ -1,7 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-
-// Importación compatible con el entorno ESM de Vercel para pdfjs-dist
-import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
+import PDFParser from "pdf2json";
 
 const API_CONFIGS = [
   { apiKey: process.env.GEMINI_API_KEY, model: "gemini-3.5-flash" },
@@ -20,36 +18,30 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Convertir el Base64 que viene del front a un ArrayBuffer compatible con pdfjs
     const cleanBase64 = pdfBase64.split(",")[1] || pdfBase64;
     const pdfBuffer = Buffer.from(cleanBase64, 'base64');
-    const uint8Array = new Uint8Array(pdfBuffer);
-    
-    // 2. Cargar el documento PDF sin requerir entorno de Canvas de navegador
-    const loadingTask = pdfjs.getDocument({
-      data: uint8Array,
-      useSystemFonts: true,
-      disableFontFace: true
+
+    // 1. Promisificar pdf2json para extraer las páginas de texto de forma secuencial
+    const pagesText = await new Promise((resolve, reject) => {
+      const pdfParser = new PDFParser();
+      
+      pdfParser.on("pdfParser_dataError", errData => reject(errData.parserError));
+      pdfParser.on("pdfParser_dataReady", pdfData => {
+        const pages = pdfData.Pages.map(page => {
+          // pdf2json codifica los caracteres en formato URI (ej. %20), hay que decodificarlos
+          return page.Texts.map(text => decodeURIComponent(text.R[0].T)).join(' ');
+        });
+        resolve(pages);
+      });
+
+      pdfParser.parseBuffer(pdfBuffer);
     });
-    
-    const pdfDocument = await loadingTask.promise;
-    const totalPages = pdfDocument.numPages;
-    
-    console.log(`PDF cargado con éxito. Total de páginas detectadas: ${totalPages}`);
 
-    let pagesText = [];
-
-    // Extraer texto plano página por página
-    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-      const page = await pdfDocument.getPage(pageNum);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items.map(item => item.str).join(' ');
-      pagesText.push(pageText);
-    }
+    console.log(`PDF decodificado con éxito en memoria. Total de páginas detectadas: ${pagesText.length}`);
 
     // Prompt enfocado en lectura puramente óptica (sin matemáticas complejas)
     const prompt = `Analiza este extracto de texto que pertenece a una página específica de una factura de importación de perfumes.
-Extrae TODOS los artículos listados en esta sección sin omitir ninguna fila. No omitas registros por espacio.
+Extrae TODOS los artículos listados en esta sección sin omitir ninguna fila. No omitas registros por espacio o longitud.
 
 Campos obligatorios por cada objeto:
 - name: Nombre del perfume.
@@ -83,12 +75,12 @@ Campos obligatorios por cada objeto:
     
     let totalProductosExtraidos = [];
 
-    // 3. RECORRER EL PDF PÁGINA POR PÁGINA EN UN CICLO LOOP
+    // 2. RECORRER LAS PÁGINAS DEL TEXTO EXTRAÍDO
     for (let i = 0; i < pagesText.length; i++) {
       const textoDeLaPagina = pagesText[i];
 
-      // Sanitización: Si la página no contiene palabras clave de inventario como "QTY", la saltamos
-      if (!textoDeLaPagina.trim() || !textoDeLaPagina.includes("QTY")) {
+      // Sanitización: Si la página no contiene palabras clave de inventario como "QTY" o "Price", la saltamos
+      if (!textoDeLaPagina.trim() || (!textoDeLaPagina.includes("QTY") && !textoDeLaPagina.includes("Price"))) {
         console.log(`Página ${i + 1} saltada automáticamente (no contiene datos de productos).`);
         continue;
       }
@@ -125,7 +117,7 @@ Campos obligatorios por cada objeto:
       }
     }
 
-    // 4. PROCESAMIENTO MATEMÁTICO INTEGRAL DE LA FÓRMULA HONDURAS (JAVASCRIPT)
+    // 3. PROCESAMIENTO MATEMÁTICO INTEGRAL DE LA FÓRMULA HONDURAS (JAVASCRIPT)
     console.log(`Unificación final lista. Procesando cálculos de mercado para ${totalProductosExtraidos.length} artículos...`);
     
     const productosFinalizados = totalProductosExtraidos.map(p => {
