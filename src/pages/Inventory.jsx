@@ -600,7 +600,8 @@ export default function Inventory() {
               </button>
             </div>
 
-            <div className="overflow-x-auto border border-neutral-100 rounded-xl bg-white">
+            {/* Desktop Table View */}
+            <div className="hidden lg:block overflow-x-auto border border-neutral-100 rounded-xl bg-white">
               <table className="w-full text-left text-[11px] divide-y divide-neutral-100">
                 <thead className="bg-neutral-50 text-neutral-500 font-bold">
                   <tr>
@@ -616,7 +617,7 @@ export default function Inventory() {
                 <tbody className="divide-y divide-neutral-100">
                   {parsedProducts.map((p, idx) => (
                     <tr key={idx} className={p.matchStatus === 'exact_match' ? 'bg-emerald-50/20 hover:bg-emerald-50/40' : 'hover:bg-neutral-50/50'}>
-                      <td className="p-3">
+                      <td className="p-3 w-64">
                         <select 
                           value={p.matchStatus === 'exact_match' ? p.existingId : 'new'}
                           onChange={(e) => {
@@ -627,7 +628,7 @@ export default function Inventory() {
                               handleUpdateParsedStatus(idx, 'exact_match', val);
                             }
                           }}
-                          className={`text-[10px] font-bold px-2 py-1.5 rounded-lg border outline-none ${
+                          className={`w-full truncate text-[10px] font-bold px-2 py-1.5 rounded-lg border outline-none ${
                             p.matchStatus === 'exact_match' 
                               ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
                               : 'bg-amber-50 border-amber-200 text-amber-800'
@@ -643,21 +644,21 @@ export default function Inventory() {
                           </optgroup>
                         </select>
                         <div className="text-[9px] text-neutral-500 mt-1 font-semibold">
-                          {p.matchStatus === 'exact_match' ? 'Solo actualizará stock y costo' : 'Creará nuevo producto'}
+                          {p.matchStatus === 'exact_match' ? 'Actualizará stock y costo' : 'Creará nuevo producto'}
                         </div>
                       </td>
                       <td className="p-3">
-                        <span className="block text-[9px] font-bold text-neutral-400 uppercase font-mono">{p.brand}</span>
-                        <span className="font-semibold text-neutral-900">{p.name}</span>
+                        <span className="block text-[9px] font-bold text-neutral-400 uppercase font-mono truncate max-w-[120px]">{p.brand}</span>
+                        <span className="font-semibold text-neutral-900 block truncate max-w-[150px]">{p.name}</span>
                       </td>
-                      <td className="p-3 font-semibold text-neutral-500">{p.size}</td>
-                      <td className="p-3 font-mono font-semibold text-neutral-700">
+                      <td className="p-3 font-semibold text-neutral-500 whitespace-nowrap">{p.size}</td>
+                      <td className="p-3 font-mono font-semibold text-neutral-700 whitespace-nowrap">
                         L. {p.cost.toLocaleString()}
                       </td>
-                      <td className="p-3 font-mono font-bold text-neutral-900">
+                      <td className="p-3 font-mono font-bold text-neutral-900 whitespace-nowrap">
                         L. {p.pricePublic.toLocaleString()}
                       </td>
-                      <td className="p-3 font-mono font-bold text-emerald-600">
+                      <td className="p-3 font-mono font-bold text-emerald-600 whitespace-nowrap">
                         L. {p.pricePromotional.toLocaleString()}
                       </td>
                       <td className="p-3 text-center">
@@ -669,6 +670,67 @@ export default function Inventory() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile/Tablet Card View */}
+            <div className="lg:hidden space-y-3">
+              {parsedProducts.map((p, idx) => (
+                <div key={idx} className={`border rounded-xl p-4 ${p.matchStatus === 'exact_match' ? 'bg-emerald-50/20 border-emerald-100' : 'bg-white border-neutral-100 shadow-sm'}`}>
+                  <div className="flex justify-between items-start gap-3 mb-3">
+                    <div className="flex-1 overflow-hidden">
+                      <span className="block text-[10px] font-bold text-neutral-400 uppercase font-mono truncate">{p.brand}</span>
+                      <span className="font-bold text-neutral-900 text-sm block truncate">{p.name}</span>
+                      <span className="text-xs font-semibold text-neutral-500 mt-0.5 block">{p.size} • +{p.stock} Uds</span>
+                    </div>
+                  </div>
+
+                  <div className="mb-3">
+                    <select 
+                      value={p.matchStatus === 'exact_match' ? p.existingId : 'new'}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === 'new') {
+                          handleUpdateParsedStatus(idx, 'new', null);
+                        } else {
+                          handleUpdateParsedStatus(idx, 'exact_match', val);
+                        }
+                      }}
+                      className={`w-full truncate text-xs font-bold px-3 py-2.5 rounded-lg border outline-none ${
+                        p.matchStatus === 'exact_match' 
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+                          : 'bg-amber-50 border-amber-200 text-amber-800'
+                      }`}
+                    >
+                      <option value="new">+ Crear como Nuevo</option>
+                      <optgroup label="Unir a existente:">
+                        {products.map(prod => (
+                          <option key={prod.id} value={prod.id}>
+                            {prod.brand} - {prod.name} ({prod.size})
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
+                    <div className="text-[10px] text-neutral-500 mt-1 font-semibold">
+                      {p.matchStatus === 'exact_match' ? 'Actualizará stock y costo' : 'Creará nuevo producto'}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 bg-neutral-50/80 p-2.5 rounded-lg border border-neutral-100">
+                    <div>
+                      <span className="block text-[9px] font-bold text-neutral-400 uppercase">Costo</span>
+                      <span className="font-mono text-xs font-semibold text-neutral-700">L. {p.cost.toLocaleString()}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[9px] font-bold text-neutral-400 uppercase">Público</span>
+                      <span className="font-mono text-xs font-bold text-neutral-900">L. {p.pricePublic.toLocaleString()}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[9px] font-bold text-neutral-400 uppercase">VIP</span>
+                      <span className="font-mono text-xs font-bold text-emerald-600">L. {p.pricePromotional.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -697,72 +759,150 @@ export default function Inventory() {
           </div>
         </div>
 
-        <div className="overflow-x-auto border border-neutral-100 rounded-2xl bg-white">
+        <div className="border border-neutral-100 rounded-2xl bg-white shadow-sm overflow-hidden">
           {filteredProducts.length === 0 ? (
             <p className="text-xs text-neutral-400 text-center py-8">No se encontraron productos.</p>
           ) : (
-            <table className="w-full text-left text-xs divide-y divide-neutral-100">
-              <thead className="bg-neutral-50 text-neutral-500 font-bold">
-                <tr>
-                  <th className="p-3.5">Detalles</th>
-                  <th className="p-3.5">Tamaño</th>
-                  <th className="p-3.5">Categoría</th>
-                  {user?.role === 'owner' && <th className="p-3.5">Costo Unitario</th>}
-                  <th className="p-3.5">Público HNL</th>
-                  <th className="p-3.5">Promo HNL</th>
-                  <th className="p-3.5">Stock</th>
-                  <th className="p-3.5 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {filteredProducts.map((p) => {
-                  
-                  return (
-                    <tr key={p.id} className="hover:bg-neutral-50/50">
-                      <td className="p-3.5">
-                        <span className="block text-[9px] font-bold text-neutral-400 uppercase font-mono">{p.brand}</span>
-                        <span className="font-bold text-neutral-900 block mt-0.5">{p.name}</span>
-                        {p.barcode && <span className="text-[10px] text-neutral-400 font-mono">🔍 {p.barcode}</span>}
-                      </td>
-                      <td className="p-3.5 font-semibold text-neutral-600">{p.size}</td>
-                      <td className="p-3.5">
-                        <span className="inline-block bg-neutral-100 px-2 py-0.5 rounded text-neutral-700 font-semibold">{p.category}</span>
-                      </td>
-                      {user?.role === 'owner' && (
-                        <td className="p-3.5 font-mono font-semibold text-neutral-700">L. {p.cost.toLocaleString()}</td>
-                      )}
-                      <td className="p-3.5 font-mono font-bold text-neutral-900">L. {p.pricePublic.toLocaleString()}</td>
-                      <td className="p-3.5 font-mono font-bold text-emerald-600">L. {p.pricePromotional.toLocaleString()}</td>
-                      <td className="p-3.5">
-                        <span className={`px-2 py-0.5 rounded font-bold ${
-                          p.stock <= 0 
-                            ? 'bg-rose-50 text-rose-700 border border-rose-100' 
-                            : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                        }`}>
-                          {p.stock}
-                        </span>
-                      </td>
-                      <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+            <>
+              {/* Desktop View */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="w-full text-left text-xs divide-y divide-neutral-100">
+                  <thead className="bg-neutral-50 text-neutral-500 font-bold">
+                    <tr>
+                      <th className="p-3.5">Detalles</th>
+                      <th className="p-3.5">Tamaño</th>
+                      <th className="p-3.5">Categoría</th>
+                      {user?.role === 'owner' && <th className="p-3.5">Costo Unitario</th>}
+                      <th className="p-3.5">Público HNL</th>
+                      <th className="p-3.5">Promo HNL</th>
+                      <th className="p-3.5">Stock</th>
+                      <th className="p-3.5 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100">
+                    {filteredProducts.map((p) => {
+                      
+                      return (
+                        <tr key={p.id} className="hover:bg-neutral-50/50">
+                          <td className="p-3.5">
+                            <span className="block text-[9px] font-bold text-neutral-400 uppercase font-mono">{p.brand}</span>
+                            <span className="font-bold text-neutral-900 block mt-0.5">{p.name}</span>
+                            {p.barcode && <span className="text-[10px] text-neutral-400 font-mono">🔍 {p.barcode}</span>}
+                          </td>
+                          <td className="p-3.5 font-semibold text-neutral-600">{p.size}</td>
+                          <td className="p-3.5">
+                            <span className="inline-block bg-neutral-100 px-2 py-0.5 rounded text-neutral-700 font-semibold">{p.category}</span>
+                          </td>
+                          {user?.role === 'owner' && (
+                            <td className="p-3.5 font-mono font-semibold text-neutral-700">L. {p.cost.toLocaleString()}</td>
+                          )}
+                          <td className="p-3.5 font-mono font-bold text-neutral-900">L. {p.pricePublic.toLocaleString()}</td>
+                          <td className="p-3.5 font-mono font-bold text-emerald-600">L. {p.pricePromotional.toLocaleString()}</td>
+                          <td className="p-3.5">
+                            <span className={`px-2 py-0.5 rounded font-bold ${
+                              p.stock <= 0 
+                                ? 'bg-rose-50 text-rose-700 border border-rose-100' 
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                            }`}>
+                              {p.stock}
+                            </span>
+                          </td>
+                          <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+                            <button
+                              onClick={() => openEditModal(p)}
+                              className="p-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors cursor-pointer"
+                              title="Editar perfume"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(p.id, p.name)}
+                              className="p-1.5 text-neutral-400 hover:text-red-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                              title="Eliminar perfume"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile/Tablet Card View */}
+              <div className="lg:hidden flex flex-col divide-y divide-neutral-100">
+                {filteredProducts.map((p) => (
+                  <div key={p.id} className="p-4 hover:bg-neutral-50/50 flex flex-col gap-3">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-[10px] font-bold text-neutral-400 uppercase font-mono">{p.brand}</span>
+                          <span className="inline-block bg-neutral-100 px-1.5 py-0.5 rounded text-[9px] text-neutral-600 font-bold">{p.category}</span>
+                        </div>
+                        <span className="font-bold text-neutral-900 text-sm block">{p.name}</span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs font-semibold text-neutral-600">{p.size}</span>
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                            p.stock <= 0 
+                              ? 'bg-rose-50 text-rose-700 border border-rose-100' 
+                              : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                          }`}>
+                            {p.stock} en stock
+                          </span>
+                        </div>
+                        {p.barcode && <span className="text-[10px] text-neutral-400 font-mono mt-1 block">🔍 {p.barcode}</span>}
+                      </div>
+                      
+                      <div className="flex gap-1 flex-shrink-0">
                         <button
                           onClick={() => openEditModal(p)}
-                          className="p-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors cursor-pointer"
-                          title="Editar perfume"
+                          className="p-2 bg-neutral-100 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200 rounded-lg transition-colors cursor-pointer"
                         >
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(p.id, p.name)}
-                          className="p-1.5 text-neutral-400 hover:text-red-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                          title="Eliminar perfume"
+                          className="p-2 bg-rose-50 text-rose-500 hover:text-rose-700 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 bg-neutral-50/80 p-2.5 rounded-lg border border-neutral-100 mt-1">
+                      {user?.role === 'owner' ? (
+                        <>
+                          <div>
+                            <span className="block text-[9px] font-bold text-neutral-400 uppercase">Costo</span>
+                            <span className="font-mono text-xs font-semibold text-neutral-700">L. {p.cost.toLocaleString()}</span>
+                          </div>
+                          <div>
+                            <span className="block text-[9px] font-bold text-neutral-400 uppercase">Público</span>
+                            <span className="font-mono text-xs font-bold text-neutral-900">L. {p.pricePublic.toLocaleString()}</span>
+                          </div>
+                          <div>
+                            <span className="block text-[9px] font-bold text-neutral-400 uppercase">VIP</span>
+                            <span className="font-mono text-xs font-bold text-emerald-600">L. {p.pricePromotional.toLocaleString()}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="col-span-1">
+                            <span className="block text-[9px] font-bold text-neutral-400 uppercase">Público</span>
+                            <span className="font-mono text-xs font-bold text-neutral-900">L. {p.pricePublic.toLocaleString()}</span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="block text-[9px] font-bold text-neutral-400 uppercase">VIP</span>
+                            <span className="font-mono text-xs font-bold text-emerald-600">L. {p.pricePromotional.toLocaleString()}</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>
