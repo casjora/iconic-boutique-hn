@@ -37,7 +37,7 @@ Por favor, extrae de forma estructurada los productos del documento. Retorna un 
 Trata de extraer la mayor cantidad de información real posible de la factura del proveedor o lista de empaque, incluyendo cantidades (QTY), nombres, costos y códigos de barra reales.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-pro",
       contents: [
         {
           role: "user",
