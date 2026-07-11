@@ -7,13 +7,21 @@ const API_CONFIGS = [
   { apiKey: process.env.GEMINI_API_KEY, model: "gemini-3.1-flash-lite" }
 ];
 
-// Función auxiliar para decodificar texto de URL de forma segura sin arrojar URI malformed
-function safeDecodeURIComponent(str) {
+// Decodificador seguro que remueve caracteres de escape peligrosos
+// Decodificador seguro libre de advertencias de ESLint
+function cleanExtractedText(str) {
   try {
-    return decodeURIComponent(str);
-  } catch (e) {
-    // Si falla por caracteres mal formados (como % sin codificar), decodificamos usando unescape clásico
-    return unescape(str);
+    const decoded = decodeURIComponent(str);
+    return decoded
+      .replace(/\x60/g, "'")
+      .replace(/\\/g, "/")
+      .replace(/\p{Cc}/gu, ""); // Limpia caracteres de control de forma válida y estandarizada
+  } catch {
+    // Parámetro 'e' omitido limpiamente (Optional Catch Binding)
+    return unescape(str)
+      .replace(/\x60/g, "'")
+      .replace(/\\/g, "/")
+      .replace(/\p{Cc}/gu, "");
   }
 }
 
@@ -31,12 +39,12 @@ export default async function handler(req, res) {
     const cleanBase64 = pdfBase64.split(",")[1] || pdfBase64;
     const pdfBuffer = Buffer.from(cleanBase64, 'base64');
 
-    // 1. Decodificación del PDF controlando rechazos explícitos para evitar timeouts
+    // 1. Extracción y normalización del texto por páginas
     const pagesText = await new Promise((resolve, reject) => {
       const pdfParser = new PDFParser();
       
       pdfParser.on("pdfParser_dataError", errData => {
-        reject(new Error(errData?.parserError || "Error desconocido parseando el binario del PDF"));
+        reject(new Error(errData?.parserError || "Error decodificando el binario del PDF"));
       });
       
       pdfParser.on("pdfParser_dataReady", pdfData => {
@@ -44,12 +52,11 @@ export default async function handler(req, res) {
           const pages = pdfData.Pages.map(page => {
             return page.Texts.map(text => {
               if (!text || !text.R || !text.R[0]) return "";
-              return safeDecodeURIComponent(text.R[0].T);
+              return cleanExtractedText(text.R[0].T);
             }).join(' ');
           });
           resolve(pages);
         } catch (innerError) {
-          // Si algo falla dentro del mapeo, rechazamos la promesa para no colgar la ejecución
           reject(innerError);
         }
       });
@@ -57,19 +64,19 @@ export default async function handler(req, res) {
       pdfParser.parseBuffer(pdfBuffer);
     });
 
-    console.log(`PDF decodificado con éxito. Total de páginas detectadas: ${pagesText.length}`);
+    console.log(`PDF cargado. Páginas del documento: ${pagesText.length}`);
 
-    const prompt = `Analiza este extracto de texto que pertenece a una página específica de una factura de importación de perfumes.
-Extrae TODOS los artículos listados en esta sección sin omitir ninguna fila. No omitas registros por espacio o longitud.
-
-Campos obligatorios por cada objeto:
-- name: Nombre del perfume.
-- brand: Marca (ej. "Lacoste", "Dior").
-- size: Tamaño (ej. "3.3 oz", "100 ml").
-- unitPriceUSD: El precio unitario en dólares que aparece en la columna 'Price' (Número decimal).
-- stock: Cantidad de unidades listadas en la columna 'QTY' (Número entero).
-- category: Género ("Masculino", "Femenino" o "Unisex").
-- barcode: El código numérico de la columna 'UPC'. Si viene vacío o no tiene, coloca "".`;
+    // CORRECCIÓN AQUÍ: Prompt reescrito con comillas dobles estándar eliminando los backticks por completo
+    const prompt = "Analiza este extracto de texto de una factura de importación de perfumes.\n" +
+                   "Extrae TODOS los artículos listados en esta sección sin omitir ninguna fila.\n\n" +
+                   "Campos obligatorios por cada objeto:\n" +
+                   "- name: Nombre del perfume (sin usar comillas invertidas ni caracteres de escape).\n" +
+                   "- brand: Marca (ej. Lacoste, Dior).\n" +
+                   "- size: Tamaño (ej. 3.3 oz, 100 ml).\n" +
+                   "- unitPriceUSD: El precio unitario en dólares que aparece en la columna Price (Número decimal).\n" +
+                   "- stock: Cantidad de unidades de la columna QTY (Número entero).\n" +
+                   "- category: Género (Masculino, Femenino o Unisex).\n" +
+                   "- barcode: Código numérico de la columna UPC. Si viene vacío, con un string vacío.";
 
     const schema = {
       type: Type.ARRAY,
@@ -94,16 +101,16 @@ Campos obligatorios por cada objeto:
     
     let totalProductosExtraidos = [];
 
-    // 2. Procesamiento de páginas por lotes controlados
+    // 2. Procesamiento iterativo de páginas
     for (let i = 0; i < pagesText.length; i++) {
       const textoDeLaPagina = pagesText[i];
 
       if (!textoDeLaPagina.trim() || (!textoDeLaPagina.includes("QTY") && !textoDeLaPagina.includes("Price"))) {
-        console.log(`Página ${i + 1} saltada automáticamente (no contiene datos de productos).`);
+        console.log(`Página ${i + 1} omitida (sin estructura de tabla).`);
         continue;
       }
 
-      console.log(`Procesando página ${i + 1}/${pagesText.length} usando ${selectedModel}...`);
+      console.log(`Procesando página ${i + 1}/${pagesText.length} con ${selectedModel}...`);
 
       try {
         const response = await ai.models.generateContent({
@@ -113,7 +120,8 @@ Campos obligatorios por cada objeto:
               role: "user",
               parts: [
                 { text: prompt },
-                { text: `--- CONTENIDO TEXTUAL DE LA PÁGINA ${i + 1} ---\n${textoDeLaPagina}` }
+                // Evitamos template string aquí también concatenando de manera clásica e infalible
+                { text: "--- CONTENIDO PÁGINA " + (i + 1) + " ---\n" + textoDeLaPagina }
               ]
             }
           ],
@@ -124,32 +132,37 @@ Campos obligatorios por cada objeto:
           }
         });
 
-        const productosPagina = JSON.parse(response.text);
+        let cleanResponseText = response.text.trim();
+        if (cleanResponseText.startsWith("```")) {
+          cleanResponseText = cleanResponseText.replace(/^```json/, "").replace(/```$/, "").trim();
+        }
+
+        const productosPagina = JSON.parse(cleanResponseText);
         
         if (Array.isArray(productosPagina)) {
-          console.log(`-> Página ${i + 1}: Se extrajeron ${productosPagina.length} productos.`);
+          console.log(`-> Página ${i + 1}: Extraídos ${productosPagina.length} productos.`);
           totalProductosExtraidos = totalProductosExtraidos.concat(productosPagina);
         }
       } catch (pageError) {
-        console.error(`❌ Error al extraer datos de la página ${i + 1}:`, pageError.message || pageError);
+        console.error(`❌ Error parseando la página ${i + 1}:`, pageError.message || pageError);
       }
     }
 
-    // 3. PROCESAMIENTO MATEMÁTICO INTEGRAL (JAVASCRIPT)
-    console.log(`Unificación final lista. Procesando cálculos de mercado para ${totalProductosExtraidos.length} artículos...`);
+    // 3. PROCESAMIENTO MATEMÁTICO EN JAVASCRIPT (FÓRMULA HONDURAS)
+    console.log(`Mapeando cálculos de mercado para ${totalProductosExtraidos.length} artículos...`);
     
     const productosFinalizados = totalProductosExtraidos.map(p => {
-      const name = (p.name || 'Perfume Desconocido').trim();
+      const name = (p.name || 'Perfume Desconocido').replace(/["`]/g, "").trim();
       const brand = (p.brand || 'Marca Desconocida').trim();
       const size = (p.size || '100 ml').trim();
       const stock = Number(p.stock) || 1;
       const usdPrice = Number(p.unitPriceUSD) || 0;
 
-      // Aplicación estricta de la fórmula de costo para Honduras
+      // Cálculo de costo exacto en HNL
       let rawCostHNL = ((usdPrice * 1.05) + 5.5) * 27;
       const cost = Math.round(rawCostHNL / 5) * 5;
 
-      // Precios de venta sugeridos basados en redondeos comerciales
+      // Precios de venta sugeridos basados en el costo final
       const pricePublic = Math.round((cost + 550) / 10) * 10;
       const pricePromotional = Math.round((cost * 1.25) / 5) * 5;
 
@@ -174,11 +187,11 @@ Campos obligatorios por cada objeto:
         stock,
         category,
         barcode,
-        description: `Importado de factura original. Precio original de lista: $${usdPrice.toFixed(2)} USD.`
+        description: "Importado de factura original. Precio original: $" + usdPrice.toFixed(2) + " USD."
       };
     });
 
-    console.log(`¡Éxito absoluto! Entrega final lista: ${productosFinalizados.length} perfumes mapeados.`);
+    console.log(`Despliegue exitoso: ${productosFinalizados.length} listados.`);
     
     return res.status(200).json({
       success: true,
@@ -186,7 +199,7 @@ Campos obligatorios por cada objeto:
     });
 
   } catch (error) {
-    console.error('Error global en el handler de parsing:', error);
-    return res.status(500).json({ error: `Fallo general en el procesamiento del documento: ${error.message}` });
+    console.error('Error global:', error);
+    return res.status(500).json({ error: `Fallo general: ${error.message}` });
   }
 }
