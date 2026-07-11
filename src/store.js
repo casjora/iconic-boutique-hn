@@ -646,82 +646,26 @@ export const useStore = create((setOriginal, get) => {
   updateOrderStatus: async (id, status) => {
     set({ loading: true, error: null });
     try {
-      // 1. Get the current status before making changes to determine the transition
-      const { data: currentOrder, error: orderErr } = await supabase
-        .from('orders')
-        .select('status')
-        .eq('id', id)
-        .maybeSingle();
+      const response = await fetch('/api/update-order-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ id, status })
+      });
 
-      if (orderErr) throw orderErr;
-      const oldStatus = currentOrder ? currentOrder.status : 'pendiente';
-
-      // 2. Perform transitional stock adjustments
-      if (oldStatus !== 'entregado' && status === 'entregado') {
-        // Transition: Not delivered -> Delivered (deduct physical stock)
-        const { data: items } = await supabase
-          .from('order_items')
-          .select('product_id, quantity')
-          .eq('order_id', id);
-
-        if (items) {
-          for (const item of items) {
-            const { data: prod } = await supabase
-              .from('products')
-              .select('stock')
-              .eq('id', item.product_id)
-              .maybeSingle();
-
-            if (prod) {
-              const newStock = Math.max(0, Number(prod.stock || 0) - Number(item.quantity || 0));
-              await supabase
-                .from('products')
-                .update({ stock: newStock })
-                .eq('id', item.product_id);
-            }
-          }
-        }
-      } else if (oldStatus === 'entregado' && status !== 'entregado') {
-        // Transition: Delivered -> Not delivered (restore physical stock)
-        const { data: items } = await supabase
-          .from('order_items')
-          .select('product_id, quantity')
-          .eq('order_id', id);
-
-        if (items) {
-          for (const item of items) {
-            const { data: prod } = await supabase
-              .from('products')
-              .select('stock')
-              .eq('id', item.product_id)
-              .maybeSingle();
-
-            if (prod) {
-              const newStock = Number(prod.stock || 0) + Number(item.quantity || 0);
-              await supabase
-                .from('products')
-                .update({ stock: newStock })
-                .eq('id', item.product_id);
-            }
-          }
-        }
+      const resData = await response.json();
+      if (!response.ok || !resData.success) {
+        throw new Error(resData.error || 'Fallo al actualizar el estado de la orden');
       }
 
-      // 3. Update the order status in the DB
-      const { error } = await supabase
-        .from('orders')
-        .update({ status })
-        .eq('id', id);
-
-      if (error) throw error;
-
-      // 4. Update local orders state
+      // Update local orders state
       set((state) => ({
         orders: state.orders.map(o => o.id === id ? { ...o, status } : o),
         loading: false
       }));
 
-      // 5. Fetch updated data
+      // Fetch updated data
       await get().fetchProducts();
       await get().fetchOrders();
       return true;

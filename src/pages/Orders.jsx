@@ -29,7 +29,13 @@ export default function Orders() {
 
   const handleStatusChange = async (orderId, newStatus) => {
     if (confirm(`¿Estás seguro de cambiar el estado de la orden a: ${newStatus.toUpperCase()}?`)) {
-      await updateOrderStatus(orderId, newStatus);
+      const ok = await updateOrderStatus(orderId, newStatus);
+      if (ok) {
+        alert('¡Estado de la orden actualizado con éxito!');
+      } else {
+        const err = useStore.getState().error;
+        alert(`No se pudo actualizar el estado de la orden: ${err || 'Error desconocido'}`);
+      }
     }
   };
 
