@@ -17,9 +17,14 @@ export default defineConfig(() => {
     },
     build: {
       rollupOptions: {
+        // SOLUCIÓN AQUÍ: Excluye pdf2json del empaquetado del cliente para que Rollup no lea su AST
+        external: ['pdf2json'],
         output: {
           manualChunks(id) {
             if (id.includes('node_modules')) {
+              // Si de alguna manera llega aquí, evitamos procesarlo
+              if (id.includes('pdf2json')) return null;
+
               // Split heavy dependencies into smaller separate chunks
               if (id.includes('lucide-react')) return 'vendor-lucide';
               if (id.includes('@supabase')) return 'vendor-supabase';
