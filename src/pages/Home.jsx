@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Link } from 'react-router-dom';
 import { useStore } from '../store';
 import HondurasGuide from '../components/HondurasGuide';
@@ -63,8 +63,8 @@ export default function Home() {
           <div className="p-2.5 bg-neutral-900 text-white rounded-xl w-fit mb-4">
             <Percent className="h-5 w-5" />
           </div>
-          <h2 className="font-display font-bold text-neutral-900 text-base mb-1">Ofertas Exclusivas VIP</h2>
-          <p className="text-xs text-neutral-500">Los clientes mayoristas tienen acceso inmediato a precios promocionales con descuentos de hasta L. 600.</p>
+          <h2 className="font-display font-bold text-neutral-900 text-base mb-1">Precios Mayoristas VIP</h2>
+          <p className="text-xs text-neutral-500">Los clientes mayoristas tienen acceso inmediato a precios promocionales con importantes descuentos.</p>
         </div>
 
         <div className="bg-white border border-neutral-200 rounded-2xl p-5 hover:shadow-sm transition-shadow">

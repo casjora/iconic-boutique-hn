@@ -1,238 +1,240 @@
-import React, { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useStore } from '../store';
 import { generateBarcodeSVG } from '../utils/barcode';
-import { Printer, Tags, Grid, Eye, Check, Square, CheckSquare } from 'lucide-react';
+import { Printer, Tags, AlertCircle, RefreshCw } from 'lucide-react';
 
-export default function BarcodeLabels() {
-  const { products } = useStore();
-  const [selectedIds, setSelectedIds] = useState([]);
+export default function Barcodes() {
+  const { products, fetchProducts } = useStore();
 
-  const toggleSelect = (id) => {
-    setSelectedIds(prev => 
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
+  const [selectedProductId, setSelectedProductId] = useState('');
+  const [printQty, setPrintQty] = useState(1);
+  const [labelsToPrint, setLabelsToPrint] = useState([]);
+
+  // Compute products that have valid barcodes
+  const productsWithBarcodes = useMemo(() => {
+    return products.filter(p => !!p.barcode);
+  }, [products]);
+
+  const selectedProduct = useMemo(() => {
+    return productsWithBarcodes.find(p => p.id === selectedProductId);
+  }, [productsWithBarcodes, selectedProductId]);
+
+  const handleAddLabels = (e) => {
+    e.preventDefault();
+    if (!selectedProduct) return;
+
+    const newLabels = [];
+    for (let i = 0; i < Number(printQty); i++) {
+      newLabels.push({
+        ...selectedProduct,
+        labelId: `${selectedProduct.id}_${Date.now()}_${i}_${Math.random()}`
+      });
+    }
+
+    setLabelsToPrint((prev) => [...prev, ...newLabels]);
+    setPrintQty(1);
   };
 
-  const selectAll = () => {
-    if (selectedIds.length === products.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(products.map(p => p.id));
-    }
+  const handleClear = () => {
+    setLabelsToPrint([]);
   };
 
   const handlePrint = () => {
     window.print();
   };
 
-  const selectedProducts = products.filter(p => selectedIds.includes(p.id));
-
   return (
     <div className="space-y-6 fade-in-up">
       
-      {/* Print Instructions */}
-      <style>{`
-        @media print {
-          /* Hide non-printable elements completely */
-          header, footer, nav, .no-print {
-            display: none !important;
-          }
-          
-          /* Reset layout styles for printing */
-          body, html, #root {
-            background-color: white !important;
-            color: black !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            height: auto !important;
-            min-height: 0 !important;
-          }
-          
-          main {
-            max-width: none !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            width: 100% !important;
-            display: block !important;
-          }
-          
-          /* Ensure print area is shown */
-          #print-area {
-            display: block !important;
-            width: 100% !important;
-            position: relative !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          
-          .print-card {
-            width: 60mm;
-            height: 40mm;
-            padding: 3mm;
-            border: 1px solid #000;
-            margin: 0 auto !important;
-            display: flex !important;
-            flex-direction: column;
-            align-items: center;
-            justify-content: space-between;
-            page-break-after: always;
-            break-after: page;
-            page-break-inside: avoid;
-            break-inside: avoid;
-            background: white !important;
-            color: black !important;
-            box-sizing: border-box;
-          }
-        }
-        
-        @page {
-          size: 60mm 40mm;
-          margin: 0;
-        }
-      `}</style>
-
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 no-print">
+      {/* Title Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 no-print">
         <div>
-          <h2 className="font-display text-2xl font-bold text-neutral-900 tracking-tight">
-            Generador de Etiquetas con Código de Barra
+          <h2 className="font-display text-2xl font-black text-neutral-900 tracking-tight flex items-center gap-2">
+            <Tags className="h-6 w-6" /> Generador de Etiquetas y Códigos de Barra
           </h2>
-          <p className="text-xs text-neutral-500">
-            Imprime etiquetas térmicas de estantería (60x40mm) para tus perfumes con códigos escaneables y precios en Lempiras.
+          <p className="text-xs text-neutral-500 mt-1">
+            Diseña y genera plantillas de impresión térmica de 60mm x 40mm para tus perfumes importados en Honduras.
           </p>
         </div>
 
-        <button
-          onClick={handlePrint}
-          disabled={selectedIds.length === 0}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-neutral-900 px-5 py-2.5 text-xs font-bold text-white hover:bg-neutral-800 cursor-pointer disabled:opacity-40 shadow-sm transition-all"
-        >
-          <Printer className="h-4 w-4" />
-          Imprimir Etiquetas ({selectedIds.length})
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={fetchProducts}
+            className="p-2.5 bg-white hover:bg-neutral-50 text-neutral-700 border border-neutral-200 rounded-xl shadow-sm cursor-pointer transition-colors"
+            title="Recargar inventario"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
+
+          {labelsToPrint.length > 0 && (
+            <>
+              <button
+                onClick={handleClear}
+                className="px-3.5 py-2 border border-neutral-200 text-neutral-600 hover:bg-neutral-50 text-xs font-bold rounded-xl cursor-pointer"
+              >
+                Limpiar Hoja
+              </button>
+
+              <button
+                onClick={handlePrint}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-neutral-900 text-white text-xs font-bold rounded-xl cursor-pointer shadow hover:bg-neutral-800"
+              >
+                <Printer className="h-4 w-4" /> Imprimir Etiquetas ({labelsToPrint.length})
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3 no-print">
+      {/* Selector dashboard panel */}
+      <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-sm grid gap-6 md:grid-cols-3 no-print">
         
-        {/* Left column: Selection panel (Col span 2) */}
-        <div className="md:col-span-2 space-y-4">
-          <div className="bg-white rounded-3xl border border-neutral-200 overflow-hidden shadow-sm">
-            <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
-              <span className="text-xs font-bold text-neutral-700">Seleccionar Perfumes para Imprimir</span>
-              <button
-                onClick={selectAll}
-                className="text-xs text-neutral-600 hover:text-neutral-900 font-semibold flex items-center gap-1.5"
-              >
-                {selectedIds.length === products.length ? (
-                  <>
-                    <CheckSquare className="h-4 w-4" />
-                    Deseleccionar Todos
-                  </>
-                ) : (
-                  <>
-                    <Square className="h-4 w-4" />
-                    Seleccionar Todos ({products.length})
-                  </>
-                )}
-              </button>
-            </div>
+        {/* Step 1: Select a product */}
+        <form onSubmit={handleAddLabels} className="md:col-span-2 space-y-4">
+          <h3 className="font-display font-bold text-neutral-900 text-base border-b border-neutral-100 pb-2">
+            Paso 1: Agregar Perfumes a la Cola de Impresión
+          </h3>
 
-            <ul className="divide-y divide-neutral-100 text-xs">
-              {products.map(p => {
-                const isSelected = selectedIds.includes(p.id);
-                return (
-                  <li 
-                    key={p.id}
-                    onClick={() => toggleSelect(p.id)}
-                    className="p-4 flex items-center justify-between hover:bg-neutral-50/30 cursor-pointer transition-colors"
+          {productsWithBarcodes.length === 0 ? (
+            <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 flex items-start gap-2 text-xs text-amber-800">
+              <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <strong>No hay productos con Códigos de Barra cargados en tu inventario.</strong> <br />
+                Por favor, ve al módulo de <strong className="underline">Inventario</strong> y edita o agrega perfumes completando el campo Código de Barras / UPC.
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="sm:col-span-2">
+                <label htmlFor="select-product-barcode" className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2 block">
+                  Selecciona el Perfume
+                </label>
+                <select
+                  id="select-product-barcode"
+                  value={selectedProductId}
+                  onChange={(e) => setSelectedProductId(e.target.value)}
+                  className="block w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold text-neutral-700 outline-none focus:ring-2 focus:ring-neutral-900"
+                >
+                  <option value="">-- Seleccionar fragancia --</option>
+                  {productsWithBarcodes.map(p => (
+                    <option key={p.id} value={p.id}>
+                      [{p.brand}] {p.name} ({p.size}) - {p.barcode}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="label-quantity" className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2 block">
+                  Cantidad a imprimir
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    id="label-quantity"
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={printQty}
+                    onChange={(e) => setPrintQty(e.target.value)}
+                    className="block w-16 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-mono font-bold text-neutral-900 outline-none"
+                  />
+                  
+                  <button
+                    type="submit"
+                    disabled={!selectedProductId}
+                    className="flex-1 py-2 px-3.5 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className={`h-5 w-5 rounded border flex items-center justify-center transition-colors ${
-                        isSelected ? 'bg-neutral-900 border-neutral-900 text-white' : 'border-neutral-300'
-                      }`}>
-                        {isSelected && <Check className="h-3.5 w-3.5" />}
-                      </div>
-                      <div>
-                        <span className="block font-bold text-neutral-900">{p.name}</span>
-                        <span className="text-[10px] uppercase font-bold text-neutral-400 leading-none">{p.brand} ({p.size})</span>
-                      </div>
-                    </div>
-                    <div className="text-right font-mono">
-                      <span className="block text-xs font-bold text-neutral-800">L. {p.pricePublic.toLocaleString()}</span>
-                      <span className="block text-[10px] text-amber-600 font-bold">L. {p.pricePromotional.toLocaleString()} VIP</span>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+                    Agregar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </form>
+
+        {/* Selected preview panel */}
+        <div className="bg-neutral-50 border border-neutral-100 rounded-2xl p-4.5 space-y-3 flex flex-col justify-between">
+          <div>
+            <h4 className="font-display font-bold text-neutral-900 text-xs uppercase tracking-wider">Vista Previa de la Etiqueta</h4>
+            <p className="text-[10px] text-neutral-400 mt-1">Así lucirá el adhesivo final de tu perfume.</p>
           </div>
+
+          {selectedProduct ? (
+            <div className="border border-neutral-200 rounded-xl bg-white p-3 shadow-sm flex flex-col items-center justify-center space-y-1 scale-95 origin-center">
+              <span className="text-[10px] font-black uppercase font-mono text-neutral-400 leading-none tracking-widest">{selectedProduct.brand}</span>
+              <span className="text-xs font-bold text-neutral-900 text-center truncate w-full max-w-[180px]">{selectedProduct.name}</span>
+              <span className="text-[9px] font-bold text-neutral-500 leading-none">Cont. Neto: {selectedProduct.size}</span>
+              
+              {/* Actual barcode vector */}
+              <div 
+                className="w-full max-w-[180px] h-16"
+                dangerouslySetInnerHTML={{ __html: generateBarcodeSVG(selectedProduct.barcode) }}
+              />
+            </div>
+          ) : (
+            <div className="border border-dashed border-neutral-200 rounded-xl bg-white p-8 text-center text-[10px] text-neutral-400 font-medium">
+              Selecciona un perfume para visualizar la etiqueta.
+            </div>
+          )}
         </div>
 
-        {/* Right column: Label Template Preview */}
-        <div className="space-y-4">
-          <div className="bg-white rounded-3xl border border-neutral-200 p-6 shadow-sm">
-            <h3 className="font-display font-bold text-neutral-900 text-sm mb-3 flex items-center gap-1.5">
-              <Eye className="h-4 w-4 text-neutral-500" />
-              Vista Previa de Impresión
-            </h3>
-            <p className="text-xs text-neutral-500 leading-relaxed mb-4">
-              Usa hojas de etiquetas térmicas de 60x40mm. Al pulsar imprimir se formateará de forma automática para impresoras térmicas (Zebra, Munbyn, Xprinter).
-            </p>
+      </div>
 
-            {selectedProducts.length === 0 ? (
-              <div className="border border-dashed border-neutral-200 rounded-2xl p-8 text-center text-neutral-400 font-medium">
-                Selecciona al menos un perfume para ver el diseño de la etiqueta.
-              </div>
-            ) : (
-              <div className="space-y-4 bg-neutral-100 p-4 rounded-2xl overflow-y-auto max-h-96">
-                {selectedProducts.map(p => (
-                  <div key={p.id} className="mx-auto bg-white border border-neutral-300 p-3 flex flex-col items-center justify-between text-black rounded shadow-sm w-[60mm] h-[40mm]">
-                    <div className="w-full text-center">
-                      <span className="block text-[9px] uppercase font-bold tracking-tight text-neutral-500 leading-none">Brother's Perfumes</span>
-                      <span className="block text-[11px] font-black tracking-tight text-neutral-900 line-clamp-1">{p.name}</span>
-                      <span className="block text-[9px] text-neutral-400 font-bold leading-none uppercase font-mono">{p.brand} - {p.size}</span>
-                    </div>
+      {/* Printing Stage Sheet Board */}
+      <div className="space-y-4">
+        <h3 className="font-display font-bold text-neutral-900 text-base border-b border-neutral-100 pb-2 no-print">
+          Paso 2: Cola de Impresión Activa ({labelsToPrint.length} etiquetas)
+        </h3>
+
+        {labelsToPrint.length === 0 ? (
+          <div className="bg-white border border-dashed border-neutral-200 rounded-3xl p-16 text-center text-xs text-neutral-400 font-semibold no-print">
+            La cola de impresión se encuentra vacía. Agrega perfumes desde la barra superior.
+          </div>
+        ) : (
+          <div className="bg-neutral-100 border border-neutral-200 p-8 sm:p-12 rounded-3xl overflow-hidden shadow-inner no-print-bg">
+            
+            {/* Sheet format flex grid wrapper */}
+            <div className="flex flex-wrap gap-4 justify-center print-grid">
+              {labelsToPrint.map((label, idx) => {
+                
+                return (
+                  <div 
+                    key={label.labelId} 
+                    className="barcode-print bg-white p-4 border border-neutral-200 rounded-xl shadow-sm text-center flex flex-col items-center justify-between space-y-1 relative group w-[60mm] h-[40mm] shrink-0"
+                  >
                     
-                    {/* Real vector barcode */}
+                    {/* Delete hover pill */}
+                    <button
+                      onClick={() => setLabelsToPrint(prev => prev.filter(l => l.labelId !== label.labelId))}
+                      className="absolute top-1 right-1 p-1 bg-rose-600 text-white hover:bg-rose-700 rounded-full text-[9px] font-black w-4 h-4 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity no-print"
+                      title="Eliminar de la cola"
+                    >
+                      ×
+                    </button>
+
+                    <div className="text-center w-full">
+                      <span className="block text-[8px] font-black uppercase tracking-wider text-neutral-400 leading-none font-mono">{label.brand}</span>
+                      <span className="block text-xs font-extrabold text-neutral-900 leading-tight truncate px-2 mt-0.5">{label.name}</span>
+                      <span className="block text-[8px] font-bold text-neutral-500 leading-none mt-0.5">CONT: {label.size} | HN</span>
+                    </div>
+
                     <div 
-                      className="w-full h-14 overflow-hidden"
-                      dangerouslySetInnerHTML={{ __html: generateBarcodeSVG(p.barcode) }}
+                      className="w-full max-w-[160px] h-12 flex items-center justify-center overflow-hidden"
+                      dangerouslySetInnerHTML={{ __html: generateBarcodeSVG(label.barcode) }}
                     />
 
-                    <div className="w-full flex justify-between items-center px-1 font-mono text-[9px] border-t border-neutral-100 pt-1">
-                      <span>Púb: <strong>L.{p.pricePublic.toLocaleString()}</strong></span>
-                      <span className="text-amber-700">VIP: <strong>L.{p.pricePromotional.toLocaleString()}</strong></span>
+                    <div className="text-[8px] font-mono font-semibold text-neutral-400 leading-none border-t border-neutral-100 pt-1 w-full flex justify-between px-2">
+                      <span># {idx + 1}</span>
+                      <span>ICONIC BOUTIQUE HN</span>
                     </div>
+
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-      </div>
-
-      {/* Actual Hidden Area targeted by print media stylesheet */}
-      <div id="print-area" className="hidden print:block">
-        {selectedProducts.map(p => (
-          <div key={p.id} className="print-card">
-            <div style={{ textAlign: 'center', width: '100%' }}>
-              <span style={{ display: 'block', fontSize: '8px', textTransform: 'uppercase', fontWeight: 'bold', color: '#555', letterSpacing: '1px', lineHeight: '1' }}>Brother's Perfumes</span>
-              <span style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#000', margin: '1px 0' }}>{p.name}</span>
-              <span style={{ display: 'block', fontSize: '8px', color: '#444', textTransform: 'uppercase', fontFamily: 'monospace' }}>{p.brand} - {p.size}</span>
+                );
+              })}
             </div>
-            
-            <div 
-              style={{ width: '100%', height: '55px', overflow: 'hidden' }}
-              dangerouslySetInnerHTML={{ __html: generateBarcodeSVG(p.barcode) }}
-            />
 
-            <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', fontFamily: 'monospace', fontSize: '9px', borderTop: '1px solid #ddd', paddingTop: '2px' }}>
-              <span>Púb: <strong>L.{p.pricePublic.toLocaleString()}</strong></span>
-              <span>VIP: <strong>L.{p.pricePromotional.toLocaleString()}</strong></span>
-            </div>
           </div>
-        ))}
+        )}
       </div>
 
     </div>

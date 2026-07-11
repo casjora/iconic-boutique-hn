@@ -67,7 +67,6 @@ export function generateBarcodeSVG(text) {
   for (let i = 0; i < binaryString.length; i++) {
     const char = binaryString[i];
     if (char === "1" || char === "2") {
-      const isThick = char === "2" ? barWidth : barWidth; // standard width
       svgContent += `<rect x="${x}" y="5" width="${barWidth}" height="${height}" fill="#000000" />`;
     }
     x += barWidth;

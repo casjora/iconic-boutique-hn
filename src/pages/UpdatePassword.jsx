@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import { useNavigate } from 'react-router-dom';
 import { Lock, ArrowRight, Loader2, KeyRound } from 'lucide-react';
@@ -13,7 +13,7 @@ export default function UpdatePassword() {
   // In Supabase Auth, when clicking the reset password link, the user is automatically logged in 
   // via a recovery session if the hash is valid, so we can just update the user's password.
   useEffect(() => {
-    supabase.auth.onAuthStateChange((event, session) => {
+    supabase.auth.onAuthStateChange((event, _session) => {
       if (event === 'PASSWORD_RECOVERY') {
         console.log('Password recovery session established.');
       }

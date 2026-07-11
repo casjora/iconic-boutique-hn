@@ -313,7 +313,7 @@ app.delete('/api/products/:id', (req, res) => {
 
 // PDF Parsing with Gemini
 app.post('/api/products/upload-pdf', async (req, res) => {
-  const { pdfBase64, fileName } = req.body;
+  const { pdfBase64 } = req.body;
 
   if (!pdfBase64) {
     return res.status(400).json({ error: 'Se requiere el contenido del archivo PDF en formato Base64' });
@@ -333,7 +333,7 @@ Por favor, extrae de forma estructurada los productos del documento. Retorna un 
 - name: Nombre del perfume (ej. "Sauvage EDP").
 - brand: Marca (ej. "Dior").
 - size: Tamaño con unidad de medida (ej. "100 ml", "3.4 oz", "50 ml").
-- cost: Costo unitario de compra (número entero en HNL calculado con la fórmula: ((Precio_USD * 1.05) + 5.5) * 27 aproximado al 5 más cercano). Si no se detalla en el documento, estima un costo razonable de importación en HNL (ej. entre L. 400 y L. 1,500).
+- cost: Costo unitario de compra (número entero en HNL calculated con la fórmula: ((Precio_USD * 1.05) + 5.5) * 27 aproximado al 5 más cercano). Si no se detalla en el documento, estima un costo razonable de importación en HNL (ej. entre L. 400 y L. 1,500).
 - pricePublic: Precio de venta sugerido al detalle / público en general en HNL (calcula aplicando un margen de ganancia sobre el costo, ej. sumando L. 400 a L. 800 sobre el costo, aproximado al 5 o 10 más cercano).
 - pricePromotional: Precio de venta de mayoreo / VIP para distribuidores en HNL (debe ser mayor que el costo pero menor que el precio de detalle, sumando alrededor de un 20% a 30% de margen sobre el costo, aproximado al 5 o 10 más cercano).
 - stock: Cantidad de unidades de este producto según la factura (QTY). Si no se especifica, usa 1 por defecto.
@@ -650,7 +650,7 @@ app.put('/api/orders/:id', (req, res) => {
     } else if (prevStatus === 'cancelado' && status !== 'cancelado') {
       // Deduct stock again
       order.items.forEach(item => {
-        const product = db.products.find(p => p.id === item.productId);
+        const product = db.products.find(p => p.id === item.quantity);
         if (product) {
           product.stock = Math.max(0, product.stock - item.quantity);
         }

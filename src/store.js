@@ -3,25 +3,39 @@ import { supabase } from './utils/supabase';
 import { isProductSet } from './utils/productHelper';
 
 // Helper to map DB products (snake_case) to Frontend products (camelCase)
-const mapProductFromDb = (p) => ({
-  id: p.id,
-  name: p.name,
-  brand: p.brand,
-  size: p.size,
-  cost: Number(p.cost || 0),
-  pricePublic: Number(p.price_public || 0),
-  pricePromotional: Number(p.price_promotional || 0),
-  stock: Number(p.stock || 0),
-  category: p.category,
-  barcode: p.barcode || '',
-  description: p.description || '',
-  image_url: p.image_url || ''
-});
+const mapProductFromDb = (p) => {
+  let uiCategory = 'Damas';
+  if (p.category === 'Masculino') uiCategory = 'Caballeros';
+  else if (p.category === 'Unisex') uiCategory = 'Unisex';
+  else if (p.category === 'Femenino') uiCategory = 'Damas';
+
+  return {
+    id: p.id,
+    name: p.name,
+    brand: p.brand,
+    size: p.size,
+    cost: Number(p.cost || 0),
+    pricePublic: Number(p.price_public || 0),
+    pricePromotional: Number(p.price_promotional || 0),
+    stock: Number(p.stock || 0),
+    category: uiCategory,
+    barcode: p.barcode || '',
+    description: p.description || '',
+    image_url: p.image_url || ''
+  };
+};
 
 // Helper to map Frontend products to DB products
 const mapProductToDb = (p) => {
   const generatedId = p.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'prod_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36));
-  return {
+  const generatedBarcode = p.barcode || Math.floor(1000000000000 + Math.random() * 9000000000000).toString();
+  
+  let dbCategory = 'Femenino';
+  if (p.category === 'Caballeros' || p.category === 'Masculino' || p.category === 'Niños') dbCategory = 'Masculino';
+  else if (p.category === 'Unisex') dbCategory = 'Unisex';
+  else if (p.category === 'Damas' || p.category === 'Femenino') dbCategory = 'Femenino';
+
+  const dbRecord = {
     id: generatedId,
     name: p.name,
     brand: p.brand,
@@ -30,11 +44,13 @@ const mapProductToDb = (p) => {
     price_public: Number(p.pricePublic || 0),
     price_promotional: Number(p.pricePromotional || 0),
     stock: Number(p.stock || 0),
-    category: p.category,
-    barcode: p.barcode || null,
+    category: dbCategory,
+    barcode: generatedBarcode,
     description: p.description || '',
     image_url: p.image_url || ''
   };
+  
+  return dbRecord;
 };
 
 export const useStore = create((set, get) => ({
@@ -53,7 +69,16 @@ export const useStore = create((set, get) => ({
   brandFilter: 'Todas',
 
   setView: (view) => set({ currentView: view, error: null }),
-  setError: (err) => set({ error: err }),
+  setError: (err) => {
+    set({ error: err });
+    if (err) {
+      setTimeout(() => {
+        if (get().error === err) {
+          set({ error: null });
+        }
+      }, 20000);
+    }
+  },
 
   restoreSession: async () => {
     set({ checkingSession: true });
@@ -79,12 +104,15 @@ export const useStore = create((set, get) => ({
 
       const email = session.user.email || '';
       const id = email.includes('@iconicboutique.hn') ? email.split('@')[0] : email;
+      const emailConfirmed = !!(session.user.email_confirmed_at || session.user.confirmed_at || email.endsWith('@iconicboutique.hn'));
 
       const loggedUser = {
         id: id.toLowerCase().trim(),
         name: profile.name,
         role: mappedRole,
-        uid: session.user.id
+        uid: session.user.id,
+        email,
+        emailConfirmed
       };
 
       set({ user: loggedUser, checkingSession: false });
@@ -128,11 +156,16 @@ export const useStore = create((set, get) => ({
       if (profile.role === 'dueño' || profile.role === 'owner') mappedRole = 'owner';
       else if (profile.role === 'vendedor') mappedRole = 'vendedor';
 
+      const userEmail = data.user.email || '';
+      const emailConfirmed = !!(data.user.email_confirmed_at || data.user.confirmed_at || userEmail.endsWith('@iconicboutique.hn'));
+
       const loggedUser = {
         id: id.toLowerCase().trim(),
         name: profile.name,
         role: mappedRole,
-        uid: data.user.id
+        uid: data.user.id,
+        email: userEmail,
+        emailConfirmed
       };
 
       set({ user: loggedUser, currentView: 'catalog', loading: false });
@@ -198,15 +231,39 @@ export const useStore = create((set, get) => ({
         else if (profile.role === 'vendedor') mappedRole = 'vendedor';
       }
 
+      const userEmail = data.user.email || '';
+      const emailConfirmed = !!(data.user.email_confirmed_at || data.user.confirmed_at || userEmail.endsWith('@iconicboutique.hn'));
+
       const registeredUser = {
         id: id.toLowerCase().trim(),
         name,
         role: mappedRole,
-        uid: data.user.id
+        uid: data.user.id,
+        email: userEmail,
+        emailConfirmed
       };
 
       set({ user: registeredUser, currentView: 'catalog', loading: false });
       await get().fetchFavorites();
+      return true;
+    } catch (err) {
+      set({ error: err.message, loading: false });
+      return false;
+    }
+  },
+
+  resendVerification: async (email) => {
+    set({ loading: true, error: null });
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`
+        }
+      });
+      if (error) throw error;
+      set({ loading: false });
       return true;
     } catch (err) {
       set({ error: err.message, loading: false });
@@ -249,6 +306,42 @@ export const useStore = create((set, get) => ({
   },
 
   // Products operations
+  saveProductsBulk: async (inserts, updates) => {
+    set({ loading: true, error: null });
+    let countNew = 0;
+    let countUpdated = 0;
+    try {
+      if (inserts && inserts.length > 0) {
+        const dbInserts = inserts.map(mapProductToDb);
+        const { error: insErr } = await supabase.from('products').insert(dbInserts);
+        if (insErr) throw insErr;
+        countNew = inserts.length;
+      }
+      
+      if (updates && updates.length > 0) {
+        const dbUpdates = updates.map(u => {
+          // u is { id, ...changes }
+          // Need to fetch original product to merge? No, store has it or caller provides full product?
+          // The caller will provide { id, stock, cost, ... } so we just map to DB keys.
+          return {
+            id: u.id,
+            ...(u.stock !== undefined && { stock: Number(u.stock) }),
+            ...(u.cost !== undefined && { cost: Number(u.cost) })
+          };
+        });
+        const { error: updErr } = await supabase.from('products').upsert(dbUpdates);
+        if (updErr) throw updErr;
+        countUpdated = updates.length;
+      }
+
+      await get().fetchProducts();
+      return { success: true, countNew, countUpdated };
+    } catch (err) {
+      set({ error: err.message, loading: false });
+      return { success: false, error: err.message };
+    }
+  },
+
   fetchProducts: async () => {
     set({ loading: true, error: null });
     try {
@@ -273,7 +366,7 @@ export const useStore = create((set, get) => ({
       
       const { data, error } = await supabase
         .from('products')
-        .upsert(dbProduct)
+        .insert([dbProduct])
         .select()
         .single();
 
@@ -413,7 +506,7 @@ export const useStore = create((set, get) => ({
 
   submitOrder: async (clientName, clientPhone) => {
     set({ loading: true, error: null });
-    const { cart, user, products } = get();
+    const { cart, user } = get();
     if (!cart.length) {
       set({ error: 'El carrito está vacío', loading: false });
       return null;
@@ -421,10 +514,11 @@ export const useStore = create((set, get) => ({
 
     const isClient = user?.role === 'client';
     const isVendedor = user?.role === 'vendedor' || user?.role === 'owner';
+    const hasVipPrice = !!user;
     const roleUsed = isClient ? 'usuario' : (isVendedor ? (user?.role === 'owner' ? 'dueño' : 'vendedor') : 'publico');
 
     const total = cart.reduce((acc, curr) => {
-      const price = isClient ? curr.product.pricePromotional : curr.product.pricePublic;
+      const price = hasVipPrice ? curr.product.pricePromotional : curr.product.pricePublic;
       return acc + (price * curr.quantity);
     }, 0);
 
@@ -456,7 +550,7 @@ export const useStore = create((set, get) => ({
         order_id: orderId,
         product_id: item.product.id,
         quantity: item.quantity,
-        price_paid: isClient ? item.product.pricePromotional : item.product.pricePublic
+        price_paid: hasVipPrice ? item.product.pricePromotional : item.product.pricePublic
       }));
 
       const { error: itemsErr } = await supabase
@@ -492,7 +586,7 @@ export const useStore = create((set, get) => ({
           brand: item.product.brand,
           size: item.product.size,
           quantity: item.quantity,
-          pricePaid: isClient ? item.product.pricePromotional : item.product.pricePublic
+          pricePaid: hasVipPrice ? item.product.pricePromotional : item.product.pricePublic
         }))
       };
 
@@ -519,7 +613,7 @@ export const useStore = create((set, get) => ({
             `👤 *Cliente:* ${orderCreated.clientName}\n` +
             `📞 *Teléfono:* ${phoneLink}\n` +
             `🕒 *Fecha:* ${orderCreated.date}\n` +
-            `💼 *Precios:* ${orderCreated.roleUsed === 'client' ? 'Promocional de Cliente VIP' : 'Público General'}\n` +
+            `💼 *Precios:* ${hasVipPrice ? 'Promocional de Cliente VIP / Mayorista' : 'Público General'}\n` +
             `📍 *Orden ID:* \`${orderCreated.id}\`\n\n` +
             `📦 *Detalle de Perfumes:*\n${itemsText}\n\n` +
             `💵 *TOTAL COTIZADO:* *L. ${orderCreated.total.toLocaleString()} HNL*\n\n` +
@@ -619,6 +713,97 @@ export const useStore = create((set, get) => ({
 
       await get().fetchOrders();
       await get().fetchProducts();
+      return true;
+    } catch (err) {
+      set({ error: err.message, loading: false });
+      return false;
+    }
+  },
+
+  updateOrder: async (orderId, clientName, clientPhone, newItems) => {
+    set({ loading: true, error: null });
+    try {
+      // 1. Get old items to restore stock
+      const { data: oldItems, error: oldItemsErr } = await supabase
+        .from('order_items')
+        .select('product_id, quantity')
+        .eq('order_id', orderId);
+
+      if (oldItemsErr) throw oldItemsErr;
+
+      // Restore stock
+      if (oldItems) {
+        for (const oldItem of oldItems) {
+          const { data: prod } = await supabase
+            .from('products')
+            .select('stock')
+            .eq('id', oldItem.product_id)
+            .maybeSingle();
+          if (prod) {
+            await supabase
+              .from('products')
+              .update({ stock: Number(prod.stock || 0) + Number(oldItem.quantity) })
+              .eq('id', oldItem.product_id);
+          }
+        }
+      }
+
+      // 2. Delete old order items
+      const { error: deleteErr } = await supabase
+        .from('order_items')
+        .delete()
+        .eq('order_id', orderId);
+
+      if (deleteErr) throw deleteErr;
+
+      // 3. Insert new order items
+      const total = newItems.reduce((acc, curr) => acc + (curr.pricePaid * curr.quantity), 0);
+
+      const itemsToInsert = newItems.map(item => ({
+        order_id: orderId,
+        product_id: item.productId,
+        quantity: item.quantity,
+        price_paid: item.pricePaid
+      }));
+
+      const { error: insertErr } = await supabase
+        .from('order_items')
+        .insert(itemsToInsert);
+
+      if (insertErr) throw insertErr;
+
+      // 4. Deduct stock for new items
+      for (const item of newItems) {
+        const { data: prod } = await supabase
+          .from('products')
+          .select('stock')
+          .eq('id', item.productId)
+          .maybeSingle();
+        if (prod) {
+          const newStock = Math.max(0, Number(prod.stock || 0) - Number(item.quantity));
+          await supabase
+            .from('products')
+            .update({ stock: newStock })
+            .eq('id', item.productId);
+        }
+      }
+
+      // 5. Update parent order details
+      const { error: orderUpdateErr } = await supabase
+        .from('orders')
+        .update({
+          client_name: clientName,
+          client_phone: clientPhone,
+          total: total
+        })
+        .eq('id', orderId);
+
+      if (orderUpdateErr) throw orderUpdateErr;
+
+      // Reload lists
+      await get().fetchOrders();
+      await get().fetchProducts();
+      set({ loading: false });
       return true;
     } catch (err) {
       set({ error: err.message, loading: false });
@@ -750,7 +935,7 @@ export const useStore = create((set, get) => ({
       try {
         const guestFavs = JSON.parse(localStorage.getItem('iconic_favorites_guest') || '[]');
         set({ favorites: guestFavs });
-      } catch (e) {
+      } catch {
         set({ favorites: [] });
       }
       return;
@@ -770,7 +955,7 @@ export const useStore = create((set, get) => ({
       try {
         const guestFavs = JSON.parse(localStorage.getItem('iconic_favorites_guest') || '[]');
         set({ favorites: guestFavs });
-      } catch (e) {
+      } catch {
         set({ favorites: [] });
       }
     }
