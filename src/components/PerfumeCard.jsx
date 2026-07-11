@@ -9,7 +9,8 @@ export default function PerfumeCard({ product }) {
 
   const isFav = favorites.includes(product.id);
   const hasVipPrice = !!user;
-  const outOfStock = product.stock <= 0;
+  const targetStock = product.availableStock !== undefined ? product.availableStock : product.stock;
+  const outOfStock = targetStock <= 0;
 
   // Price calculations
   const isSet = isProductSet(product);
@@ -34,7 +35,7 @@ export default function PerfumeCard({ product }) {
 
   const handleIncrease = (e) => {
     e.preventDefault();
-    if (quantityInCart < product.stock) {
+    if (quantityInCart < targetStock) {
       updateCartQuantity(product.id, quantityInCart + 1);
     }
   };
@@ -157,9 +158,9 @@ export default function PerfumeCard({ product }) {
               </span>
               <button
                 onClick={handleIncrease}
-                disabled={quantityInCart >= product.stock}
+                disabled={quantityInCart >= targetStock}
                 className={`w-10 h-8 flex items-center justify-center font-bold text-neutral-500 hover:text-neutral-900 cursor-pointer active:scale-95 transition-all text-sm ${
-                  quantityInCart >= product.stock ? 'opacity-30 cursor-not-allowed' : ''
+                  quantityInCart >= targetStock ? 'opacity-30 cursor-not-allowed' : ''
                 }`}
               >
                 +

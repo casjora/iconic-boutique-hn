@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { supabase } from './utils/supabase';
-import { isProductSet } from './utils/productHelper';
 
 // Helper to map DB products (snake_case) to Frontend products (camelCase)
 const mapProductFromDb = (p) => {
@@ -53,13 +52,45 @@ const mapProductToDb = (p) => {
   return dbRecord;
 };
 
-export const useStore = create((set, get) => ({
-  user: null,
-  checkingSession: true,
-  products: [],
-  orders: [],
-  cart: [],
-  favorites: [],
+export const useStore = create((setOriginal, get) => {
+  const set = (updater) => {
+    setOriginal((state) => {
+      const nextState = typeof updater === 'function' ? updater(state) : updater;
+      let newProducts = nextState.products !== undefined ? nextState.products : state.products;
+      let newOrders = nextState.orders !== undefined ? nextState.orders : state.orders;
+      
+      if (nextState.products !== undefined || nextState.orders !== undefined) {
+        const pendingOrders = (newOrders || []).filter(o => o.status === 'pendiente');
+        newProducts = newProducts.map(p => {
+          let pendingQty = 0;
+          for (const order of pendingOrders) {
+            for (const item of order.items || []) {
+              if (item.productId === p.id) {
+                pendingQty += Number(item.quantity || 0);
+              }
+            }
+          }
+          return {
+            ...p,
+            availableStock: Math.max(0, p.stock - pendingQty)
+          };
+        });
+        return {
+          ...nextState,
+          products: newProducts
+        };
+      }
+      return nextState;
+    });
+  };
+
+  return {
+    user: null,
+    checkingSession: true,
+    products: [],
+    orders: [],
+    cart: [],
+    favorites: [],
   telegramConfig: { token: '', chatId: '', active: false },
   currentView: 'home',
   loading: false,
@@ -559,17 +590,12 @@ export const useStore = create((set, get) => ({
 
       if (itemsErr) throw itemsErr;
 
-      // 3. Deduct stock for each product in the cart
-      for (const item of cart) {
-        const newStock = Math.max(0, item.product.stock - item.quantity);
-        await supabase
-          .from('products')
-          .update({ stock: newStock })
-          .eq('id', item.product.id);
-      }
+      // 3. No physical stock deduction is done on checkout (status: pendiente).
+      // Availability is calculated dynamically based on products.stock minus pending orders.
 
-      // 4. Fetch updated products to refresh store state
+      // 4. Fetch updated products and orders to refresh store state
       await get().fetchProducts();
+      await get().fetchOrders();
 
       const orderCreated = {
         id: orderId,
@@ -590,53 +616,23 @@ export const useStore = create((set, get) => ({
         }))
       };
 
-      // 5. Send Telegram notification directly from the client side
+      // 5. Send Telegram notification via secure server-side API
       try {
-        const config = get().telegramConfig;
-        if (config && config.active && config.token && config.chatId) {
-          const itemsText = orderCreated.items
-            .map(i => {
-              const prefix = isProductSet(i) ? '🎁 [SET] ' : '';
-              return `• *${i.quantity}x ${prefix}${i.brand} ${i.name} (${i.size})* - L. ${i.pricePaid.toLocaleString()} c/u`;
-            })
-            .join('\n');
-
-          let cleanedPhone = (orderCreated.clientPhone || '').replace(/\D/g, '');
-          if (cleanedPhone.length === 8) {
-            cleanedPhone = '504' + cleanedPhone;
-          }
-          const phoneLink = cleanedPhone 
-            ? `[${orderCreated.clientPhone}](https://wa.me/${cleanedPhone})`
-            : (orderCreated.clientPhone || 'Desconocido');
-
-          const text = `🔔 *NUEVA ORDEN DE COMPRA RECIBIDA* 🔔\n\n` +
-            `👤 *Cliente:* ${orderCreated.clientName}\n` +
-            `📞 *Teléfono:* ${phoneLink}\n` +
-            `🕒 *Fecha:* ${orderCreated.date}\n` +
-            `💼 *Precios:* ${hasVipPrice ? 'Promocional de Cliente VIP / Mayorista' : 'Público General'}\n` +
-            `📍 *Orden ID:* \`${orderCreated.id}\`\n\n` +
-            `📦 *Detalle de Perfumes:*\n${itemsText}\n\n` +
-            `💵 *TOTAL COTIZADO:* *L. ${orderCreated.total.toLocaleString()} HNL*\n\n` +
-            `⚠️ *Nota:* La facturación es manual. Por favor, contactar al cliente por teléfono o WhatsApp para coordinar pago y entrega.`;
-
-          const url = `https://api.telegram.org/bot${config.token}/sendMessage`;
-          await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: config.chatId,
-              text: text,
-              parse_mode: 'Markdown'
-            })
-          });
-        }
+        await fetch('/api/send-telegram', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            order: orderCreated,
+            hasVipPrice
+          })
+        });
       } catch (tgErr) {
-        console.error('Error sending TG notification', tgErr);
+        console.error('Error sending TG notification via backend', tgErr);
       }
 
       set((state) => ({
         cart: [],
-        orders: [orderCreated, ...state.orders],
+        orders: [orderCreated, ...state.orders.filter(o => o.id !== orderId)],
         loading: false
       }));
 
@@ -650,8 +646,19 @@ export const useStore = create((set, get) => ({
   updateOrderStatus: async (id, status) => {
     set({ loading: true, error: null });
     try {
-      // If cancelling, return items to stock
-      if (status === 'cancelado') {
+      // 1. Get the current status before making changes to determine the transition
+      const { data: currentOrder, error: orderErr } = await supabase
+        .from('orders')
+        .select('status')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (orderErr) throw orderErr;
+      const oldStatus = currentOrder ? currentOrder.status : 'pendiente';
+
+      // 2. Perform transitional stock adjustments
+      if (oldStatus !== 'entregado' && status === 'entregado') {
+        // Transition: Not delivered -> Delivered (deduct physical stock)
         const { data: items } = await supabase
           .from('order_items')
           .select('product_id, quantity')
@@ -666,15 +673,41 @@ export const useStore = create((set, get) => ({
               .maybeSingle();
 
             if (prod) {
+              const newStock = Math.max(0, Number(prod.stock || 0) - Number(item.quantity || 0));
               await supabase
                 .from('products')
-                .update({ stock: Number(prod.stock || 0) + Number(item.quantity) })
+                .update({ stock: newStock })
+                .eq('id', item.product_id);
+            }
+          }
+        }
+      } else if (oldStatus === 'entregado' && status !== 'entregado') {
+        // Transition: Delivered -> Not delivered (restore physical stock)
+        const { data: items } = await supabase
+          .from('order_items')
+          .select('product_id, quantity')
+          .eq('order_id', id);
+
+        if (items) {
+          for (const item of items) {
+            const { data: prod } = await supabase
+              .from('products')
+              .select('stock')
+              .eq('id', item.product_id)
+              .maybeSingle();
+
+            if (prod) {
+              const newStock = Number(prod.stock || 0) + Number(item.quantity || 0);
+              await supabase
+                .from('products')
+                .update({ stock: newStock })
                 .eq('id', item.product_id);
             }
           }
         }
       }
 
+      // 3. Update the order status in the DB
       const { error } = await supabase
         .from('orders')
         .update({ status })
@@ -682,12 +715,15 @@ export const useStore = create((set, get) => ({
 
       if (error) throw error;
 
+      // 4. Update local orders state
       set((state) => ({
         orders: state.orders.map(o => o.id === id ? { ...o, status } : o),
         loading: false
       }));
 
+      // 5. Fetch updated data
       await get().fetchProducts();
+      await get().fetchOrders();
       return true;
     } catch (err) {
       set({ error: err.message, loading: false });
@@ -723,27 +759,38 @@ export const useStore = create((set, get) => ({
   updateOrder: async (orderId, clientName, clientPhone, newItems) => {
     set({ loading: true, error: null });
     try {
-      // 1. Get old items to restore stock
-      const { data: oldItems, error: oldItemsErr } = await supabase
-        .from('order_items')
-        .select('product_id, quantity')
-        .eq('order_id', orderId);
+      // Get the order status to see if it is delivered or pending
+      const { data: orderData, error: orderDataErr } = await supabase
+        .from('orders')
+        .select('status')
+        .eq('id', orderId)
+        .maybeSingle();
 
-      if (oldItemsErr) throw oldItemsErr;
+      if (orderDataErr) throw orderDataErr;
+      const isDelivered = orderData && orderData.status === 'entregado';
 
-      // Restore stock
-      if (oldItems) {
-        for (const oldItem of oldItems) {
-          const { data: prod } = await supabase
-            .from('products')
-            .select('stock')
-            .eq('id', oldItem.product_id)
-            .maybeSingle();
-          if (prod) {
-            await supabase
+      // 1. Get old items to restore stock ONLY if the order was already delivered
+      if (isDelivered) {
+        const { data: oldItems, error: oldItemsErr } = await supabase
+          .from('order_items')
+          .select('product_id, quantity')
+          .eq('order_id', orderId);
+
+        if (oldItemsErr) throw oldItemsErr;
+
+        if (oldItems) {
+          for (const oldItem of oldItems) {
+            const { data: prod } = await supabase
               .from('products')
-              .update({ stock: Number(prod.stock || 0) + Number(oldItem.quantity) })
-              .eq('id', oldItem.product_id);
+              .select('stock')
+              .eq('id', oldItem.product_id)
+              .maybeSingle();
+            if (prod) {
+              await supabase
+                .from('products')
+                .update({ stock: Number(prod.stock || 0) + Number(oldItem.quantity) })
+                .eq('id', oldItem.product_id);
+            }
           }
         }
       }
@@ -772,19 +819,21 @@ export const useStore = create((set, get) => ({
 
       if (insertErr) throw insertErr;
 
-      // 4. Deduct stock for new items
-      for (const item of newItems) {
-        const { data: prod } = await supabase
-          .from('products')
-          .select('stock')
-          .eq('id', item.productId)
-          .maybeSingle();
-        if (prod) {
-          const newStock = Math.max(0, Number(prod.stock || 0) - Number(item.quantity));
-          await supabase
+      // 4. Deduct stock for new items ONLY if the order was delivered
+      if (isDelivered) {
+        for (const item of newItems) {
+          const { data: prod } = await supabase
             .from('products')
-            .update({ stock: newStock })
-            .eq('id', item.productId);
+            .select('stock')
+            .eq('id', item.productId)
+            .maybeSingle();
+          if (prod) {
+            const newStock = Math.max(0, Number(prod.stock || 0) - Number(item.quantity));
+            await supabase
+              .from('products')
+              .update({ stock: newStock })
+              .eq('id', item.productId);
+          }
         }
       }
 
@@ -885,7 +934,7 @@ export const useStore = create((set, get) => ({
   addToCart: (product, quantity) => {
     const { cart } = get();
     const existing = cart.find(item => item.product.id === product.id);
-    const maxQty = product.stock;
+    const maxQty = product.availableStock !== undefined ? product.availableStock : product.stock;
     if (maxQty <= 0) return;
 
     if (existing) {
@@ -912,7 +961,7 @@ export const useStore = create((set, get) => ({
     const item = cart.find(i => i.product.id === productId);
     if (!item) return;
 
-    const maxQty = item.product.stock;
+    const maxQty = item.product.availableStock !== undefined ? item.product.availableStock : item.product.stock;
     const finalQty = Math.max(1, Math.min(maxQty, qty));
 
     set({
@@ -1010,11 +1059,12 @@ export const useStore = create((set, get) => ({
 
     orderItems.forEach(item => {
       const prod = products.find(p => p.id === item.productId);
-      if (prod && prod.stock > 0) {
+      const availStock = prod ? (prod.availableStock ?? prod.stock) : 0;
+      if (prod && availStock > 0) {
         // limit quantity by current stock
         let qtyToAdd = item.quantity;
-        if (qtyToAdd > prod.stock) {
-          qtyToAdd = prod.stock;
+        if (qtyToAdd > availStock) {
+          qtyToAdd = availStock;
           stockAdjusted = true;
         }
         itemsToSet.push({ product: prod, quantity: qtyToAdd });
@@ -1031,4 +1081,4 @@ export const useStore = create((set, get) => ({
       stockAdjusted
     };
   }
-}));
+}});

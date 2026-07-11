@@ -51,9 +51,13 @@ export default function Orders() {
         const productInDb = products.find(p => p.id === productId);
         const originalItem = editingOrder.items.find(i => i.productId === productId);
         const originalQty = originalItem ? originalItem.quantity : 0;
-        const availableStock = (productInDb ? productInDb.stock : 0) + originalQty;
-        if (newQty > availableStock) {
-          alert(`Lo sentimos, el stock total disponible para este perfume es de ${availableStock} unidades.`);
+        
+        const isCurrentlyPending = editingOrder.status === 'pendiente';
+        const currentAvail = productInDb ? (productInDb.availableStock ?? productInDb.stock) : 0;
+        const maxAllowed = isCurrentlyPending ? (currentAvail + originalQty) : currentAvail;
+
+        if (newQty > maxAllowed) {
+          alert(`Lo sentimos, el stock total disponible para este perfume es de ${maxAllowed} unidades.`);
           return item;
         }
         return { ...item, quantity: newQty };
@@ -70,7 +74,8 @@ export default function Orders() {
     if (!selectedAddProductId) return;
     const prod = products.find(p => p.id === selectedAddProductId);
     if (!prod) return;
-    if (prod.stock <= 0) {
+    const availStock = prod.availableStock !== undefined ? prod.availableStock : prod.stock;
+    if (availStock <= 0) {
       alert('Este producto no cuenta con stock disponible en tienda.');
       return;
     }
@@ -465,11 +470,14 @@ export default function Orders() {
                     className="flex-1 bg-white border border-neutral-200 px-3 py-2 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-neutral-900"
                   >
                     <option value="">-- Seleccionar Perfume --</option>
-                    {products.filter(p => p.stock > 0).map(p => (
-                      <option key={p.id} value={p.id}>
-                        [{p.brand}] {p.name} ({p.size}) - Stock: {p.stock}
-                      </option>
-                    ))}
+                    {products.filter(p => (p.availableStock !== undefined ? p.availableStock : p.stock) > 0).map(p => {
+                      const avail = p.availableStock !== undefined ? p.availableStock : p.stock;
+                      return (
+                        <option key={p.id} value={p.id}>
+                          [{p.brand}] {p.name} ({p.size}) - Disponible: {avail}
+                        </option>
+                      );
+                    })}
                   </select>
                   <button
                     type="button"
