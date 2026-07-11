@@ -1,11 +1,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { createRequire } from "module";
 
-// Solución al SyntaxError de ESM en Vercel
-const require = createRequire(import.meta.url);
-const pdfStructure = require("pdf-parse");
+// Importación compatible con el entorno ESM de Vercel para pdfjs-dist
+import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 
-// Configuraciones válidas según tu panel de Google AI Studio
 const API_CONFIGS = [
   { apiKey: process.env.GEMINI_API_KEY, model: "gemini-3.5-flash" },
   { apiKey: process.env.GEMINI_API_KEY_2, model: "gemini-3.5-flash" },
@@ -23,24 +20,34 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Convertir el Base64 que viene del front a un Buffer binario para que Node pueda leerlo
-    const pdfBuffer = Buffer.from(pdfBase64.split(",")[1] || pdfBase64, 'base64');
+    // 1. Convertir el Base64 que viene del front a un ArrayBuffer compatible con pdfjs
+    const cleanBase64 = pdfBase64.split(",")[1] || pdfBase64;
+    const pdfBuffer = Buffer.from(cleanBase64, 'base64');
+    const uint8Array = new Uint8Array(pdfBuffer);
     
-    // 2. Extraer el texto estructurado dividiéndolo dinámicamente por páginas
-    let pagesText = [];
-    await pdfStructure(pdfBuffer, {
-      pagerender: function(pageData) {
-        return pageData.getTextContent().then(function(textContent) {
-          let text = textContent.items.map(item => item.str).join(' ');
-          pagesText.push(text);
-          return text;
-        });
-      }
+    // 2. Cargar el documento PDF sin requerir entorno de Canvas de navegador
+    const loadingTask = pdfjs.getDocument({
+      data: uint8Array,
+      useSystemFonts: true,
+      disableFontFace: true
     });
+    
+    const pdfDocument = await loadingTask.promise;
+    const totalPages = pdfDocument.numPages;
+    
+    console.log(`PDF cargado con éxito. Total de páginas detectadas: ${totalPages}`);
 
-    console.log(`PDF segmentado con éxito. Total de páginas a procesar: ${pagesText.length}`);
+    let pagesText = [];
 
-    // Prompt ligero enfocado puramente en lectura óptica elemental (sin matemáticas complejas)
+    // Extraer texto plano página por página
+    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+      const page = await pdfDocument.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map(item => item.str).join(' ');
+      pagesText.push(pageText);
+    }
+
+    // Prompt enfocado en lectura puramente óptica (sin matemáticas complejas)
     const prompt = `Analiza este extracto de texto que pertenece a una página específica de una factura de importación de perfumes.
 Extrae TODOS los artículos listados en esta sección sin omitir ninguna fila. No omitas registros por espacio.
 
@@ -71,7 +78,6 @@ Campos obligatorios por cada objeto:
       }
     };
 
-    // Usaremos la primera clave/modelo disponible como motor principal
     const ai = new GoogleGenAI({ apiKey: API_CONFIGS[0].apiKey });
     const selectedModel = API_CONFIGS[0].model;
     
@@ -81,7 +87,7 @@ Campos obligatorios por cada objeto:
     for (let i = 0; i < pagesText.length; i++) {
       const textoDeLaPagina = pagesText[i];
 
-      // Sanitización: Si la página está vacía o no tiene palabras clave de inventario como "QTY", la saltamos
+      // Sanitización: Si la página no contiene palabras clave de inventario como "QTY", la saltamos
       if (!textoDeLaPagina.trim() || !textoDeLaPagina.includes("QTY")) {
         console.log(`Página ${i + 1} saltada automáticamente (no contiene datos de productos).`);
         continue;
@@ -130,7 +136,6 @@ Campos obligatorios por cada objeto:
       const usdPrice = Number(p.unitPriceUSD) || 0;
 
       // Ejecución limpia de la fórmula matemática de costo en Lempiras
-      // Costo_HNL = ((Precio_USD * 1.05) + 5.5) * 27
       let rawCostHNL = ((usdPrice * 1.05) + 5.5) * 27;
       
       // Redondear exactamente al múltiplo de 5 más cercano
@@ -150,7 +155,6 @@ Campos obligatorios por cada objeto:
         category = 'Unisex';
       }
 
-      // Código de barra o fallback numérico aleatorio único
       const barcode = (p.barcode || '').trim() || `740${Math.floor(100000000 + Math.random() * 900000000)}`;
 
       return {
