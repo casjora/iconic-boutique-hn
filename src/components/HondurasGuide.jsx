@@ -1,4 +1,4 @@
-import  { useState } from 'react';
+import { useState } from 'react';
 import { BookOpen, MapPin, History, Truck, Search, ExternalLink } from 'lucide-react';
 
 export default function HondurasGuide() {

@@ -1,4 +1,4 @@
-import  { useState } from 'react';
+import { useState } from 'react';
 import { useStore } from '../store';
 import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, Phone, User, ShoppingBag, ArrowLeft, Loader2, ClipboardList, Tag } from 'lucide-react';
@@ -13,9 +13,9 @@ export default function CartView() {
   const [phone, setPhone] = useState('');
   const [sentOrder, setSentOrder] = useState(null);
 
-  const isClient = user?.role === 'client';
+  const hasVipPrice = !!user;
   const total = cart.reduce((acc, curr) => {
-    const price = isClient ? curr.product.pricePromotional : curr.product.pricePublic;
+    const price = hasVipPrice ? curr.product.pricePromotional : curr.product.pricePublic;
     return acc + (price * curr.quantity);
   }, 0);
 
@@ -158,13 +158,13 @@ export default function CartView() {
         <div className="border border-neutral-200 bg-white rounded-3xl divide-y divide-neutral-100 overflow-hidden shadow-sm">
           {cart.map((item) => {
             const isSet = isProductSet(item.product);
-            const price = isClient ? item.product.pricePromotional : item.product.pricePublic;
+            const price = hasVipPrice ? item.product.pricePromotional : item.product.pricePublic;
             
             return (
               <div key={item.product.id} className="p-5 flex gap-4 items-start relative">
                 
                 {/* Product Image */}
-                <div className="h-16 w-16 bg-neutral-100 rounded-xl overflow-hidden flex items-center justify-center p-1.5 shrink-0 border border-neutral-100">
+                <div className="h-16 w-16 bg-neutral-100 rounded-xl overflow-hidden flex items-center justify-center p-1.5 flex-shrink-0 border border-neutral-100">
                   {item.product.image_url ? (
                     <img 
                       src={item.product.image_url} 
@@ -256,7 +256,7 @@ export default function CartView() {
             <div className="flex justify-between text-neutral-500">
               <span>Tarifa Aplicada:</span>
               <span className="font-bold text-neutral-800">
-                {isClient ? 'VIP Mayorista' : 'Público General'}
+                {hasVipPrice ? 'VIP Mayorista' : 'Público General'}
               </span>
             </div>
             <div className="flex justify-between border-t border-neutral-100 pt-3 text-sm">
@@ -264,6 +264,12 @@ export default function CartView() {
               <span className="font-mono font-black text-neutral-950">L. {total.toLocaleString()} HNL</span>
             </div>
           </div>
+
+          {!hasVipPrice && (
+            <div className="p-3.5 bg-indigo-50 border border-indigo-100 rounded-2xl text-[11px] text-indigo-800 leading-relaxed font-semibold text-left">
+              ✨ <strong className="text-indigo-950">¿Eres cliente mayorista?</strong> Inicia sesión o regístrate para activar de forma automática la tarifa <strong className="text-indigo-950">VIP Mayorista</strong> en todo el catálogo de perfumes en Honduras.
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4 pt-2 border-t border-neutral-100">
             <div>

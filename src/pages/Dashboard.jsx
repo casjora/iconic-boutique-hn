@@ -17,8 +17,7 @@ import {
   Crown,
   Sparkles,
   CheckCircle2,
-  Clock,
-  
+  Clock
 } from 'lucide-react';
 import { isProductSet } from '../utils/productHelper';
 
@@ -465,7 +464,7 @@ export default function Dashboard() {
               <span className="block text-2xl font-black text-neutral-950 font-mono">
                 L. {salesStats.completedRevenue.toLocaleString()}
               </span>
-              <span className=" text-[10px] font-semibold text-emerald-700 flex items-center gap-1">
+              <span className="block text-[10px] font-semibold text-emerald-700 flex items-center gap-1">
                 <CheckCircle2 className="h-3 w-3" /> {salesStats.completedCount} cotizaciones entregadas
               </span>
             </div>
@@ -477,7 +476,7 @@ export default function Dashboard() {
               <TrendingUp className="h-6 w-6" />
             </div>
             <div className="space-y-1">
-              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest md:font-mono font-sans">Ticket Promedio (AOV)</span>
+              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest font-mono font-sans">Ticket Promedio (AOV)</span>
               <span className="block text-2xl font-black text-neutral-950 font-mono">
                 L. {Math.round(salesStats.aov).toLocaleString()}
               </span>
@@ -494,7 +493,7 @@ export default function Dashboard() {
                 <DollarSign className="h-6 w-6" />
               </div>
               <div className="space-y-1">
-                <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-widest md:font-mono font-sans">Ganancia Neta</span>
+                <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-widest font-mono font-sans">Ganancia Neta</span>
                 <span className="block text-2xl font-black text-emerald-700 font-mono">
                   L. {Math.round(salesStats.completedProfit).toLocaleString()}
                 </span>
@@ -515,15 +514,15 @@ export default function Dashboard() {
               <span className="block text-2xl font-black text-indigo-950 font-mono">
                 L. {salesStats.pendingRevenue.toLocaleString()}
               </span>
-              <span className=" text-[10px] font-semibold text-indigo-700 flex items-center gap-1">
+              <span className="block text-[10px] font-semibold text-indigo-700 flex items-center gap-1">
                 <Clock className="h-3 w-3" /> {salesStats.pendingCount} órdenes por verificar/cobrar
               </span>
             </div>
           </div>
 
           {/* CLIENTE DEL MES (CHOSEN BASED ON UNITS BOUGHT) */}
-          <div className="bg-linear-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-3xl p-6 shadow-sm flex items-start gap-4 relative overflow-hidden">
-            <div className="absolute -right-2.5 -bottom-2.5 text-amber-200/40 opacity-40">
+          <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-3xl p-6 shadow-sm flex items-start gap-4 relative overflow-hidden">
+            <div className="absolute right-[-10px] bottom-[-10px] text-amber-200/40 opacity-40">
               <Trophy className="h-24 w-24" />
             </div>
             <div className="p-3 bg-amber-400 text-white rounded-2xl shadow-sm z-10">
@@ -535,7 +534,7 @@ export default function Dashboard() {
               </span>
               {clienteDelMes ? (
                 <>
-                  <span className="block text-sm font-black text-neutral-900 truncate max-w-38">
+                  <span className="block text-sm font-black text-neutral-900 truncate max-w-[150px]">
                     {clienteDelMes.name}
                   </span>
                   <span className="block text-[10px] font-semibold text-amber-900">
@@ -775,7 +774,7 @@ export default function Dashboard() {
                           <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-neutral-900 text-white text-[8px] font-mono font-bold">
                             {idx + 1}
                           </span>
-                          <span className="truncate max-w-37.5">{cust.name}</span>
+                          <span className="truncate max-w-[150px]">{cust.name}</span>
                         </td>
                         <td className="p-3 text-center font-bold text-neutral-600 font-mono">
                           {cust.ordersCount}
@@ -816,7 +815,7 @@ export default function Dashboard() {
                       <tr key={idx} className="hover:bg-neutral-50/30">
                         <td className="p-3">
                           <span className="block text-[8px] font-bold text-neutral-400 uppercase font-mono">{item.brand}</span>
-                          <span className="font-bold text-neutral-900 truncate max-w-37.5 block">{item.name}</span>
+                          <span className="font-bold text-neutral-900 truncate max-w-[150px] block">{item.name}</span>
                         </td>
                         <td className="p-3 text-center font-black font-mono text-neutral-900">
                           <span className="inline-block bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded-lg border border-emerald-100 text-[10px]">

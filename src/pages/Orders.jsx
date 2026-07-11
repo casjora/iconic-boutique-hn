@@ -412,7 +412,7 @@ export default function Orders() {
                 <h4 className="text-xs font-extrabold text-neutral-900 uppercase tracking-wider border-b border-neutral-100 pb-1.5">
                   Fragancias Incluidas
                 </h4>
-                <div className="space-y-2.5 max-h-55 overflow-y-auto pr-1">
+                <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
                   {editItems.map((item, idx) => (
                     <div key={idx} className="flex justify-between items-center text-xs text-neutral-700 pb-2 border-b border-neutral-50 last:border-0 last:pb-0">
                       <div className="truncate pr-4 flex-1">

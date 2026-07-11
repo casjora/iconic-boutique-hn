@@ -1,6 +1,6 @@
-import  { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { Settings, Save, Bell, ShieldAlert, Loader2, PlayCircle, HelpCircle } from 'lucide-react';
+import { Settings, Save, Bell, Loader2, PlayCircle, HelpCircle } from 'lucide-react';
 
 export default function Config() {
   const { telegramConfig, saveTelegramConfig, testTelegram, loading } = useStore();

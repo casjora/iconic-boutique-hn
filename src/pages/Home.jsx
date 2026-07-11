@@ -1,3 +1,4 @@
+
 import { Link } from 'react-router-dom';
 import { useStore } from '../store';
 import HondurasGuide from '../components/HondurasGuide';
@@ -11,7 +12,7 @@ export default function Home() {
       {/* Hero Section */}
       <div className="relative overflow-hidden rounded-3xl bg-neutral-900 text-white p-8 sm:p-12 md:p-16 shadow-lg">
         {/* Abstract elegant decoration */}
-        <div className="absolute top-0 right-0 h-96 w-96 rounded-full bg-linear-to-br from-neutral-800 to-transparent opacity-50 -mr-20 -mt-20 blur-2xl" />
+        <div className="absolute top-0 right-0 h-96 w-96 rounded-full bg-gradient-to-br from-neutral-800 to-transparent opacity-50 -mr-20 -mt-20 blur-2xl" />
         
         <div className="relative max-w-2xl space-y-6">
           <span className="inline-flex items-center gap-1 rounded-full bg-neutral-800 px-3 py-1 text-xs font-semibold text-neutral-300">
@@ -62,8 +63,8 @@ export default function Home() {
           <div className="p-2.5 bg-neutral-900 text-white rounded-xl w-fit mb-4">
             <Percent className="h-5 w-5" />
           </div>
-          <h2 className="font-display font-bold text-neutral-900 text-base mb-1">Ofertas Exclusivas VIP</h2>
-          <p className="text-xs text-neutral-500">Los clientes mayoristas tienen acceso inmediato a precios promocionales con descuentos de hasta L. 600.</p>
+          <h2 className="font-display font-bold text-neutral-900 text-base mb-1">Precios Mayoristas VIP</h2>
+          <p className="text-xs text-neutral-500">Los clientes mayoristas tienen acceso inmediato a precios promocionales con importantes descuentos.</p>
         </div>
 
         <div className="bg-white border border-neutral-200 rounded-2xl p-5 hover:shadow-sm transition-shadow">

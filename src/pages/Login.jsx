@@ -95,7 +95,7 @@ export default function Login() {
         {error && (
           <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800 flex items-start justify-between gap-2.5 relative">
             <div className="flex items-start gap-2.5">
-              <AlertCircle className="h-4 w-4 text-rose-500 shrink-0 mt-0.5" />
+              <AlertCircle className="h-4 w-4 text-rose-500 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-bold">Error de Autenticación:</p>
                 <p className="mt-0.5 font-medium">{error}</p>

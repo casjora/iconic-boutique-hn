@@ -97,7 +97,7 @@ export default function Barcodes() {
 
           {productsWithBarcodes.length === 0 ? (
             <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 flex items-start gap-2 text-xs text-amber-800">
-              <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+              <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
               <div>
                 <strong>No hay productos con Códigos de Barra cargados en tu inventario.</strong> <br />
                 Por favor, ve al módulo de <strong className="underline">Inventario</strong> y edita o agrega perfumes completando el campo Código de Barras / UPC.
@@ -162,12 +162,12 @@ export default function Barcodes() {
           {selectedProduct ? (
             <div className="border border-neutral-200 rounded-xl bg-white p-3 shadow-sm flex flex-col items-center justify-center space-y-1 scale-95 origin-center">
               <span className="text-[10px] font-black uppercase font-mono text-neutral-400 leading-none tracking-widest">{selectedProduct.brand}</span>
-              <span className="text-xs font-bold text-neutral-900 text-center truncate w-full max-w-45">{selectedProduct.name}</span>
+              <span className="text-xs font-bold text-neutral-900 text-center truncate w-full max-w-[180px]">{selectedProduct.name}</span>
               <span className="text-[9px] font-bold text-neutral-500 leading-none">Cont. Neto: {selectedProduct.size}</span>
               
               {/* Actual barcode vector */}
               <div 
-                className="w-full max-w-45 h-16"
+                className="w-full max-w-[180px] h-16"
                 dangerouslySetInnerHTML={{ __html: generateBarcodeSVG(selectedProduct.barcode) }}
               />
             </div>
@@ -219,7 +219,7 @@ export default function Barcodes() {
                     </div>
 
                     <div 
-                      className="w-full max-w-40 h-12 flex items-center justify-center overflow-hidden"
+                      className="w-full max-w-[160px] h-12 flex items-center justify-center overflow-hidden"
                       dangerouslySetInnerHTML={{ __html: generateBarcodeSVG(label.barcode) }}
                     />
 

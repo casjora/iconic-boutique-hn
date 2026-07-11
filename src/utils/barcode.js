@@ -1,114 +1,80 @@
-import React, { useState, useEffect } from 'react';
-import { useStore } from '../store';
-import { useNavigate } from 'react-router-dom';
-import { Lock, ArrowRight, Loader2, KeyRound } from 'lucide-react';
-import { supabase } from '../utils/supabase';
+/**
+ * Highly compliant Code 128 Barcode SVG Generator (Code B)
+ * Generates actual readable Code 128 barcodes as vector SVG.
+ */
 
-export default function UpdatePassword() {
-  const { updatePassword, loading } = useStore();
-  const navigate = useNavigate();
-  const [password, setPassword] = useState('');
-  const [status, setStatus] = useState({ type: '', message: '' });
+const CODE128_PATTERNS = [
+  "212222", "222122", "222221", "121223", "121322", "131222", "122213", "122312", "132212", "221213", // 0-9
+  "221312", "231212", "112232", "122132", "122231", "113222", "123122", "123221", "223211", "221132", // 10-19
+  "221231", "213212", "223112", "312131", "311222", "321122", "321221", "312212", "322112", "322211", // 20-29
+  "212123", "212321", "232121", "111323", "131123", "131321", "112313", "132113", "132311", "211313", // 30-39
+  "231113", "231311", "112133", "112331", "132131", "113123", "113321", "133121", "313121", "211331", // 40-49
+  "231131", "213113", "213311", "213131", "311123", "311321", "331121", "312113", "312311", "332111", // 50-59
+  "314111", "221411", "431111", "111224", "111422", "121124", "121421", "141122", "141221", "112214", // 60-69
+  "112412", "122114", "122411", "142112", "142211", "241211", "221114", "413111", "241112", "134111", // 70-79
+  "111242", "121142", "121241", "114212", "124112", "124211", "411212", "421112", "421211", "212141", // 80-89
+  "214121", "412121", "111143", "111341", "131141", "114113", "114311", "411113", "411311", "113141", // 90-99
+  "114131", "311141", "411131", "211412", "211214", "211232", "2331112" // 100-106
+];
 
-  // In Supabase Auth, when clicking the reset password link, the user is automatically logged in 
-  // via a recovery session if the hash is valid, so we can just update the user's password.
-  useEffect(() => {
-    supabase.auth.onAuthStateChange((event, _session) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        console.log('Password recovery session established.');
-      }
-    });
-  }, []);
+const START_CODE_B = 104;
+const STOP_CODE = 106;
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!password || password.length < 6) {
-      setStatus({ type: 'error', message: 'La contraseña debe tener al menos 6 caracteres.' });
-      return;
+export function generateBarcodeSVG(text) {
+  if (text === null || text === undefined) return "";
+  const stringText = String(text);
+  // Filter ASCII values for Code 128 Code B (values 32 to 127)
+  const cleanText = stringText.replace(/[^\x20-\x7F]/g, "");
+  if (!cleanText) return "";
+
+  const indices = [START_CODE_B];
+  
+  // Convert characters to code values
+  for (let i = 0; i < cleanText.length; i++) {
+    indices.push(cleanText.charCodeAt(i) - 32);
+  }
+
+  // Calculate checksum
+  let checksum = indices[0];
+  for (let i = 1; i < indices.length; i++) {
+    checksum += indices[i] * i;
+  }
+  indices.push(checksum % 103);
+  indices.push(STOP_CODE);
+
+  // Convert pattern digits to bar widths
+  let binaryString = "";
+  for (const index of indices) {
+    const pattern = CODE128_PATTERNS[index];
+    if (!pattern) continue;
+    for (let j = 0; j < pattern.length; j++) {
+      const width = parseInt(pattern[j], 10);
+      const isBar = j % 2 === 0;
+      binaryString += (isBar ? "1" : "0").repeat(width);
     }
+  }
 
-    setStatus({ type: '', message: '' });
-    const res = await updatePassword(password);
+  // Build the SVG paths
+  const barWidth = 2;
+  const height = 70;
+  const quietZone = 10;
+  const width = binaryString.length * barWidth + quietZone * 2;
 
-    if (res.success) {
-      setStatus({ 
-        type: 'success', 
-        message: '¡Contraseña actualizada correctamente! Redirigiendo...' 
-      });
-      setTimeout(() => {
-        navigate('/login');
-      }, 2000);
-    } else {
-      setStatus({ 
-        type: 'error', 
-        message: res.error || 'Ocurrió un error al actualizar la contraseña.' 
-      });
+  let svgContent = `<svg width="100%" height="100%" viewBox="0 0 ${width} ${height + 25}" xmlns="http://www.w3.org/2000/svg" style="background:white; padding:10px; border-radius:4px;">`;
+  
+  // Render bars
+  let x = quietZone;
+  for (let i = 0; i < binaryString.length; i++) {
+    const char = binaryString[i];
+    if (char === "1" || char === "2") {
+      svgContent += `<rect x="${x}" y="5" width="${barWidth}" height="${height}" fill="#000000" />`;
     }
-  };
+    x += barWidth;
+  }
 
-  return (
-    <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8 bg-white p-10 rounded-3xl shadow-sm border border-neutral-200 fade-in-up">
-        
-        <div className="text-center space-y-2">
-          <div className="mx-auto w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center mb-4">
-            <KeyRound className="h-6 w-6 text-neutral-900" />
-          </div>
-          <h2 className="text-3xl font-black font-display text-neutral-900 tracking-tight">Nueva Contraseña</h2>
-          <p className="text-sm text-neutral-500 font-medium">
-            Ingresa tu nueva contraseña para acceder a tu cuenta.
-          </p>
-        </div>
+  // Render Human Readable Text
+  svgContent += `<text x="${width / 2}" y="${height + 20}" font-family="monospace" font-size="12" font-weight="bold" text-anchor="middle" fill="#000000">${text}</text>`;
+  svgContent += "</svg>";
 
-        {status.message && (
-          <div className={`p-4 rounded-xl text-sm font-semibold border ${
-            status.type === 'error' 
-              ? 'bg-rose-50 text-rose-800 border-rose-200' 
-              : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-          }`}>
-            {status.message}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-4">
-            <div className="relative">
-              <label htmlFor="password" className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2 block">
-                Nueva Contraseña
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Lock className="h-4 w-4 text-neutral-400" />
-                </div>
-                <input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-10 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all"
-                  placeholder="Mínimo 6 caracteres"
-                  minLength={6}
-                />
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading || !password}
-            className="group relative w-full flex justify-center py-3.5 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-neutral-900 hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-900 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <span className="flex items-center gap-2">
-                Actualizar Contraseña <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </span>
-            )}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
+  return svgContent;
 }

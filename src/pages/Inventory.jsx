@@ -1,16 +1,16 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '../store';
+import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 import { 
   Plus, 
   Trash2, 
   Edit, 
   RefreshCw, 
   Sparkles, 
-   
   UploadCloud, 
   Loader2, 
   CheckCircle, 
-  
   DollarSign,
   Package,
   FileSpreadsheet
@@ -25,6 +25,7 @@ export default function Inventory() {
     deleteProduct, 
     uploadPdf,
     fetchProducts,
+    saveProductsBulk,
     user
   } = useStore();
 
@@ -46,16 +47,89 @@ export default function Inventory() {
   const [formDescription, setFormDescription] = useState('');
   const [formImageUrl, setFormImageUrl] = useState('');
 
-  // PDF Upload panel states
+  const normalizeString = (str) => {
+    if (!str) return '';
+    return str.toLowerCase().trim().replace(/\s+/g, ' ');
+  };
+
+  const isTester = (str) => {
+    if (!str) return false;
+    const s = str.toLowerCase();
+    return s.includes('tester') || s.includes('tstr');
+  };
+
+  const convertOzToMl = (sizeStr) => {
+    if (!sizeStr) return '';
+    let str = sizeStr.toLowerCase().trim();
+    if (str.includes('oz')) {
+      const match = str.match(/([\d.]+)\s*oz/);
+      if (match) {
+        const oz = parseFloat(match[1]);
+        if (oz === 3.4 || oz === 3.3) return '100 ml';
+        if (oz === 1.7 || oz === 1.6) return '50 ml';
+        if (oz === 6.8 || oz === 6.7) return '200 ml';
+        if (oz === 5.0 || oz === 5.1) return '150 ml';
+        if (oz === 1.0 || oz === 1.1) return '30 ml';
+        if (oz === 4.2 || oz === 4.0) return '125 ml';
+        if (oz === 2.5) return '75 ml';
+        return `${Math.round(oz * 30)} ml`;
+      }
+    }
+    return sizeStr.replace(/mls?/g, 'ml').trim();
+  };
+
+  const enrichAndMatchProducts = (newProductsList) => {
+    return newProductsList.map(p => {
+      // Basic normalization
+      const pName = normalizeString(p.name);
+      const pSize = convertOzToMl(p.size);
+      const pIsTester = isTester(pName) || isTester(pSize);
+
+      let bestMatch = null;
+
+      for (const prod of products) {
+        const existName = normalizeString(prod.name);
+        const existSize = convertOzToMl(prod.size);
+        const existIsTester = isTester(existName) || isTester(existSize);
+
+        // Name and tester status must match exactly
+        // Example: Acqua di Gio != Acqua di Gio Tester
+        if (existName === pName && existIsTester === pIsTester) {
+          // If sizes match precisely after conversion
+          if (existSize === pSize) {
+            bestMatch = prod;
+            break;
+          }
+        }
+      }
+
+      if (bestMatch) {
+        return {
+          ...p,
+          size: pSize, // standardized
+          matchStatus: 'exact_match',
+          existingId: bestMatch.id,
+          // Use existing pricing, but allow cost update if it changed
+          pricePublic: bestMatch.pricePublic,
+          pricePromotional: bestMatch.pricePromotional,
+          brand: bestMatch.brand,
+          category: bestMatch.category
+        };
+      } else {
+        return {
+          ...p,
+          size: pSize, // standardized
+          matchStatus: 'new'
+        };
+      }
+    });
+  };
+
+  // PDF/CSV Upload panel states
   const [pdfFile, setPdfFile] = useState(null);
   const [parsingPdf, setParsingPdf] = useState(false);
   const [parsedProducts, setParsedProducts] = useState([]);
   const [pdfSuccess, setPdfSuccess] = useState(false);
-
-  // Text / CSV Importer states
-  const [showImporter, setShowImporter] = useState(false);
-  const [importText, setImportText] = useState('');
-  const [importResults, setImportResults] = useState(null);
 
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -107,6 +181,11 @@ export default function Inventory() {
     setFormDescription(p.description || '');
     setFormImageUrl(p.image_url || '');
     setShowFormModal(true);
+  };
+
+  const handleGenerateBarcode = () => {
+    const randomBarcode = Math.floor(1000000000000 + Math.random() * 9000000000000).toString();
+    setFormBarcode(randomBarcode);
   };
 
   const handleSaveProduct = async (e) => {
@@ -165,7 +244,7 @@ export default function Inventory() {
       
       setParsingPdf(false);
       if (parsed && parsed.length > 0) {
-        setParsedProducts(parsed);
+        setParsedProducts(enrichAndMatchProducts(parsed));
         setPdfSuccess(true);
       } else {
         alert('No se pudieron extraer productos del PDF. Asegúrate de que es una factura válida y nítida.');
@@ -173,24 +252,215 @@ export default function Inventory() {
     };
   };
 
+  const handleCsvUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setPdfFile(file);
+    setParsingPdf(true);
+    setPdfSuccess(false);
+    setParsedProducts([]);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const bstr = evt.target.result;
+
+      if (file.name.endsWith('.csv')) {
+        Papa.parse(bstr, {
+          header: false,
+          skipEmptyLines: true,
+          complete: (results) => {
+             processExtractedDataArrays(results.data);
+          }
+        });
+      } else {
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const rawData = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        processExtractedDataArrays(rawData);
+      }
+    };
+
+    if (file.name.endsWith('.csv')) {
+      reader.readAsText(file);
+    } else {
+      reader.readAsBinaryString(file);
+    }
+  };
+
+  const parseProductString = (rawStr) => {
+    let name = rawStr.replace(/^\d+\s*/, '').replace(/^"|"$/g, '').trim();
+    let size = '100 ml';
+    let category = 'Damas';
+    let brand = 'Otras Marcas';
+
+    const knownBrands = [
+      'Afnan', 'Al Haramain', 'Animale', 'Antonio Banderas', 'Ariana Grande', 'Armaf', 'Azzaro',
+      'Benetton', 'Bharara', 'Boucheron', 'Burberry', 'Cacharel', 'Calvin Klein', 'Carolina Herrera',
+      'Chloe', 'Christian Dior', 'Clinique', 'Davidoff', 'Dolce & Gabbana', 'Elizabeth Arden',
+      'Elizabeth Taylor', 'Emper', 'Fragrance World', 'French Avenue', 'Giorgio Armani', 'Giorgio Valenti',
+      'Givenchy', 'Gucci', 'Guess', 'Hugo Boss', 'Issey Miyake', 'Jean Paul Gaultier', 'Jennifer Lopez',
+      'Juicy Couture', 'Kenneth Cole', 'Lacoste', 'Lancome', 'Lattafa', 'Liz Claiborne', 'Marc Jacobs',
+      'Mont Blanc', 'Moschino', 'Nautica', 'Orientica', 'Paco Rabanne', 'Paris Hilton', 'Patek Maison',
+      'Perry Ellis', 'Prada', 'Ralph Lauren', 'Rasasi', 'Salvatore Ferragamo', 'Ted Lapidus', 'Thierry Mugler',
+      'Tommy Hilfiger', 'Valentino', 'Versace', 'Yves Saint Laurent', 'Bottega Veneta', 'Rochas'
+    ];
+
+    const upperStr = name.toUpperCase();
+    for (const b of knownBrands) {
+      if (upperStr.includes(b.toUpperCase())) {
+        brand = b;
+        break;
+      }
+    }
+
+    const sizeMatch = upperStr.match(/(\d+(?:\.\d+)?)\s*(ML|OZ)/);
+    if (sizeMatch) {
+      size = `${sizeMatch[1]} ${sizeMatch[2].toLowerCase()}`;
+    }
+
+    if (upperStr.includes('MEN') || upperStr.includes('POUR HOMME') || upperStr.includes('CABALLERO') || upperStr.includes('BOY')) {
+      category = 'Caballeros';
+    } else if (upperStr.includes('UNISEX')) {
+      category = 'Unisex';
+    }
+
+    return { brand, name, size, category };
+  };
+
+  const processExtractedDataArrays = (data) => {
+    if (!data || data.length === 0) {
+      alert('El archivo está vacío.');
+      setParsingPdf(false);
+      return;
+    }
+
+    const parsed = [];
+    
+    // Check if the first row looks like headers
+    const firstRowStr = data[0].join(' ').toLowerCase();
+    const hasHeaders = firstRowStr.includes('marca') || firstRowStr.includes('precio') || firstRowStr.includes('costo') || firstRowStr.includes('perfume');
+    
+    const startIndex = hasHeaders ? 1 : 0;
+
+    for (let i = startIndex; i < data.length; i++) {
+      const row = data[i];
+      if (!row || row.length === 0) continue;
+
+      let nameStr = String(row[0] || '').trim();
+      if (!nameStr) continue;
+
+      let pStock = 1, pVip = 0, pRetail = 0, pCost = 0;
+      
+      let fullText = "";
+      const numbers = [];
+      
+      for (const cell of row) {
+        if (cell === null || cell === undefined) continue;
+        const s = String(cell).trim();
+        const num = Number(s.replace(/,/g, ''));
+        if (isNaN(num) || s === '') {
+           fullText += s + " ";
+        } else {
+           numbers.push(num);
+        }
+      }
+
+      if (row.length === 1 && typeof row[0] === 'string') {
+        const parts = row[0].split(/[;\t]/);
+        if (parts.length > 1) {
+          fullText = "";
+          numbers.length = 0;
+          for (const cell of parts) {
+            const s = String(cell).trim();
+            const num = Number(s.replace(/,/g, ''));
+            if (isNaN(num) || s === '') {
+               fullText += s + " ";
+            } else {
+               numbers.push(num);
+            }
+          }
+        }
+      }
+
+      fullText = fullText.trim();
+      if (!fullText && numbers.length > 0) {
+         continue;
+      }
+      
+      const { brand, name, size, category } = parseProductString(fullText || nameStr);
+
+      if (numbers.length >= 3) {
+         const len = numbers.length;
+         pStock = numbers[len - 3];
+         pVip = numbers[len - 2];
+         pRetail = numbers[len - 1];
+      } else if (numbers.length === 2) {
+         pStock = numbers[0];
+         pRetail = numbers[1];
+      } else if (numbers.length === 1) {
+         pStock = numbers[0];
+      }
+
+      parsed.push({
+        brand,
+        name,
+        size,
+        cost: pCost,
+        pricePromotional: pVip,
+        pricePublic: pRetail,
+        stock: pStock,
+        category
+      });
+    }
+
+    if (parsed.length === 0) {
+      alert('No se pudieron extraer productos. Asegúrate de que las columnas tengan nombres o información válida.');
+      setParsingPdf(false);
+      setPdfSuccess(false);
+      return;
+    }
+
+    setParsedProducts(enrichAndMatchProducts(parsed));
+    setParsingPdf(false);
+    setPdfSuccess(true);
+  };
+
+  const handleUpdateParsedStatus = (index, matchStatus, existingId) => {
+    const updated = [...parsedProducts];
+    updated[index].matchStatus = matchStatus;
+    updated[index].existingId = existingId;
+    
+    if (matchStatus === 'exact_match' && existingId) {
+       const bestMatch = products.find(p => p.id === existingId);
+       if (bestMatch) {
+         updated[index].pricePublic = bestMatch.pricePublic;
+         updated[index].pricePromotional = bestMatch.pricePromotional;
+       }
+    }
+
+    setParsedProducts(updated);
+  };
+
   // Bulk save the scanned perfumes
   const handleSaveScanned = async () => {
     setLoadingLocal(true);
-    let countNew = 0;
-    let countUpdated = 0;
+    const inserts = [];
+    const updates = [];
+    
     for (const p of parsedProducts) {
-      const existing = products.find(prod => 
-        prod.name.toLowerCase().trim() === p.name.toLowerCase().trim() && 
-        (prod.size || '').toLowerCase().trim() === (p.size || '').toLowerCase().trim()
-      );
-
-      if (existing) {
-        const ok = await updateProduct(existing.id, {
-          stock: existing.stock + Number(p.stock || 0)
-        });
-        if (ok) countUpdated++;
+      if (p.matchStatus === 'exact_match' && p.existingId) {
+        const existing = products.find(prod => prod.id === p.existingId);
+        if (existing) {
+          updates.push({
+            id: existing.id,
+            stock: existing.stock + Number(p.stock || 0),
+            cost: p.cost > 0 ? p.cost : existing.cost
+          });
+        }
       } else {
-        const ok = await addProduct({
+        inserts.push({
           name: p.name,
           brand: p.brand,
           size: p.size,
@@ -203,89 +473,20 @@ export default function Inventory() {
           description: p.description || '',
           image_url: ''
         });
-        if (ok) countNew++;
       }
     }
+    
+    const res = await saveProductsBulk(inserts, updates);
     setLoadingLocal(false);
-    alert(`Se agregaron ${countNew} perfumes nuevos y se actualizaron ${countUpdated} existentes.`);
-    setParsedProducts([]);
-    setPdfSuccess(false);
-    setPdfFile(null);
-    fetchProducts();
-  };
-
-  // Bulk Import from text/CSV
-  const handleTextImport = async (e) => {
-    e.preventDefault();
-    if (!importText.trim()) return;
-
-    const lines = importText.split('\n');
-    let successCount = 0;
-    let updateCount = 0;
-    let failedCount = 0;
-
-    setLoadingLocal(true);
-    setImportResults('Importando...');
-
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      
-      // Matches tab or semicolon or pipe delimiter
-      const parts = line.split(/[;\t|]/);
-      if (parts.length < 2) {
-        failedCount++;
-        continue;
-      }
-
-      // Column ordering map: Brand | Name | Size | Cost | PublicPrice | PromoPrice | Stock | Category
-      const brand = parts[0]?.trim();
-      const name = parts[1]?.trim();
-      const size = parts[2]?.trim() || '100 ml';
-      const cost = Number(parts[3]?.trim() || 0);
-      const pricePublic = Number(parts[4]?.trim() || 0);
-      const pricePromotional = Number(parts[5]?.trim() || 0);
-      const stock = Number(parts[6]?.trim() || 1);
-      const category = parts[7]?.trim() || 'Damas';
-
-      if (!brand || !name) {
-        failedCount++;
-        continue;
-      }
-
-      const existing = products.find(prod => 
-        prod.name.toLowerCase().trim() === name.toLowerCase() && 
-        (prod.size || '').toLowerCase().trim() === size.toLowerCase()
-      );
-
-      if (existing) {
-        const ok = await updateProduct(existing.id, {
-          stock: existing.stock + stock
-        });
-        if (ok) updateCount++;
-        else failedCount++;
-      } else {
-        const ok = await addProduct({
-          name,
-          brand,
-          size,
-          cost,
-          pricePublic,
-          pricePromotional,
-          stock,
-          category,
-          barcode: '',
-          description: '',
-          image_url: ''
-        });
-        if (ok) successCount++;
-        else failedCount++;
-      }
+    
+    if (res.success) {
+      alert(`Se agregaron ${res.countNew} perfumes nuevos y se actualizaron ${res.countUpdated} existentes.`);
+      setParsedProducts([]);
+      setPdfSuccess(false);
+      setPdfFile(null);
+    } else {
+      alert('Hubo un error al guardar los productos: ' + res.error);
     }
-
-    setLoadingLocal(false);
-    setImportResults(`Sincronización completada: ${successCount} nuevos, ${updateCount} actualizados. ${failedCount} líneas ignoradas.`);
-    setImportText('');
-    fetchProducts();
   };
 
   return (
@@ -304,14 +505,6 @@ export default function Inventory() {
 
         <div className="flex flex-wrap gap-2.5">
           <button
-            onClick={() => setShowImporter(!showImporter)}
-            className="inline-flex items-center gap-1 px-3.5 py-2 bg-white border border-neutral-200 text-neutral-700 text-xs font-bold rounded-xl hover:bg-neutral-50 cursor-pointer shadow-sm transition-all active:scale-95"
-          >
-            <FileSpreadsheet className="h-4 w-4 text-emerald-500" />
-            {showImporter ? 'Cerrar Importador' : 'Importador Rápido CSV'}
-          </button>
-
-          <button
             onClick={openAddModal}
             className="inline-flex items-center gap-1 px-4 py-2 bg-neutral-900 text-white text-xs font-bold rounded-xl cursor-pointer shadow-sm hover:bg-neutral-800 transition-all active:scale-95"
           >
@@ -320,57 +513,38 @@ export default function Inventory() {
         </div>
       </div>
 
-      {/* Quick Importer Panel */}
-      {showImporter && (
-        <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-sm space-y-4">
-          <h3 className="font-display font-bold text-neutral-900 text-base border-b border-neutral-100 pb-2">
-            Importador Masivo de Catálogo por Texto / CSV
-          </h3>
-          <p className="text-xs text-neutral-500 leading-relaxed">
-            Pega múltiples líneas de perfumes separadas por tabuladores, punto y coma (;) o barra vertical (|). El formato debe ser estrictamente: <br />
-            <code className="bg-neutral-100 px-1 py-0.5 rounded text-neutral-800 font-mono font-bold">Marca;Nombre;Tamaño;Costo;Precio Público;Precio Promo;Stock;Categoría</code>
-          </p>
-
-          <form onSubmit={handleTextImport} className="space-y-3">
-            <textarea
-              rows={4}
-              value={importText}
-              onChange={(e) => setImportText(e.target.value)}
-              className="w-full p-4 bg-neutral-50 border border-neutral-200 rounded-2xl text-xs font-mono focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none"
-              placeholder={`Carolina Herrera;Good Girl;80 ml;1250;2400;1950;3;Damas&#10;Paco Rabanne;One Million;100 ml;1350;2600;2100;5;Caballeros`}
-            />
-
-            <div className="flex items-center justify-between">
-              {importResults && (
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
-                  {importResults}
-                </span>
-              )}
-              
-              <button
-                type="submit"
-                disabled={loadingLocal || !importText.trim()}
-                className="ml-auto inline-flex items-center gap-1.5 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl transition-all active:scale-95 disabled:opacity-50"
-              >
-                {loadingLocal ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Sincronizar Lote'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* PDF Invoice intelligent AI Scan Widget */}
+      {/* Import / AI Scan Widget */}
       <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-sm space-y-4">
         <h3 className="font-display font-bold text-neutral-900 text-base border-b border-neutral-100 pb-2 flex items-center gap-1.5">
           <Sparkles className="h-5 w-5 text-amber-500 animate-pulse" />
-          Escáner de Facturas PDF por Inteligencia Artificial (Gemini)
+          Importador Inteligente (Facturas PDF, CSV y Excel)
         </h3>
         
         <p className="text-xs text-neutral-500 leading-relaxed">
-          Sube tu factura de importación o cotización en formato PDF. La Inteligencia Artificial de <strong>Gemini</strong> analizará el archivo en segundos, extraerá marcas, fragancias, tamaños, calculará el costo real unitario en Honduras y te generará de forma sugerida los precios óptimos en Lempiras (HNL).
+          Sube tu inventario desde un archivo CSV/Excel o utiliza una Factura PDF. El sistema detectará automáticamente coincidencias con tu inventario actual para evitar duplicados y unificar existencias. En caso de archivos PDF, se utilizará Inteligencia Artificial para extraer la información.
         </p>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative">
+            <input
+              type="file"
+              id="inventory-csv"
+              accept=".csv, .xlsx, .xls"
+              onChange={handleCsvUpload}
+              className="hidden"
+              disabled={parsingPdf}
+            />
+            <label
+              htmlFor="inventory-csv"
+              className="inline-flex items-center gap-2 px-5 py-3 border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-xs font-bold rounded-2xl cursor-pointer transition-colors"
+            >
+              <FileSpreadsheet className="h-5 w-5 text-emerald-500" />
+              Subir CSV / Excel
+            </label>
+          </div>
+
+          <span className="text-xs text-neutral-400 font-bold">Ó</span>
+
           <div className="relative">
             <input
               type="file"
@@ -385,9 +559,15 @@ export default function Inventory() {
               className="inline-flex items-center gap-2 px-5 py-3 border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-xs font-bold rounded-2xl cursor-pointer transition-colors"
             >
               <UploadCloud className="h-5 w-5 text-indigo-500" />
-              {pdfFile ? pdfFile.name : 'Subir Factura PDF'}
+              Escanear Factura PDF
             </label>
           </div>
+
+          {pdfFile && (
+            <span className="text-xs font-bold text-neutral-600 bg-neutral-100 px-3 py-1.5 rounded-lg border border-neutral-200 ml-2">
+              Archivo seleccionado: {pdfFile.name}
+            </span>
+          )}
 
           {parsingPdf && (
             <span className="text-xs font-semibold text-indigo-600 flex items-center gap-1.5">
@@ -407,42 +587,84 @@ export default function Inventory() {
         {/* Render parsed perfumes list if any */}
         {parsedProducts.length > 0 && (
           <div className="mt-4 border border-indigo-100 bg-indigo-50/10 rounded-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h4 className="font-display font-bold text-neutral-900 text-sm">
-                Fragancias Detectadas Sugeridas ({parsedProducts.length})
+                Productos Detectados ({parsedProducts.length})
               </h4>
               <button
                 onClick={handleSaveScanned}
                 disabled={loadingLocal}
                 className="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl shadow transition-all active:scale-95 disabled:opacity-50"
               >
-                Confirmar y Agregar todo al Inventario
+                Confirmar y Agregar al Inventario
               </button>
             </div>
 
             <div className="overflow-x-auto border border-neutral-100 rounded-xl bg-white">
-              <table className="w-full text-left text-xs divide-y divide-neutral-100">
+              <table className="w-full text-left text-[11px] divide-y divide-neutral-100">
                 <thead className="bg-neutral-50 text-neutral-500 font-bold">
                   <tr>
-                    <th className="p-3">Marca</th>
-                    <th className="p-3">Perfume</th>
-                    <th className="p-3">Tamaño</th>
-                    <th className="p-3">Costo Unitario</th>
-                    <th className="p-3">Precio Público (Sugerido)</th>
-                    <th className="p-3">Precio VIP (Sugerido)</th>
-                    <th className="p-3">Stock</th>
+                    <th className="p-3">Estado / Acción</th>
+                    <th className="p-3">Marca y Perfume</th>
+                    <th className="p-3">Presentación</th>
+                    <th className="p-3">Costo</th>
+                    <th className="p-3">Público Sug.</th>
+                    <th className="p-3">VIP Sug.</th>
+                    <th className="p-3 text-center">Stock</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
                   {parsedProducts.map((p, idx) => (
-                    <tr key={idx} className="hover:bg-neutral-50/50">
-                      <td className="p-3 font-semibold text-neutral-900">{p.brand}</td>
-                      <td className="p-3">{p.name}</td>
+                    <tr key={idx} className={p.matchStatus === 'exact_match' ? 'bg-emerald-50/20 hover:bg-emerald-50/40' : 'hover:bg-neutral-50/50'}>
+                      <td className="p-3">
+                        <select 
+                          value={p.matchStatus === 'exact_match' ? p.existingId : 'new'}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === 'new') {
+                              handleUpdateParsedStatus(idx, 'new', null);
+                            } else {
+                              handleUpdateParsedStatus(idx, 'exact_match', val);
+                            }
+                          }}
+                          className={`text-[10px] font-bold px-2 py-1.5 rounded-lg border outline-none ${
+                            p.matchStatus === 'exact_match' 
+                              ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+                              : 'bg-amber-50 border-amber-200 text-amber-800'
+                          }`}
+                        >
+                          <option value="new">+ Crear como Nuevo</option>
+                          <optgroup label="Unir a existente:">
+                            {products.map(prod => (
+                              <option key={prod.id} value={prod.id}>
+                                {prod.brand} - {prod.name} ({prod.size})
+                              </option>
+                            ))}
+                          </optgroup>
+                        </select>
+                        <div className="text-[9px] text-neutral-500 mt-1 font-semibold">
+                          {p.matchStatus === 'exact_match' ? 'Solo actualizará stock y costo' : 'Creará nuevo producto'}
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <span className="block text-[9px] font-bold text-neutral-400 uppercase font-mono">{p.brand}</span>
+                        <span className="font-semibold text-neutral-900">{p.name}</span>
+                      </td>
                       <td className="p-3 font-semibold text-neutral-500">{p.size}</td>
-                      <td className="p-3 font-mono font-semibold text-neutral-700">L. {p.cost.toLocaleString()}</td>
-                      <td className="p-3 font-mono font-bold text-neutral-900">L. {p.pricePublic.toLocaleString()}</td>
-                      <td className="p-3 font-mono font-bold text-emerald-600">L. {p.pricePromotional.toLocaleString()}</td>
-                      <td className="p-3 font-semibold text-neutral-600">{p.stock}</td>
+                      <td className="p-3 font-mono font-semibold text-neutral-700">
+                        L. {p.cost.toLocaleString()}
+                      </td>
+                      <td className="p-3 font-mono font-bold text-neutral-900">
+                        L. {p.pricePublic.toLocaleString()}
+                      </td>
+                      <td className="p-3 font-mono font-bold text-emerald-600">
+                        L. {p.pricePromotional.toLocaleString()}
+                      </td>
+                      <td className="p-3 text-center">
+                        <span className="inline-block bg-neutral-100 px-2 py-0.5 rounded font-bold text-neutral-700">
+                          +{p.stock}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -629,7 +851,7 @@ export default function Inventory() {
               <div className={`grid gap-4 ${user?.role === 'owner' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
                 {user?.role === 'owner' && (
                   <div>
-                    <label className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2  flex items-center gap-0.5">
+                    <label className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2 block flex items-center gap-0.5">
                       <DollarSign className="h-3.5 w-3.5 text-neutral-400" /> Costo (HNL)
                     </label>
                     <input
@@ -643,7 +865,7 @@ export default function Inventory() {
                   </div>
                 )}
                 <div>
-                  <label className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2 flex items-center gap-0.5">
+                  <label className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2 block flex items-center gap-0.5">
                     <DollarSign className="h-3.5 w-3.5 text-neutral-400" /> Público (HNL)
                   </label>
                   <input
@@ -656,7 +878,7 @@ export default function Inventory() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2  flex items-center gap-0.5">
+                  <label className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2 block flex items-center gap-0.5">
                     <DollarSign className="h-3.5 w-3.5 text-neutral-400" /> Promo/VIP (HNL)
                   </label>
                   <input
@@ -671,7 +893,16 @@ export default function Inventory() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2 block">Código de Barras / UPC</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-neutral-700 uppercase tracking-wider">Código de Barras / UPC</label>
+                  <button 
+                    type="button" 
+                    onClick={handleGenerateBarcode}
+                    className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md hover:bg-indigo-100 transition-colors"
+                  >
+                    Auto-Generar
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={formBarcode}

@@ -1,3 +1,4 @@
+
 import { useStore } from '../store';
 import { ShoppingCart, Heart, Tag } from 'lucide-react';
 import { isProductSet } from '../utils/productHelper';
@@ -144,7 +145,7 @@ export default function PerfumeCard({ product }) {
 
           {/* Dynamic Add to Cart or Quantity Selector */}
           {quantityInCart > 0 ? (
-            <div className="flex items-center justify-between border border-neutral-200 rounded-xl bg-neutral-50 overflow-hidden h-9.5 px-1">
+            <div className="flex items-center justify-between border border-neutral-200 rounded-xl bg-neutral-50 overflow-hidden h-[38px] px-1">
               <button
                 onClick={handleDecrease}
                 className="w-10 h-8 flex items-center justify-center font-bold text-neutral-500 hover:text-neutral-900 cursor-pointer active:scale-95 transition-all text-sm"

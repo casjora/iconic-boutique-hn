@@ -3,25 +3,39 @@ import { supabase } from './utils/supabase';
 import { isProductSet } from './utils/productHelper';
 
 // Helper to map DB products (snake_case) to Frontend products (camelCase)
-const mapProductFromDb = (p) => ({
-  id: p.id,
-  name: p.name,
-  brand: p.brand,
-  size: p.size,
-  cost: Number(p.cost || 0),
-  pricePublic: Number(p.price_public || 0),
-  pricePromotional: Number(p.price_promotional || 0),
-  stock: Number(p.stock || 0),
-  category: p.category,
-  barcode: p.barcode || '',
-  description: p.description || '',
-  image_url: p.image_url || ''
-});
+const mapProductFromDb = (p) => {
+  let uiCategory = 'Damas';
+  if (p.category === 'Masculino') uiCategory = 'Caballeros';
+  else if (p.category === 'Unisex') uiCategory = 'Unisex';
+  else if (p.category === 'Femenino') uiCategory = 'Damas';
+
+  return {
+    id: p.id,
+    name: p.name,
+    brand: p.brand,
+    size: p.size,
+    cost: Number(p.cost || 0),
+    pricePublic: Number(p.price_public || 0),
+    pricePromotional: Number(p.price_promotional || 0),
+    stock: Number(p.stock || 0),
+    category: uiCategory,
+    barcode: p.barcode || '',
+    description: p.description || '',
+    image_url: p.image_url || ''
+  };
+};
 
 // Helper to map Frontend products to DB products
 const mapProductToDb = (p) => {
   const generatedId = p.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'prod_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36));
-  return {
+  const generatedBarcode = p.barcode || Math.floor(1000000000000 + Math.random() * 9000000000000).toString();
+  
+  let dbCategory = 'Femenino';
+  if (p.category === 'Caballeros' || p.category === 'Masculino' || p.category === 'Niños') dbCategory = 'Masculino';
+  else if (p.category === 'Unisex') dbCategory = 'Unisex';
+  else if (p.category === 'Damas' || p.category === 'Femenino') dbCategory = 'Femenino';
+
+  const dbRecord = {
     id: generatedId,
     name: p.name,
     brand: p.brand,
@@ -30,11 +44,13 @@ const mapProductToDb = (p) => {
     price_public: Number(p.pricePublic || 0),
     price_promotional: Number(p.pricePromotional || 0),
     stock: Number(p.stock || 0),
-    category: p.category,
-    barcode: p.barcode || null,
+    category: dbCategory,
+    barcode: generatedBarcode,
     description: p.description || '',
     image_url: p.image_url || ''
   };
+  
+  return dbRecord;
 };
 
 export const useStore = create((set, get) => ({
@@ -290,6 +306,42 @@ export const useStore = create((set, get) => ({
   },
 
   // Products operations
+  saveProductsBulk: async (inserts, updates) => {
+    set({ loading: true, error: null });
+    let countNew = 0;
+    let countUpdated = 0;
+    try {
+      if (inserts && inserts.length > 0) {
+        const dbInserts = inserts.map(mapProductToDb);
+        const { error: insErr } = await supabase.from('products').insert(dbInserts);
+        if (insErr) throw insErr;
+        countNew = inserts.length;
+      }
+      
+      if (updates && updates.length > 0) {
+        const dbUpdates = updates.map(u => {
+          // u is { id, ...changes }
+          // Need to fetch original product to merge? No, store has it or caller provides full product?
+          // The caller will provide { id, stock, cost, ... } so we just map to DB keys.
+          return {
+            id: u.id,
+            ...(u.stock !== undefined && { stock: Number(u.stock) }),
+            ...(u.cost !== undefined && { cost: Number(u.cost) })
+          };
+        });
+        const { error: updErr } = await supabase.from('products').upsert(dbUpdates);
+        if (updErr) throw updErr;
+        countUpdated = updates.length;
+      }
+
+      await get().fetchProducts();
+      return { success: true, countNew, countUpdated };
+    } catch (err) {
+      set({ error: err.message, loading: false });
+      return { success: false, error: err.message };
+    }
+  },
+
   fetchProducts: async () => {
     set({ loading: true, error: null });
     try {
@@ -314,7 +366,7 @@ export const useStore = create((set, get) => ({
       
       const { data, error } = await supabase
         .from('products')
-        .upsert(dbProduct)
+        .insert([dbProduct])
         .select()
         .single();
 
