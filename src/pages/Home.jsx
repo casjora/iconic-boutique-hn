@@ -1,83 +1,92 @@
-
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useStore } from '../store';
-import HondurasGuide from '../components/HondurasGuide';
-import { Sparkles, Truck, Percent, Award, ArrowRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+
+const categories = [
+  { name: 'For Men', image: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&q=80&w=800' },
+  { name: 'For Women', image: 'https://images.unsplash.com/photo-1629198688000-7a3d3c23389c?auto=format&fit=crop&q=80&w=800' },
+  { name: 'Gift Sets', image: 'https://images.unsplash.com/photo-1544813545-052d34464521?auto=format&fit=crop&q=80&w=800' },
+  { name: 'Best Sellers', image: 'https://images.unsplash.com/photo-1588405748880-12d1d2a59f75?auto=format&fit=crop&q=80&w=800' }
+];
 
 export default function Home() {
-  const { user } = useStore();
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % categories.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
 
   return (
-    <div className="space-y-12 fade-in-up">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-3xl bg-neutral-900 text-white p-8 sm:p-12 md:p-16 shadow-lg">
-        {/* Abstract elegant decoration */}
-        <div className="absolute top-0 right-0 h-96 w-96 rounded-full bg-gradient-to-br from-neutral-800 to-transparent opacity-50 -mr-20 -mt-20 blur-2xl" />
-        
-        <div className="relative max-w-2xl space-y-6">
-          <span className="inline-flex items-center gap-1 rounded-full bg-neutral-800 px-3 py-1 text-xs font-semibold text-neutral-300">
-            <Sparkles className="h-3 w-3 text-amber-400 animate-pulse" />
-            Perfumes Importados Originales en Honduras
-          </span>
-          
-          <h1 className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight leading-none text-white">
-            Seducción en cada gota, calidad garantizada.
-          </h1>
-          
-          <p className="text-sm sm:text-base text-neutral-300 leading-relaxed">
-            Descubre nuestro catálogo exclusivo de fragancias de diseñador. Ofrecemos precios especiales para público general y tarifas promocionales altamente competitivas para revendedores y mayoristas VIP en Honduras.
-          </p>
-
-          <div className="flex flex-wrap gap-3 pt-2">
-            <Link
-              to="/catalog"
-              className="inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-xs font-black text-neutral-950 hover:bg-neutral-100 cursor-pointer shadow active:scale-95 transition-all"
-            >
-              Explorar Catálogo
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            
-            {!user && (
-              <Link
-                to="/login"
-                className="inline-flex items-center gap-2 rounded-2xl bg-neutral-800 border border-neutral-700 px-6 py-3.5 text-xs font-semibold text-neutral-200 hover:bg-neutral-700 cursor-pointer active:scale-95 transition-all"
+    <div className="space-y-12">
+      {/* Hero Carousel */}
+      <section className="relative h-[80vh] w-full overflow-hidden rounded-3xl bg-neutral-900 shadow-2xl">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentIndex}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.7 }}
+            className="absolute inset-0"
+          >
+            <img
+              src={categories[currentIndex].image}
+              alt={categories[currentIndex].name}
+              className="h-full w-full object-cover opacity-60"
+            />
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center text-white">
+              <motion.h2
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="font-display text-5xl sm:text-7xl font-extrabold tracking-tight"
               >
-                Registrarse como Distribuidor VIP
-              </Link>
-            )}
-          </div>
-        </div>
-      </div>
+                {categories[currentIndex].name}
+              </motion.h2>
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="mt-8"
+              >
+                <Link to="/catalog" className="rounded-full bg-white px-8 py-4 text-sm font-bold text-neutral-950 transition hover:bg-neutral-100">
+                  Explorar Colección
+                </Link>
+              </motion.div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
 
-      {/* Feature Bento overview */}
-      <div className="grid gap-6 sm:grid-cols-3">
-        <div className="bg-white border border-neutral-200 rounded-2xl p-5 hover:shadow-sm transition-shadow">
-          <div className="p-2.5 bg-neutral-900 text-white rounded-xl w-fit mb-4">
-            <Truck className="h-5 w-5" />
-          </div>
-          <h2 className="font-display font-bold text-neutral-900 text-base mb-1">Envíos a Todo Honduras</h2>
-          <p className="text-xs text-neutral-500">Coordinamos despachos seguros por Rapido Cargo o CAEX, o delivery en moto en Tegucigalpa y SPS.</p>
-        </div>
-        
-        <div className="bg-white border border-neutral-200 rounded-2xl p-5 hover:shadow-sm transition-shadow">
-          <div className="p-2.5 bg-neutral-900 text-white rounded-xl w-fit mb-4">
-            <Percent className="h-5 w-5" />
-          </div>
-          <h2 className="font-display font-bold text-neutral-900 text-base mb-1">Precios Mayoristas VIP</h2>
-          <p className="text-xs text-neutral-500">Los clientes mayoristas tienen acceso inmediato a precios promocionales con importantes descuentos.</p>
-        </div>
+        {/* Carousel Controls */}
+        <button
+          onClick={() => setCurrentIndex((prev) => (prev - 1 + categories.length) % categories.length)}
+          className="absolute left-4 top-1/2 rounded-full bg-white/10 p-2 text-white backdrop-blur-md transition hover:bg-white/20"
+        >
+          <ChevronLeft />
+        </button>
+        <button
+          onClick={() => setCurrentIndex((prev) => (prev + 1) % categories.length)}
+          className="absolute right-4 top-1/2 rounded-full bg-white/10 p-2 text-white backdrop-blur-md transition hover:bg-white/20"
+        >
+          <ChevronRight />
+        </button>
+      </section>
 
-        <div className="bg-white border border-neutral-200 rounded-2xl p-5 hover:shadow-sm transition-shadow">
-          <div className="p-2.5 bg-neutral-900 text-white rounded-xl w-fit mb-4">
-            <Award className="h-5 w-5 animate-pulse text-amber-500" />
-          </div>
-          <h2 className="font-display font-bold text-neutral-900 text-base mb-1">100% Originales Sella</h2>
-          <p className="text-xs text-neutral-500">Garantía absoluta de autenticidad en cada frasco de diseñador importado directo de USA.</p>
-        </div>
-      </div>
-
-      {/* Honduras Guide Panel */}
-      <HondurasGuide />
+      {/* Categories Grid */}
+      <section className="grid grid-cols-2 gap-6 md:grid-cols-4">
+        {categories.map((cat) => (
+          <Link key={cat.name} to="/catalog" className="group relative aspect-square overflow-hidden rounded-3xl bg-neutral-100">
+            <img src={cat.image} alt={cat.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+            <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/60 to-transparent p-6">
+              <h3 className="font-display text-lg font-bold text-white">{cat.name}</h3>
+            </div>
+          </Link>
+        ))}
+      </section>
     </div>
   );
 }

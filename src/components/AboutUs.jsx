@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { BookOpen, MapPin, History, Truck, Search, ExternalLink } from 'lucide-react';
 
-export default function HondurasGuide() {
+export default function AboutUs() {
   const [guideNo, setGuideNo] = useState('');
 
   const handleTrack = (e) => {
