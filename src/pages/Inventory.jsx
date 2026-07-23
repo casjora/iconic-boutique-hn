@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '../store';
+import { createPortal } from 'react-dom';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { 
@@ -908,7 +909,7 @@ export default function Inventory() {
       </div>
 
       {/* Manual Add / Edit Modal Overlay */}
-      {showFormModal && (
+      {showFormModal && createPortal(
   <div className="fixed inset-0 top-0 left-0 w-screen h-screen bg-neutral-950/40 backdrop-blur-[2px] z-50 flex items-center justify-center p-4 overflow-y-auto">
     <div className="bg-white rounded-3xl border border-neutral-200 shadow-xl max-w-xl w-full max-h-[85vh] overflow-y-auto p-6 space-y-6 my-auto">
             
@@ -1095,7 +1096,8 @@ export default function Inventory() {
 
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Image Guide Panel */}
