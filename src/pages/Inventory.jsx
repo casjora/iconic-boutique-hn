@@ -909,8 +909,8 @@ export default function Inventory() {
 
       {/* Manual Add / Edit Modal Overlay */}
       {showFormModal && (
-        <div className="fixed inset-0 bg-neutral-950/40 backdrop-blur-[2px] z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border border-neutral-200 shadow-xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 space-y-6">
+  <div className="fixed inset-0 top-0 left-0 w-screen h-screen bg-neutral-950/40 backdrop-blur-[2px] z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div className="bg-white rounded-3xl border border-neutral-200 shadow-xl max-w-xl w-full max-h-[85vh] overflow-y-auto p-6 space-y-6 my-auto">
             
             <div className="flex justify-between items-center border-b border-neutral-100 pb-3">
               <h3 className="font-display font-bold text-neutral-900 text-lg">
