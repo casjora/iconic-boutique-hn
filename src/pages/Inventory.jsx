@@ -16,7 +16,6 @@ import {
   Package,
   FileSpreadsheet
 } from 'lucide-react';
-import ImageGuide from '../components/ImageGuide';
 
 export default function Inventory() {
   const { 
@@ -1098,10 +1097,7 @@ export default function Inventory() {
           </div>
         </div>,
         document.body
-      )}
-
-      {/* Image Guide Panel */}
-      <ImageGuide />
+      )}  
 
     </div>
   );
