@@ -1,17 +1,17 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import OpenAI from "openai";
-import PDFParser from "pdf2json";
+import { PDFParse } from "pdf-parse";
 
 // Safe text decoder to remove dangerous escaping or special characters
 function cleanExtractedText(str) {
+  if (!str) return "";
   try {
-    const decoded = decodeURIComponent(str);
-    return decoded
+    return str
       .replace(/\x60/g, "'")
       .replace(/\\/g, "/")
       .replace(/\p{Cc}/gu, "");
   } catch {
-    return unescape(str)
+    return String(str)
       .replace(/\x60/g, "'")
       .replace(/\\/g, "/")
       .replace(/\p{Cc}/gu, "");
@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { pdfBase64, pagesText: existingPagesText, model = "gemini-3.5-flash", startPage = 0, productsParsedSoFar = [] } = req.body;
+  const { pdfBase64, pagesText: existingPagesText, model = "gemini-3.6-flash", startPage = 0, productsParsedSoFar = [] } = req.body;
 
   if (!pdfBase64 && !existingPagesText) {
     return res.status(400).json({ error: 'Se requiere el archivo PDF en formato Base64 o el texto de las páginas pre-extraídas' });
@@ -34,33 +34,29 @@ export default async function handler(req, res) {
 
     // 1. Extract and normalize PDF page text
     if (!pagesText) {
-      const cleanBase64 = pdfBase64.split(",")[1] || pdfBase64;
+      const cleanBase64 = pdfBase64.replace(/^data:application\/pdf;base64,/, '').replace(/\s/g, '');
       const pdfBuffer = Buffer.from(cleanBase64, 'base64');
 
       pagesText = await new Promise((resolve, reject) => {
-        const pdfParser = new PDFParser();
-        
-        pdfParser.on("pdfParser_dataError", errData => {
-          reject(new Error(errData?.parserError || "Error decodificando el binario del PDF"));
-        });
-        
-        pdfParser.on("pdfParser_dataReady", pdfData => {
-          try {
-            const pages = pdfData.Pages.map(page => {
-              return page.Texts.map(text => {
-                if (!text || !text.R || !text.R[0]) return "";
-                return cleanExtractedText(text.R[0].T);
-              }).join(' ');
+        try {
+          const parser = new PDFParse({ data: new Uint8Array(pdfBuffer) });
+          parser.getText()
+            .then((result) => {
+              if (!result || !Array.isArray(result.pages)) {
+                reject(new Error("Formato de datos de PDF no válido o vacío"));
+                return;
+              }
+              const pages = result.pages.map(page => cleanExtractedText(page.text));
+              resolve(pages);
+            })
+            .catch((innerError) => {
+              reject(new Error(innerError?.message || "Error al extraer el texto del PDF"));
             });
-            resolve(pages);
-          } catch (innerError) {
-            reject(innerError);
-          }
-        });
-
-        pdfParser.parseBuffer(pdfBuffer);
+        } catch (err) {
+          reject(new Error(err?.message || "Error al inicializar el lector PDF"));
+        }
       });
-      console.log(`PDF cargado y extraído en upload-pdf. Páginas: ${pagesText.length}`);
+      console.log(`PDF cargado y extraído en upload-pdf con pdf-parse. Páginas: ${pagesText.length}`);
     }
 
     // Prompts and schemas for structured extraction
@@ -115,13 +111,13 @@ export default async function handler(req, res) {
         fallbacks = [
           { provider: "deepseek", name: "deepseek-v4-pro" },
           { provider: "deepseek", name: "deepseek-v4-flash" },
+          { provider: "gemini", name: "gemini-3.6-flash" },
           { provider: "gemini", name: "gemini-3.5-flash" },
-          { provider: "gemini", name: "gemini-3.1-flash-lite" },
-          { provider: "gemini", name: "gemini-2.5-flash" }
+          { provider: "gemini", name: "gemini-3.1-flash-lite" }
         ];
       } else {
-        const chosenGemini = model || "gemini-3.5-flash";
-        const otherGeminis = ["gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash"].filter(m => m !== chosenGemini);
+        const chosenGemini = model || "gemini-3.6-flash";
+        const otherGeminis = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite"].filter(m => m !== chosenGemini);
         fallbacks = [
           { provider: "gemini", name: chosenGemini },
           ...otherGeminis.map(m => ({ provider: "gemini", name: m })),
@@ -132,7 +128,6 @@ export default async function handler(req, res) {
 
       let parsedSuccessfully = false;
       let lastError = null;
-      let modelUsedSuccess = "";
 
       for (const attempt of fallbacks) {
         console.log(`[Página ${i + 1} - Intento] Proveedor: ${attempt.provider}, Modelo: ${attempt.name}`);
@@ -163,7 +158,7 @@ export default async function handler(req, res) {
               "}\n\n" +
               "REGLAS CRÍTICAS:\n" +
               "1. No omitas ningún artículo presente en la tabla.\n" +
-              "2. Responde estrictamente con un JSON sin ningún texto explicativo ni formato Markdown adicional.";
+              "2. Responde strictly con un JSON sin ningún texto explicativo ni formato Markdown adicional.";
 
             const response = await openai.chat.completions.create({
               model: attempt.name,
@@ -221,7 +216,6 @@ export default async function handler(req, res) {
             console.log(`-> Página ${i + 1} exitosa con ${attempt.provider}/${attempt.name}: Extraídos ${productosPagina.length} productos.`);
             totalProductosExtraidos = totalProductosExtraidos.concat(productosPagina);
             parsedSuccessfully = true;
-            modelUsedSuccess = attempt.name;
             break; // Siguiente página
           } else {
             throw new Error("El JSON devuelto no tiene un formato de lista válido.");

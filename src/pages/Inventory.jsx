@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '../store';
+import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 import { 
   Plus, Edit2, Trash2, FileUp, Loader2, RefreshCw, Barcode, HelpCircle, 
   Search, SlidersHorizontal, ArrowLeft, Tag, Info, AlertTriangle, PlayCircle, 
@@ -41,7 +43,7 @@ export default function Inventory() {
   const [pdfFile, setPdfFile] = useState(null);
   const [pdfBase64, setPdfBase64] = useState('');
   const [fileName, setFileName] = useState('');
-  const [aiModel, setAiModel] = useState('gemini-2.5-flash'); // Default model choice
+  const [aiModel, setAiModel] = useState('gemini-3.6-flash'); // Default model choice
   
   // Progress & State trackers for AI uploading
   const [isParsing, setIsParsing] = useState(false);
@@ -77,7 +79,200 @@ export default function Inventory() {
     return ['Todas', ...new Set(brands)].sort((a, b) => a.localeCompare(b));
   }, [products]);
 
-  // Handle PDF Drag & Drop selection
+  const normalizeString = (str) => {
+    if (!str) return '';
+    return str.toLowerCase().trim().replace(/\s+/g, ' ');
+  };
+
+  const isTester = (str) => {
+    if (!str) return false;
+    const s = str.toLowerCase();
+    return s.includes('tester') || s.includes('tstr');
+  };
+
+  const convertOzToMl = (sizeStr) => {
+    if (!sizeStr) return '';
+    let str = sizeStr.toLowerCase().trim();
+    if (str.includes('oz')) {
+      const match = str.match(/([\d.]+)\s*oz/);
+      if (match) {
+        const oz = parseFloat(match[1]);
+        if (oz === 3.4 || oz === 3.3) return '100 ml';
+        if (oz === 1.7 || oz === 1.6) return '50 ml';
+        if (oz === 6.8 || oz === 6.7) return '200 ml';
+        if (oz === 5.0 || oz === 5.1) return '150 ml';
+        if (oz === 1.0 || oz === 1.1) return '30 ml';
+        if (oz === 4.2 || oz === 4.0) return '125 ml';
+        if (oz === 2.5) return '75 ml';
+        return `${Math.round(oz * 30)} ml`;
+      }
+    }
+    return sizeStr.replace(/mls?/g, 'ml').trim();
+  };
+
+  const parseProductString = (rawStr) => {
+    let name = rawStr.replace(/^\d+\s*/, '').replace(/^"|"$/g, '').trim();
+    let size = '100 ml';
+    let category = 'Damas';
+    let brand = 'Otras Marcas';
+
+    const knownBrands = [
+      'Afnan', 'Al Haramain', 'Animale', 'Antonio Banderas', 'Ariana Grande', 'Armaf', 'Azzaro',
+      'Benetton', 'Bharara', 'Boucheron', 'Burberry', 'Cacharel', 'Calvin Klein', 'Carolina Herrera',
+      'Chloe', 'Christian Dior', 'Clinique', 'Davidoff', 'Dolce & Gabbana', 'Elizabeth Arden',
+      'Elizabeth Taylor', 'Emper', 'Fragrance World', 'French Avenue', 'Giorgio Armani', 'Giorgio Valenti',
+      'Givenchy', 'Gucci', 'Guess', 'Hugo Boss', 'Issey Miyake', 'Jean Paul Gaultier', 'Jennifer Lopez',
+      'Juicy Couture', 'Kenneth Cole', 'Lacoste', 'Lancome', 'Lattafa', 'Liz Claiborne', 'Marc Jacobs',
+      'Mont Blanc', 'Moschino', 'Nautica', 'Orientica', 'Paco Rabanne', 'Paris Hilton', 'Patek Maison',
+      'Perry Ellis', 'Prada', 'Ralph Lauren', 'Rasasi', 'Salvatore Ferragamo', 'Ted Lapidus', 'Thierry Mugler',
+      'Tommy Hilfiger', 'Valentino', 'Versace', 'Yves Saint Laurent', 'Bottega Veneta', 'Rochas'
+    ];
+
+    const upperStr = name.toUpperCase();
+    for (const b of knownBrands) {
+      if (upperStr.includes(b.toUpperCase())) {
+        brand = b;
+        break;
+      }
+    }
+
+    const sizeMatch = upperStr.match(/(\d+(?:\.\d+)?)\s*(ML|OZ)/);
+    if (sizeMatch) {
+      size = `${sizeMatch[1]} ${sizeMatch[2].toLowerCase()}`;
+    }
+
+    if (upperStr.includes('MEN') || upperStr.includes('POUR HOMME') || upperStr.includes('CABALLERO') || upperStr.includes('BOY')) {
+      category = 'Caballeros';
+    } else if (upperStr.includes('UNISEX')) {
+      category = 'Unisex';
+    }
+
+    return { brand, name, size, category };
+  };
+
+  const processExtractedDataArrays = (data) => {
+    if (!data || data.length === 0) {
+      setError('El archivo está vacío o no contiene filas legibles.');
+      setIsParsing(false);
+      return;
+    }
+
+    try {
+      const parsed = [];
+      
+      // Check if the first row looks like headers
+      const firstRowStr = data[0].join(' ').toLowerCase();
+      const hasHeaders = firstRowStr.includes('marca') || firstRowStr.includes('precio') || firstRowStr.includes('costo') || firstRowStr.includes('perfume');
+      
+      const startIndex = hasHeaders ? 1 : 0;
+
+      for (let i = startIndex; i < data.length; i++) {
+        const row = data[i];
+        if (!row || row.length === 0) continue;
+
+        let nameStr = String(row[0] || '').trim();
+        if (!nameStr) continue;
+
+        let pStock = 1, pVip = 0, pRetail = 0, pCost = 0;
+        
+        let fullText = "";
+        const numbers = [];
+        
+        for (const cell of row) {
+          if (cell === null || cell === undefined) continue;
+          const s = String(cell).trim();
+          const num = Number(s.replace(/,/g, ''));
+          if (isNaN(num) || s === '') {
+             fullText += s + " ";
+          } else {
+             numbers.push(num);
+          }
+        }
+
+        if (row.length === 1 && typeof row[0] === 'string') {
+          const parts = row[0].split(/[;\t]/);
+          if (parts.length > 1) {
+            fullText = "";
+            numbers.length = 0;
+            for (const cell of parts) {
+              const s = String(cell).trim();
+              const num = Number(s.replace(/,/g, ''));
+              if (isNaN(num) || s === '') {
+                 fullText += s + " ";
+              } else {
+                 numbers.push(num);
+              }
+            }
+          }
+        }
+
+        fullText = fullText.trim();
+        if (!fullText && numbers.length > 0) {
+           continue;
+        }
+        
+        const { brand, name, size, category } = parseProductString(fullText || nameStr);
+
+        if (numbers.length >= 3) {
+           const len = numbers.length;
+           pStock = numbers[len - 3];
+           pVip = numbers[len - 2];
+           pRetail = numbers[len - 1];
+        } else if (numbers.length === 2) {
+           pStock = numbers[0];
+           pRetail = numbers[1];
+        } else if (numbers.length === 1) {
+           pStock = numbers[0];
+        }
+
+        const finalSize = convertOzToMl(size);
+
+        parsed.push({
+          brand,
+          name,
+          size: finalSize,
+          cost: pCost,
+          pricePromotional: pVip,
+          pricePublic: pRetail,
+          stock: pStock,
+          category
+        });
+      }
+
+      if (parsed.length === 0) {
+        setError('No se pudieron extraer productos. Asegúrate de que el archivo CSV/Excel contenga registros estructurados.');
+        setIsParsing(false);
+        return;
+      }
+
+      const enriched = parsed.map(item => {
+        const existing = products.find(p => 
+          p.name.toLowerCase().trim() === item.name.toLowerCase().trim() &&
+          p.brand.toLowerCase().trim() === item.brand.toLowerCase().trim() &&
+          p.size.toLowerCase().trim() === item.size.toLowerCase().trim()
+        );
+        if (existing) {
+          return {
+            ...item,
+            cost: item.cost || existing.cost,
+            pricePublic: item.pricePublic || existing.pricePublic,
+            pricePromotional: item.pricePromotional || existing.pricePromotional,
+          };
+        }
+        return item;
+      });
+
+      setParsedProducts(enriched);
+      setIsDrafting(true);
+      setError(null);
+    } catch (err) {
+      setError('Error al procesar los datos extraídos: ' + err.message);
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
+  // Handle Drag & Drop / manual selection for both PDF, CSV, and Excel
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -89,12 +284,52 @@ export default function Inventory() {
     setAccumulatedProducts([]);
     setFailedError('');
 
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const base64String = evt.target?.result?.toString().split(',')[1] || '';
-      setPdfBase64(base64String);
-    };
-    reader.readAsDataURL(file);
+    if (file.name.endsWith('.pdf')) {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const base64String = evt.target?.result?.toString().split(',')[1] || '';
+        setPdfBase64(base64String);
+      };
+      reader.readAsDataURL(file);
+    } else if (file.name.endsWith('.csv') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+      setIsParsing(true);
+      setParsingProgress('Leyendo archivo de inventario local...');
+      
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const bstr = evt.target.result;
+        try {
+          if (file.name.endsWith('.csv')) {
+            Papa.parse(bstr, {
+              header: false,
+              skipEmptyLines: true,
+              complete: (results) => {
+                processExtractedDataArrays(results.data);
+              },
+              error: (err) => {
+                setError('Error al analizar el archivo CSV: ' + err.message);
+                setIsParsing(false);
+              }
+            });
+          } else {
+            const wb = XLSX.read(bstr, { type: 'binary' });
+            const wsname = wb.SheetNames[0];
+            const ws = wb.Sheets[wsname];
+            const rawData = XLSX.utils.sheet_to_json(ws, { header: 1 });
+            processExtractedDataArrays(rawData);
+          }
+        } catch (err) {
+          setError('Error al leer el archivo de Excel: ' + err.message);
+          setIsParsing(false);
+        }
+      };
+
+      if (file.name.endsWith('.csv')) {
+        reader.readAsText(file);
+      } else {
+        reader.readAsBinaryString(file);
+      }
+    }
   };
 
   // Trigger PDF AI processing
@@ -130,11 +365,12 @@ export default function Inventory() {
       } else {
         // Parsing page failure (with resume capabilities)
         setParsingFailed(true);
-        setFailedPageIdx(res.failedPageIndex ?? startPageNum);
-        setPagesText(res.pagesText || sourceTexts);
-        setAccumulatedProducts(res.productsParsedSoFar || existingList);
-        setFailedError(res.error || 'Fallo desconocido en la carga de la página.');
-        setError(`Error de procesamiento en la página ${res.failedPageIndex + 1 ?? 'actual'}.`);
+        const failedIdx = res?.failedPageIndex ?? startPageNum;
+        setFailedPageIdx(failedIdx);
+        setPagesText(res?.pagesText || sourceTexts);
+        setAccumulatedProducts(res?.productsParsedSoFar || existingList);
+        setFailedError(res?.error || 'Fallo desconocido en la carga de la página.');
+        setError(`Error de procesamiento en la página ${typeof failedIdx === 'number' ? (failedIdx + 1) : 'actual'}.`);
       }
     } catch (err) {
       setParsingFailed(true);
@@ -260,12 +496,9 @@ export default function Inventory() {
       image_url: formImageUrl.trim()
     };
 
-    let ok = false;
-    if (isEditing) {
-      ok = await updateProduct(editingId, data);
-    } else {
-      ok = await addProduct(data);
-    }
+    const ok = isEditing 
+      ? await updateProduct(editingId, data)
+      : await addProduct(data);
 
     if (ok) {
       handleOpenAdd(); // Reset to clean fields
@@ -309,7 +542,7 @@ export default function Inventory() {
           Gestión de Inventario y Perfumes
         </h2>
         <p className="text-xs text-neutral-500 mt-1">
-          Administra de forma manual tu stock o carga facturas en PDF escaneadas con inteligencia artificial.
+          Administra de forma manual tu stock, sube archivos CSV/Excel o carga facturas en PDF escaneadas con inteligencia artificial.
         </p>
       </div>
 
@@ -467,7 +700,7 @@ export default function Inventory() {
         <div className="lg:col-span-2 bg-white border border-neutral-200 rounded-3xl p-6 shadow-sm space-y-6">
           <div className="border-b border-neutral-100 pb-3 flex items-center justify-between">
             <h3 className="font-display font-bold text-neutral-900 text-base flex items-center gap-1.5">
-              <FileUp className="h-5 w-5 text-indigo-500 animate-bounce" /> Carga Masiva de Facturas por IA
+              <FileUp className="h-5 w-5 text-indigo-500 animate-bounce" /> Importador Inteligente (Facturas PDF por IA, CSV o Excel)
             </h3>
             
             {/* Model Selector */}
@@ -479,7 +712,7 @@ export default function Inventory() {
                 onChange={(e) => setAiModel(e.target.value)}
                 className="px-2 py-1 bg-neutral-50 border border-neutral-200 rounded-lg text-[11px] font-bold text-neutral-700 outline-none cursor-pointer"
               >
-                <option value="gemini-2.5-flash">Gemini (Rápido)</option>
+                <option value="gemini-3.6-flash">Gemini (Rápido)</option>
                 <option value="deepseek-v4-pro">DeepSeek v4 (Soporte)</option>
               </select>
             </div>
@@ -563,7 +796,7 @@ export default function Inventory() {
               >
                 <input
                   type="file"
-                  accept="application/pdf"
+                  accept="application/pdf, .csv, .xlsx, .xls"
                   onChange={handleFileChange}
                   className="sr-only"
                 />
@@ -575,13 +808,13 @@ export default function Inventory() {
                   </div>
                 ) : (
                   <div className="space-y-1">
-                    <span className="font-extrabold text-xs text-neutral-800 block">Cargar Factura en PDF</span>
-                    <span className="text-[10px] text-neutral-400 block font-semibold">Compatible con facturas originales escaneadas</span>
+                    <span className="font-extrabold text-xs text-neutral-800 block">Cargar Factura (PDF) o Inventario (CSV / Excel)</span>
+                    <span className="text-[10px] text-neutral-400 block font-semibold">Soporta facturas escaneadas (IA), archivos CSV y hojas de cálculo XLS/XLSX</span>
                   </div>
                 )}
               </label>
 
-              {pdfFile && !parsingFailed && (
+              {pdfFile && pdfFile.name.endsWith('.pdf') && !parsingFailed && (
                 <div className="flex items-center justify-between bg-neutral-50 p-4 border border-neutral-200 rounded-2xl">
                   <div className="text-left space-y-0.5">
                     <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest font-mono">Listo para procesar</span>

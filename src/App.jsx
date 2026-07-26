@@ -25,7 +25,7 @@ export default function App() {
   } = useStore();
 
   // Keep track of the last path we synchronized to prevent infinite routing loops
-  const lastPathRef = useRef(location.pathname);
+  const lastPathRef = useRef(null);
 
   // Consolidated routing and view state synchronization
   useEffect(() => {
