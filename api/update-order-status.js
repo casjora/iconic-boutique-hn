@@ -19,7 +19,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Get the current status before making changes to determine the transition
     const { data: currentOrder, error: orderErr } = await supabase
       .from('orders')
       .select('status')
@@ -37,9 +36,7 @@ export default async function handler(req, res) {
 
     const oldStatus = currentOrder.status || 'pendiente';
 
-    // 2. Perform transitional stock adjustments
     if (oldStatus !== 'entregado' && status === 'entregado') {
-      // Transition: Not delivered -> Delivered (deduct physical stock)
       const { data: items, error: itemsErr } = await supabase
         .from('order_items')
         .select('product_id, quantity')
@@ -65,20 +62,14 @@ export default async function handler(req, res) {
 
           if (prod) {
             const newStock = Math.max(0, Number(prod.stock || 0) - Number(item.quantity || 0));
-            const { error: updateProdErr } = await supabase
+            await supabase
               .from('products')
               .update({ stock: newStock })
               .eq('id', item.product_id);
-
-            if (updateProdErr) {
-              console.error(`Error updating stock for product ${item.product_id}:`, updateProdErr);
-              return res.status(500).json({ error: `Error al actualizar stock de producto: ${updateProdErr.message}` });
-            }
           }
         }
       }
     } else if (oldStatus === 'entregado' && status !== 'entregado') {
-      // Transition: Delivered -> Not delivered (restore physical stock)
       const { data: items, error: itemsErr } = await supabase
         .from('order_items')
         .select('product_id, quantity')
@@ -104,21 +95,15 @@ export default async function handler(req, res) {
 
           if (prod) {
             const newStock = Number(prod.stock || 0) + Number(item.quantity || 0);
-            const { error: updateProdErr } = await supabase
+            await supabase
               .from('products')
               .update({ stock: newStock })
               .eq('id', item.product_id);
-
-            if (updateProdErr) {
-              console.error(`Error restoring stock for product ${item.product_id}:`, updateProdErr);
-              return res.status(500).json({ error: `Error al restaurar stock de producto: ${updateProdErr.message}` });
-            }
           }
         }
       }
     }
 
-    // 3. Update the order status in the DB
     const { error: updateErr } = await supabase
       .from('orders')
       .update({ status })

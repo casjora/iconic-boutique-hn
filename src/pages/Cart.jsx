@@ -31,16 +31,13 @@ export default function CartView() {
     e.preventDefault();
     if (!name || !phone) return;
 
-    // submitOrder triggers direct state update & alerts Telegram config
     const orderCreated = await submitOrder(name.trim(), phone.trim());
     if (orderCreated) {
       setSentOrder(orderCreated);
     }
   };
 
-  // If order was successfully processed, show elegant confirmation card
   if (sentOrder) {
-    // Generate text message for WhatsApp redirect
     const itemsText = sentOrder.items
       .map(i => {
         const prefix = isProductSet(i) ? '🎁 [SET] ' : '';
@@ -75,7 +72,6 @@ export default function CartView() {
             </p>
           </div>
 
-          {/* Breakdown summary */}
           <div className="border border-neutral-100 bg-neutral-50/50 rounded-2xl p-4 text-left space-y-2 text-xs">
             <div className="flex justify-between border-b border-neutral-100 pb-2">
               <span className="font-semibold text-neutral-500">Cliente:</span>
@@ -123,7 +119,6 @@ export default function CartView() {
     );
   }
 
-  // Cart Empty State
   if (cart.length === 0) {
     return (
       <div className="max-w-md mx-auto py-16 text-center space-y-6 fade-in-up">
@@ -147,9 +142,9 @@ export default function CartView() {
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-3 fade-in-up">
+    <div className="grid gap-8 lg:grid-cols-3 fade-in-up max-w-7xl mx-auto">
       
-      {/* Cart items list table */}
+      {/* Cart items list */}
       <div className="lg:col-span-2 space-y-4">
         <h2 className="font-display text-2xl font-black text-neutral-900 tracking-tight flex items-center gap-2">
           <ShoppingBag className="h-6 w-6" /> Carrito de Cotización
@@ -164,7 +159,6 @@ export default function CartView() {
               <div key={item.product.id} className="p-4 sm:p-5 flex flex-col sm:flex-row gap-4 items-start relative">
                 
                 <div className="flex gap-4 w-full sm:w-auto">
-                  {/* Product Image */}
                   <div className="h-16 w-16 sm:h-20 sm:w-20 bg-neutral-100 rounded-xl overflow-hidden flex items-center justify-center p-1.5 flex-shrink-0 border border-neutral-100">
                     {item.product.image_url ? (
                       <img 
@@ -177,7 +171,6 @@ export default function CartView() {
                     )}
                   </div>
 
-                  {/* Details info (Mobile Top / Desktop Left) */}
                   <div className="flex-1 min-w-0 space-y-1 pr-6 sm:pr-0">
                     <span className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest font-mono truncate">
                       {item.product.brand}
@@ -199,7 +192,6 @@ export default function CartView() {
                   </div>
                 </div>
 
-                {/* Quantity and Price adjust line */}
                 <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto sm:ml-auto pt-2 sm:pt-0 gap-3 sm:gap-2">
                   <div className="flex items-center border border-neutral-200 rounded-xl bg-neutral-50 shadow-sm">
                     <button
@@ -227,7 +219,6 @@ export default function CartView() {
                   </div>
                 </div>
 
-                {/* Trash delete button */}
                 <button
                   onClick={() => handleRemove(item.product.id)}
                   aria-label="Eliminar producto"
@@ -242,7 +233,7 @@ export default function CartView() {
         </div>
       </div>
 
-      {/* Manual order form checkout widget */}
+      {/* Manual order form checkout */}
       <div className="space-y-4">
         <h2 className="font-display text-2xl font-black text-neutral-900 tracking-tight">Formulario de Pedido</h2>
 

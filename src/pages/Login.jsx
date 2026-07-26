@@ -11,8 +11,8 @@ export default function Login() {
   const [mode, setMode] = useState('signin');
 
   // Input states
-  const [username, setUsername] = useState(''); // Stores email or custom id
-  const [name, setName] = useState(''); // Stores full name for register
+  const [username, setUsername] = useState('');
+  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
 
   const handleTabChange = (targetMode) => {
@@ -48,10 +48,10 @@ export default function Login() {
   };
 
   return (
-    <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       <div className="w-full max-w-md space-y-8 bg-white p-10 rounded-3xl shadow-sm border border-neutral-200 fade-in-up">
         
-        {/* Upper heading status info */}
+        {/* Upper heading */}
         <div className="text-center space-y-2">
           <div className="mx-auto w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center mb-4">
             <Key className="h-6 w-6 text-neutral-900" />
@@ -91,7 +91,7 @@ export default function Login() {
           </button>
         </div>
 
-        {/* Error reporting banner */}
+        {/* Error reporting */}
         {error && (
           <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800 flex items-start justify-between gap-2.5 relative">
             <div className="flex items-start gap-2.5">
@@ -112,11 +112,10 @@ export default function Login() {
           </div>
         )}
 
-        {/* Form area */}
+        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-4">
             
-            {/* Input name if register mode */}
             {mode === 'signup' && (
               <div>
                 <label htmlFor="reg-name" className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2 block">
@@ -139,7 +138,6 @@ export default function Login() {
               </div>
             )}
 
-            {/* Input Email/Username */}
             <div>
               <label htmlFor="reg-username" className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2 block">
                 Correo o Usuario
@@ -166,7 +164,6 @@ export default function Login() {
               )}
             </div>
 
-            {/* Input Password */}
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label htmlFor="reg-pass" className="text-xs font-bold text-neutral-700 uppercase tracking-wider block">
@@ -202,7 +199,6 @@ export default function Login() {
 
           </div>
 
-          {/* Action Trigger Button */}
           <button
             type="submit"
             disabled={loading || !username || !password}
@@ -219,7 +215,6 @@ export default function Login() {
           </button>
         </form>
 
-        {/* Demo hints notice board */}
         <div className="border border-indigo-100 bg-indigo-50/50 rounded-2xl p-4.5 space-y-2">
           <h4 className="text-xs font-extrabold text-indigo-950 uppercase tracking-wider flex items-center gap-1.5">
             <Sparkles className="h-3.5 w-3.5 text-indigo-600 animate-pulse" />

@@ -436,6 +436,34 @@ export const useStore = create((setOriginal, get) => {
       }
     },
 
+    applyBulkDiscount: async (productIds, discountPercent) => {
+      set({ loading: true, error: null });
+      try {
+        const { products } = get();
+        const dbUpdates = [];
+        for (const p of products) {
+          if (productIds.includes(p.id)) {
+            const cleanDesc = p.description ? p.description.replace(/\[PROMO:\d+\]/g, '').trim() : '';
+            const newDesc = discountPercent > 0 ? `${cleanDesc}\n\n[PROMO:${discountPercent}]`.trim() : cleanDesc;
+            
+            const dbProduct = mapProductToDb({ ...p, description: newDesc });
+            dbUpdates.push(dbProduct);
+          }
+        }
+
+        if (dbUpdates.length > 0) {
+          const { error } = await supabase.from('products').upsert(dbUpdates);
+          if (error) throw error;
+        }
+
+        await get().fetchProducts();
+        return true;
+      } catch (err) {
+        set({ error: err.message, loading: false });
+        return false;
+      }
+    },
+
     deleteProduct: async (id) => {
       set({ loading: true, error: null });
       try {
@@ -457,24 +485,30 @@ export const useStore = create((setOriginal, get) => {
       }
     },
 
-    uploadPdf: async (base64, fileName) => {
+    uploadPdf: async (base64, fileName, model = "gemini-3.5-flash", startPage = 0, productsParsedSoFar = [], pagesText = null) => {
       set({ loading: true, error: null });
       try {
         const res = await fetch('/api/products/upload-pdf', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pdfBase64: base64, fileName })
+          body: JSON.stringify({ 
+            pdfBase64: base64, 
+            fileName,
+            model,
+            startPage,
+            productsParsedSoFar,
+            pagesText
+          })
         });
-        if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.error || 'Error al procesar el PDF con IA');
-        }
         const data = await res.json();
         set({ loading: false });
-        return data.products;
+        if (!res.ok) {
+          throw new Error(data.error || 'Error al procesar el PDF con IA');
+        }
+        return data; // returns { success, products, error, failedPageIndex, pagesText, productsParsedSoFar, model }
       } catch (err) {
         set({ error: err.message, loading: false });
-        return null;
+        return { success: false, error: err.message };
       }
     },
 
@@ -891,12 +925,7 @@ export const useStore = create((setOriginal, get) => {
     fetchFavorites: async () => {
       const user = get().user;
       if (!user || !user.uid) {
-        try {
-          const guestFavs = JSON.parse(localStorage.getItem('iconic_favorites_guest') || '[]');
-          set({ favorites: guestFavs });
-        } catch {
-          set({ favorites: [] });
-        }
+        set({ favorites: [] });
         return;
       }
 
@@ -910,17 +939,14 @@ export const useStore = create((setOriginal, get) => {
         set({ favorites: (data || []).map(f => f.product_id) });
       } catch (err) {
         console.error('Error fetching favorites:', err);
-        try {
-          const guestFavs = JSON.parse(localStorage.getItem('iconic_favorites_guest') || '[]');
-          set({ favorites: guestFavs });
-        } catch {
-          set({ favorites: [] });
-        }
+        set({ favorites: [] });
       }
     },
 
     toggleFavorite: async (productId) => {
       const user = get().user;
+      if (!user || !user.uid) return;
+
       const currentFavs = get().favorites;
       const isFav = currentFavs.includes(productId);
       const updatedFavs = isFav 
@@ -928,11 +954,6 @@ export const useStore = create((setOriginal, get) => {
         : [...currentFavs, productId];
 
       set({ favorites: updatedFavs });
-
-      if (!user || !user.uid) {
-        localStorage.setItem('iconic_favorites_guest', JSON.stringify(updatedFavs));
-        return;
-      }
 
       try {
         if (isFav) {
@@ -948,10 +969,8 @@ export const useStore = create((setOriginal, get) => {
             .insert({ user_id: user.uid, product_id: productId });
           if (error) throw error;
         }
-        localStorage.setItem('iconic_favorites_guest', JSON.stringify(updatedFavs));
       } catch (err) {
         console.error('Error toggling favorite in DB:', err);
-        localStorage.setItem('iconic_favorites_guest', JSON.stringify(updatedFavs));
       }
     },
 
