@@ -76,7 +76,7 @@ export default async function handler(req, res) {
         });
         pagesText = pagesTextList;
       } catch (innerError) {
-        throw new Error(
+throw new Error(
     innerError?.message || "Error al extraer el texto del PDF", 
     { cause: innerError }
   );
@@ -117,7 +117,27 @@ export default async function handler(req, res) {
     let totalProductosExtraidos = [...productsParsedSoFar];
 
     const geminiApiKey = process.env.GEMINI_API_KEY;
-    const deepseekApiKey = process.env.DEEP_SEEK_API || process.env.DEEPSEEK_API_KEY || process.env.DEEP_SEEK_API_KEY || process.env.DEEPSEEK_API;
+    
+    // Robust resolution of DeepSeek API Key and Base URL
+    let deepseekApiKey = "";
+    let deepseekBaseURL = "https://api.deepseek.com";
+
+    const possibleKeys = [
+      process.env.DEEPSEEK_API_KEY,
+      process.env.DEEP_SEEK_API_KEY,
+      process.env.DEEPSEEK_API,
+      process.env.DEEP_SEEK_API
+    ];
+
+    for (const key of possibleKeys) {
+      if (key && typeof key === "string") {
+        if (key.startsWith("http://") || key.startsWith("https://") || key.includes("/")) {
+          deepseekBaseURL = key;
+        } else if (key.trim()) {
+          deepseekApiKey = key.trim();
+        }
+      }
+    }
 
     // 2. Process pages sequentially starting from startPage
     for (let i = startPage; i < pagesText.length; i++) {
@@ -178,7 +198,7 @@ export default async function handler(req, res) {
             }
 
             const openai = new OpenAI({
-              baseURL: 'https://api.deepseek.com',
+              baseURL: deepseekBaseURL,
               apiKey: deepseekApiKey,
             });
 
