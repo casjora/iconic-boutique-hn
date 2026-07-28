@@ -119,7 +119,19 @@ export default async function handler(req, res) {
     for (let i = startPage; i < pagesText.length; i++) {
       const textoDeLaPagina = pagesText[i];
 
-      if (!textoDeLaPagina.trim() || (!textoDeLaPagina.includes("QTY") && !textoDeLaPagina.includes("Price") && !textoDeLaPagina.includes("Total") && !textoDeLaPagina.includes("Amount"))) {
+      const upperPageText = textoDeLaPagina.toUpperCase();
+      const hasKeywords = upperPageText.includes("QTY") || 
+                          upperPageText.includes("PRICE") || 
+                          upperPageText.includes("TOTAL") || 
+                          upperPageText.includes("AMOUNT") || 
+                          upperPageText.includes("SUBTOTAL") || 
+                          upperPageText.includes("PCS") || 
+                          upperPageText.includes("BRAND") || 
+                          upperPageText.includes("DESCR") || 
+                          upperPageText.includes("ITEM") || 
+                          upperPageText.includes("EXT");
+
+      if (!textoDeLaPagina.trim() || !hasKeywords) {
         console.log(`Página ${i + 1} omitida (sin estructura de tabla obvia).`);
         continue;
       }
@@ -275,7 +287,7 @@ export default async function handler(req, res) {
     const productosFinalizados = totalProductosExtraidos.map(p => {
       const name = (p.name || 'Perfume Desconocido').replace(/["`]/g, "").trim();
       const brand = (p.brand || 'Marca Desconocida').trim();
-      const size = (p.size || '100 ml').trim();
+      let size = (p.size || '100 ml').trim();
       const stock = Number(p.stock) || 1;
       const usdPrice = Number(p.unitPriceUSD || p.unitPriceUSD === 0 ? p.unitPriceUSD : p.price) || 0;
 
@@ -287,11 +299,41 @@ export default async function handler(req, res) {
       const pricePublic = Math.round((cost + 550) / 10) * 10;
       const pricePromotional = Math.round((cost * 1.25) / 5) * 5;
 
+      // Consistent ml conversion for size
+      const sizeLower = size.toLowerCase();
+      if (sizeLower.includes('oz')) {
+        const match = sizeLower.match(/([\d.]+)\s*oz/);
+        if (match) {
+          const oz = parseFloat(match[1]);
+          if (oz === 3.4 || oz === 3.3) {
+            size = '100 ml';
+          } else if (oz === 1.7 || oz === 1.6) {
+            size = '50 ml';
+          } else if (oz === 6.8 || oz === 6.7) {
+            size = '200 ml';
+          } else if (oz === 5.0 || oz === 5.1) {
+            size = '150 ml';
+          } else if (oz === 1.0 || oz === 1.1) {
+            size = '30 ml';
+          } else if (oz === 4.2 || oz === 4.0) {
+            size = '125 ml';
+          } else if (oz === 2.5) {
+            size = '75 ml';
+          } else {
+            size = `${Math.round(oz * 30)} ml`;
+          }
+        }
+      } else {
+        size = size.replace(/mls?/g, 'ml');
+      }
+
+      // Exact non-conflicting gender detection
       let category = (p.category || 'Unisex').trim();
-      if (category.toLowerCase().includes('masculino') || category.toLowerCase().includes('hombre') || category.toLowerCase().includes('men')) {
-        category = 'Masculino';
-      } else if (category.toLowerCase().includes('femenino') || category.toLowerCase().includes('mujer') || category.toLowerCase().includes('women')) {
+      const catLower = category.toLowerCase();
+      if (catLower.includes('femenino') || catLower.includes('mujer') || catLower.includes('women') || catLower.includes('woman') || catLower.includes('lady') || catLower.includes('ladies') || catLower.includes('girl')) {
         category = 'Femenino';
+      } else if (catLower.includes('masculino') || catLower.includes('hombre') || catLower.includes('men') || catLower.includes('man') || catLower.includes('boy')) {
+        category = 'Masculino';
       } else {
         category = 'Unisex';
       }
