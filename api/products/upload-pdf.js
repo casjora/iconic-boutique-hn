@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { GoogleGenAI, Type } from "@google/genai";
 import OpenAI from "openai";
-import { PDFParse } from "pdf-parse";
+import PDFParser from "pdf2json";
 
 // Safe text decoder to remove dangerous escaping or special characters
 function cleanExtractedText(str) {
@@ -38,21 +38,46 @@ export default async function handler(req, res) {
       const cleanBase64 = pdfBase64.replace(/^data:application\/pdf;base64,/, '').replace(/\s/g, '');
       const pdfBuffer = Buffer.from(cleanBase64, 'base64');
 
-      pagesText = await new Promise(async (resolve, reject) => {
-        try {
-          const parser = new PDFParse({ data: new Uint8Array(pdfBuffer) });
-          const result = await parser.getText();
-          if (!result || !Array.isArray(result.pages)) {
-            reject(new Error("Formato de datos de PDF no válido o vacío"));
-            return;
-          }
-          const pages = result.pages.map(page => cleanExtractedText(page.text));
-          resolve(pages);
-        } catch (innerError) {
-          reject(new Error(innerError?.message || "Error al extraer el texto del PDF"));
-        }
-      });
-      console.log(`PDF cargado y extraído en upload-pdf con pdf-parse. Páginas: ${pagesText.length}`);
+      try {
+        const pagesTextList = await new Promise((resolve, reject) => {
+          const pdfParser = new PDFParser();
+
+          pdfParser.on("pdfParser_dataError", errData => {
+            reject(new Error(errData.parserError || "Error al decodificar PDF con pdf2json"));
+          });
+
+          pdfParser.on("pdfParser_dataReady", pdfData => {
+            try {
+              if (!pdfData || !Array.isArray(pdfData.Pages)) {
+                reject(new Error("Formato de datos de PDF no válido o vacío"));
+                return;
+              }
+              const pages = pdfData.Pages.map(page => {
+                if (!page || !Array.isArray(page.Texts)) return "";
+                return page.Texts.map(text => {
+                  if (!text || !Array.isArray(text.R)) return "";
+                  return text.R.map(run => {
+                    try {
+                      return decodeURIComponent(run.t || "");
+                    } catch {
+                      return run.t || "";
+                    }
+                  }).join('');
+                }).join(' ');
+              }).map(cleanExtractedText);
+              resolve(pages);
+            } catch (e) {
+              reject(e);
+            }
+          });
+
+          pdfParser.parseBuffer(pdfBuffer);
+        });
+        pagesText = pagesTextList;
+      } catch (innerError) {
+        throw new Error(innerError?.message || "Error al extraer el texto del PDF");
+      }
+      console.log(`PDF cargado y extraído en upload-pdf con pdf2json. Páginas: ${pagesText.length}`);
     }
 
     // Prompts and schemas for structured extraction
