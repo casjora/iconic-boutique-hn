@@ -36,17 +36,17 @@ const mapProductToDb = (p) => {
 
   const dbRecord = {
     id: generatedId,
-    name: p.name,
-    brand: p.brand,
-    size: p.size,
+    name: p.name ? String(p.name).trim() : 'Perfume Desconocido',
+    brand: p.brand ? String(p.brand).trim() : 'Marca Desconocida',
+    size: p.size ? String(p.size).trim() : '100 ml',
     cost: Number(p.cost || 0),
-    price_public: Number(p.pricePublic || 0),
-    price_promotional: Number(p.pricePromotional || 0),
+    price_public: Number(p.pricePublic !== undefined ? p.pricePublic : (p.price_public || 0)),
+    price_promotional: Number(p.pricePromotional !== undefined ? p.pricePromotional : (p.price_promotional || 0)),
     stock: Number(p.stock || 0),
     category: dbCategory,
     barcode: generatedBarcode,
     description: p.description || '',
-    image_url: p.image_url || ''
+    image_url: p.image_url || p.imageUrl || ''
   };
   
   return dbRecord;
@@ -354,20 +354,40 @@ export const useStore = create((setOriginal, get) => {
         }
         
         if (updates && updates.length > 0) {
+          const currentProducts = get().products;
           const dbUpdates = updates.map(u => {
+            const original = currentProducts.find(p => p.id === u.id) || {};
+            
+            const name = u.name ? String(u.name).trim() : (original.name || 'Perfume Desconocido');
+            const brand = u.brand ? String(u.brand).trim() : (original.brand || 'Marca Desconocida');
+            const size = u.size ? String(u.size).trim() : (original.size || '100 ml');
+            
             let dbCategory = undefined;
-            if (u.category !== undefined) {
-              if (u.category === 'Caballeros' || u.category === 'Masculino' || u.category === 'Niños') dbCategory = 'Masculino';
-              else if (u.category === 'Unisex') dbCategory = 'Unisex';
-              else if (u.category === 'Damas' || u.category === 'Femenino') dbCategory = 'Femenino';
+            const categoryToUse = u.category !== undefined ? u.category : original.category;
+            if (categoryToUse !== undefined) {
+              if (categoryToUse === 'Caballeros' || categoryToUse === 'Masculino' || categoryToUse === 'Niños') dbCategory = 'Masculino';
+              else if (categoryToUse === 'Unisex') dbCategory = 'Unisex';
+              else if (categoryToUse === 'Damas' || categoryToUse === 'Femenino') dbCategory = 'Femenino';
             }
+            if (!dbCategory && original.category) {
+              if (original.category === 'Masculino' || original.category === 'Caballeros') dbCategory = 'Masculino';
+              else if (original.category === 'Unisex') dbCategory = 'Unisex';
+              else dbCategory = 'Femenino';
+            }
+
             return {
               id: u.id,
-              ...(u.stock !== undefined && { stock: Number(u.stock) }),
-              ...(u.cost !== undefined && { cost: Number(u.cost) }),
-              ...(u.pricePublic !== undefined && { price_public: Number(u.pricePublic) }),
-              ...(u.pricePromotional !== undefined && { price_promotional: Number(u.pricePromotional) }),
-              ...(dbCategory !== undefined && { category: dbCategory })
+              name,
+              brand,
+              size,
+              stock: Number(u.stock !== undefined ? u.stock : (original.stock || 0)),
+              cost: Number(u.cost !== undefined ? u.cost : (original.cost || 0)),
+              price_public: Number(u.pricePublic !== undefined ? u.pricePublic : (original.pricePublic || 0)),
+              price_promotional: Number(u.pricePromotional !== undefined ? u.pricePromotional : (original.pricePromotional || 0)),
+              category: dbCategory || 'Femenino',
+              barcode: original.barcode || null,
+              description: original.description || null,
+              image_url: original.imageUrl || null
             };
           });
           const { error: updErr } = await supabase.from('products').upsert(dbUpdates);

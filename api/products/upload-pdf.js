@@ -76,7 +76,7 @@ export default async function handler(req, res) {
         });
         pagesText = pagesTextList;
       } catch (innerError) {
-throw new Error(
+        throw new Error(
     innerError?.message || "Error al extraer el texto del PDF", 
     { cause: innerError }
   );
@@ -166,6 +166,7 @@ throw new Error(
       let fallbacks = [];
       if (model && (model.startsWith("deepseek") || model === "deepseek-v4-pro")) {
         fallbacks = [
+          { provider: "deepseek", name: "deepseek-chat" },
           { provider: "deepseek", name: "deepseek-v4-pro" },
           { provider: "deepseek", name: "deepseek-v4-flash" },
           { provider: "gemini", name: "gemini-3.6-flash" },
@@ -178,6 +179,7 @@ throw new Error(
         fallbacks = [
           { provider: "gemini", name: chosenGemini },
           ...otherGeminis.map(m => ({ provider: "gemini", name: m })),
+          { provider: "deepseek", name: "deepseek-chat" },
           { provider: "deepseek", name: "deepseek-v4-pro" },
           { provider: "deepseek", name: "deepseek-v4-flash" }
         ];

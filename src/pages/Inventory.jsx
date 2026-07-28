@@ -465,6 +465,9 @@ export default function Inventory() {
         if (existing) {
           updates.push({
             id: existing.id,
+            name: draft.name,
+            brand: draft.brand,
+            size: draft.size,
             stock: existing.stock + draft.stock, // Cumulative stock addition
             cost: draft.cost, // Update with latest cost
             pricePublic: draft.pricePublic,
