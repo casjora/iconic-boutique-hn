@@ -92,7 +92,16 @@ export const useStore = create((setOriginal, get) => {
     cart: [],
     favorites: [],
     telegramConfig: { token: '', chatId: '', active: false },
-    currentView: 'home',
+    currentView: (() => {
+      if (typeof window !== 'undefined' && window.location) {
+        const path = window.location.pathname.substring(1) || 'home';
+        const isCategoryPath = path.startsWith('category/');
+        const normalizedPath = isCategoryPath ? 'catalog' : path;
+        const validViews = ['home', 'catalog', 'favorites', 'cart', 'login', 'forgot-password', 'update-password', 'dashboard', 'inventory', 'barcodes', 'config', 'orders', 'about-us'];
+        return validViews.includes(normalizedPath) ? normalizedPath : 'home';
+      }
+      return 'home';
+    })(),
     loading: false,
     error: null,
     searchTerm: '',

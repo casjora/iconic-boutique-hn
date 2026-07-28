@@ -57,10 +57,11 @@ export default async function handler(req, res) {
                 return page.Texts.map(text => {
                   if (!text || !Array.isArray(text.R)) return "";
                   return text.R.map(run => {
+                    const rawVal = run.T || "";
                     try {
-                      return decodeURIComponent(run.t || "");
+                      return decodeURIComponent(rawVal);
                     } catch {
-                      return run.t || "";
+                      return rawVal;
                     }
                   }).join('');
                 }).join(' ');
@@ -75,7 +76,10 @@ export default async function handler(req, res) {
         });
         pagesText = pagesTextList;
       } catch (innerError) {
-        throw new Error(innerError?.message || "Error al extraer el texto del PDF");
+        throw new Error(
+    innerError?.message || "Error al extraer el texto del PDF", 
+    { cause: innerError }
+  );
       }
       console.log(`PDF cargado y extraído en upload-pdf con pdf2json. Páginas: ${pagesText.length}`);
     }
