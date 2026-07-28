@@ -355,10 +355,19 @@ export const useStore = create((setOriginal, get) => {
         
         if (updates && updates.length > 0) {
           const dbUpdates = updates.map(u => {
+            let dbCategory = undefined;
+            if (u.category !== undefined) {
+              if (u.category === 'Caballeros' || u.category === 'Masculino' || u.category === 'Niños') dbCategory = 'Masculino';
+              else if (u.category === 'Unisex') dbCategory = 'Unisex';
+              else if (u.category === 'Damas' || u.category === 'Femenino') dbCategory = 'Femenino';
+            }
             return {
               id: u.id,
               ...(u.stock !== undefined && { stock: Number(u.stock) }),
-              ...(u.cost !== undefined && { cost: Number(u.cost) })
+              ...(u.cost !== undefined && { cost: Number(u.cost) }),
+              ...(u.pricePublic !== undefined && { price_public: Number(u.pricePublic) }),
+              ...(u.pricePromotional !== undefined && { price_promotional: Number(u.pricePromotional) }),
+              ...(dbCategory !== undefined && { category: dbCategory })
             };
           });
           const { error: updErr } = await supabase.from('products').upsert(dbUpdates);

@@ -60,6 +60,72 @@ export default function Inventory() {
 
   const abortControllerRef = useRef(null);
 
+  const enrichAndSetParsedProducts = (rawItems) => {
+    if (!rawItems || !Array.isArray(rawItems)) {
+      setParsedProducts([]);
+      return;
+    }
+    const enriched = rawItems.map(item => {
+      const dName = (item.name || '').toLowerCase().trim();
+      const dBrand = (item.brand || '').toLowerCase().trim();
+      const dSize = (item.size || '').toLowerCase().trim();
+
+      // Find best match in our current inventory
+      // 1. Exact match (brand + name + size)
+      let matched = products.find(p => 
+        (p.brand || '').toLowerCase().trim() === dBrand &&
+        (p.name || '').toLowerCase().trim() === dName &&
+        (p.size || '').toLowerCase().trim() === dSize
+      );
+      
+      let matchType = 'none';
+      if (matched) {
+        matchType = 'exact';
+      } else {
+        // 2. Brand + Name match (different size)
+        matched = products.find(p => 
+          (p.brand || '').toLowerCase().trim() === dBrand &&
+          (p.name || '').toLowerCase().trim() === dName
+        );
+        if (matched) {
+          matchType = 'name-only';
+        } else {
+          // 3. Fuzzy match (brand + name contains or is contained in)
+          matched = products.find(p => {
+            const pName = (p.name || '').toLowerCase().trim();
+            const pBrand = (p.brand || '').toLowerCase().trim();
+            if (pBrand !== dBrand) return false;
+            return pName.includes(dName) || dName.includes(pName);
+          });
+          if (matched) {
+            matchType = 'fuzzy';
+          }
+        }
+      }
+
+      // Convert category from DB format ('Femenino', 'Masculino') to local UI format ('Damas', 'Caballeros', 'Unisex')
+      let localCategory = item.category || 'Damas';
+      if (matched) {
+        if (matched.category === 'Masculino') localCategory = 'Caballeros';
+        else if (matched.category === 'Unisex') localCategory = 'Unisex';
+        else localCategory = 'Damas';
+      }
+
+      return {
+        ...item,
+        matchedProductId: matched ? matched.id : 'new',
+        matchType: matchType,
+        // Keep the raw item's cost if present; otherwise fallback to matched product's cost
+        cost: item.cost || (matched ? matched.cost : 0),
+        pricePublic: item.pricePublic || (matched ? matched.pricePublic : 0),
+        pricePromotional: item.pricePromotional || (matched ? matched.pricePromotional : 0),
+        category: localCategory
+      };
+    });
+
+    setParsedProducts(enriched);
+  };
+
   const handleCancelAiAnalysis = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -256,24 +322,7 @@ export default function Inventory() {
         return;
       }
 
-      const enriched = parsed.map(item => {
-        const existing = products.find(p => 
-          p.name.toLowerCase().trim() === item.name.toLowerCase().trim() &&
-          p.brand.toLowerCase().trim() === item.brand.toLowerCase().trim() &&
-          p.size.toLowerCase().trim() === item.size.toLowerCase().trim()
-        );
-        if (existing) {
-          return {
-            ...item,
-            cost: item.cost || existing.cost,
-            pricePublic: item.pricePublic || existing.pricePublic,
-            pricePromotional: item.pricePromotional || existing.pricePromotional,
-          };
-        }
-        return item;
-      });
-
-      setParsedProducts(enriched);
+      enrichAndSetParsedProducts(parsed);
       setIsDrafting(true);
       setError(null);
     } catch (err) {
@@ -374,7 +423,7 @@ export default function Inventory() {
 
       if (res && res.success) {
         // Success
-        setParsedProducts(res.products || []);
+        enrichAndSetParsedProducts(res.products || []);
         setIsDrafting(true);
         setParsingFailed(false);
         setFailedError('');
@@ -411,19 +460,20 @@ export default function Inventory() {
     const updates = [];
 
     for (const draft of parsedProducts) {
-      // Look for match by exact Brand + Name + Size
-      const existing = products.find(p => 
-        p.name.toLowerCase().trim() === draft.name.toLowerCase().trim() &&
-        p.brand.toLowerCase().trim() === draft.brand.toLowerCase().trim() &&
-        p.size.toLowerCase().trim() === draft.size.toLowerCase().trim()
-      );
-
-      if (existing) {
-        updates.push({
-          id: existing.id,
-          stock: existing.stock + draft.stock, // Cumulative stock addition
-          cost: draft.cost // Update with latest cost
-        });
+      if (draft.matchedProductId && draft.matchedProductId !== 'new') {
+        const existing = products.find(p => p.id === draft.matchedProductId);
+        if (existing) {
+          updates.push({
+            id: existing.id,
+            stock: existing.stock + draft.stock, // Cumulative stock addition
+            cost: draft.cost, // Update with latest cost
+            pricePublic: draft.pricePublic,
+            pricePromotional: draft.pricePromotional,
+            category: draft.category
+          });
+        } else {
+          inserts.push(draft);
+        }
       } else {
         inserts.push(draft);
       }
@@ -619,6 +669,7 @@ export default function Inventory() {
                 <tr>
                   <th className="px-4 py-3">Marca</th>
                   <th className="px-4 py-3">Nombre Fragancia</th>
+                  <th className="px-4 py-3">Vinculación (Inventario)</th>
                   <th className="px-4 py-3">Presentación</th>
                   <th className="px-4 py-3">Costo Unit. (HNL)</th>
                   <th className="px-4 py-3">Precio Público (HNL)</th>
@@ -646,6 +697,76 @@ export default function Inventory() {
                         onChange={(e) => handleUpdateDraftField(idx, 'name', e.target.value)}
                         className="w-44 px-2 py-1 bg-neutral-50 border border-neutral-200 rounded text-xs"
                       />
+                    </td>
+                    <td className="px-4 py-2">
+                      {(() => {
+                        const sameBrandProducts = products.filter(p => 
+                          (p.brand || '').toLowerCase().trim() === (item.brand || '').toLowerCase().trim()
+                        );
+
+                        return (
+                          <div className="flex flex-col gap-1 min-w-[200px]">
+                            <select
+                              value={item.matchedProductId || 'new'}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                handleUpdateDraftField(idx, 'matchedProductId', val);
+                                if (val !== 'new') {
+                                  const matchedProd = products.find(p => p.id === val);
+                                  if (matchedProd) {
+                                    handleUpdateDraftField(idx, 'pricePublic', matchedProd.pricePublic);
+                                    handleUpdateDraftField(idx, 'pricePromotional', matchedProd.pricePromotional);
+                                    let localCat = 'Damas';
+                                    if (matchedProd.category === 'Masculino') localCat = 'Caballeros';
+                                    else if (matchedProd.category === 'Unisex') localCat = 'Unisex';
+                                    handleUpdateDraftField(idx, 'category', localCat);
+                                    if (matchedProd.cost) {
+                                      handleUpdateDraftField(idx, 'cost', matchedProd.cost);
+                                    }
+                                  }
+                                }
+                              }}
+                              className={`px-2 py-1 border rounded text-xs font-semibold outline-none transition-colors ${
+                                item.matchedProductId && item.matchedProductId !== 'new'
+                                  ? 'bg-emerald-50 border-emerald-300 text-emerald-900 focus:ring-1 focus:ring-emerald-400'
+                                  : 'bg-indigo-50/50 border-indigo-200 text-indigo-900 focus:ring-1 focus:ring-indigo-300'
+                              }`}
+                            >
+                              <option value="new">➕ Crear como Nuevo Perfume</option>
+                              {sameBrandProducts.length > 0 && (
+                                <optgroup label={`Existentes de ${item.brand}`}>
+                                  {sameBrandProducts.map(p => (
+                                    <option key={p.id} value={p.id}>
+                                      🔗 {p.name} ({p.size || 'N/A'}) - Stock: {p.stock}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              )}
+                              <optgroup label="Otros de todo el Inventario">
+                                {products
+                                  .filter(p => (p.brand || '').toLowerCase().trim() !== (item.brand || '').toLowerCase().trim())
+                                  .slice(0, 100)
+                                  .map(p => (
+                                    <option key={p.id} value={p.id}>
+                                      🔗 {p.brand} - {p.name} ({p.size || 'N/A'})
+                                    </option>
+                                  ))
+                                }
+                              </optgroup>
+                            </select>
+                            
+                            {item.matchedProductId && item.matchedProductId !== 'new' ? (
+                              <span className="text-[10px] text-emerald-700 font-extrabold flex items-center gap-1">
+                                <Check className="h-3 w-3 text-emerald-600" /> Sumará +{item.stock} al stock existente
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-indigo-600 font-bold flex items-center gap-1">
+                                <Plus className="h-3 w-3 text-indigo-500" /> Se registrará como nuevo
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-2">
                       <input
@@ -789,7 +910,7 @@ export default function Inventory() {
                     type="button"
                     onClick={() => {
                       if (confirm('¿Deseas guardar los perfumes que se lograron parsear correctamente antes de que fallara la factura?')) {
-                        setParsedProducts(accumulatedProducts);
+                        enrichAndSetParsedProducts(accumulatedProducts);
                         setIsDrafting(true);
                         setParsingFailed(false);
                       }
