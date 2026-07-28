@@ -222,7 +222,7 @@ export default function CartView() {
                 <button
                   onClick={() => handleRemove(item.product.id)}
                   aria-label="Eliminar producto"
-                  className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 sm:p-1.5 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
+                  className="absolute top-3 right-3 sm:-top-1 sm:right-4 p-2 sm:p-1.5 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
                 >
                   <Trash2 className="h-5 w-5 sm:h-4 sm:w-4" />
                 </button>
