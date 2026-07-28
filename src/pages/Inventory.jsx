@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useStore } from '../store';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
@@ -57,6 +57,17 @@ export default function Inventory() {
   const [pagesText, setPagesText] = useState(null); // Extracted PDF texts kept across retries
   const [accumulatedProducts, setAccumulatedProducts] = useState([]); // Products parsed prior to page failure
   const [failedError, setFailedError] = useState('');
+
+  const abortControllerRef = useRef(null);
+
+  const handleCancelAiAnalysis = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      setIsParsing(false);
+      setParsingProgress('');
+      setError('Análisis de IA cancelado por el usuario.');
+    }
+  };
 
   // Filtering products in inventory list
   const filteredProducts = useMemo(() => {
@@ -338,6 +349,10 @@ export default function Inventory() {
     setIsParsing(true);
     setParsingProgress('Iniciando procesamiento con Inteligencia Artificial...');
     
+    // Create new abort controller
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     const activeModel = selectedModelOverride || aiModel;
     const startPageNum = resume ? failedPageIdx : 0;
     const existingList = resume ? accumulatedProducts : [];
@@ -353,7 +368,8 @@ export default function Inventory() {
         activeModel, 
         startPageNum, 
         existingList, 
-        sourceTexts
+        sourceTexts,
+        controller.signal // Pass signal to store
       );
 
       if (res && res.success) {
@@ -362,6 +378,9 @@ export default function Inventory() {
         setIsDrafting(true);
         setParsingFailed(false);
         setFailedError('');
+      } else if (res && res.cancelled) {
+        // Request was cancelled by user
+        console.log('AI parsing cancelled by user.');
       } else {
         // Parsing page failure (with resume capabilities)
         setParsingFailed(true);
@@ -376,6 +395,9 @@ export default function Inventory() {
       setParsingFailed(true);
       setFailedError(err.message || 'Error grave al conectar con el servidor.');
     } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
       setIsParsing(false);
     }
   };
@@ -838,6 +860,13 @@ export default function Inventory() {
                 <span className="font-display font-black text-neutral-900 text-base uppercase tracking-wider animate-pulse">Procesando Factura con IA</span>
                 <p className="text-xs text-neutral-500 font-mono font-semibold max-w-sm leading-relaxed">{parsingProgress}</p>
               </div>
+              <button
+                type="button"
+                onClick={handleCancelAiAnalysis}
+                className="mt-2 px-4 py-2 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold rounded-xl transition-all active:scale-95 cursor-pointer"
+              >
+                Cancelar Análisis
+              </button>
             </div>
           )}
         </div>

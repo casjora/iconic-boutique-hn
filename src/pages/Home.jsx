@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import AboutUs from '../components/AboutUs';
 
 const categories = [
   { name: 'Para Caballeros', path: '/category/caballeros', image: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&q=80&w=800' },
@@ -87,11 +86,6 @@ export default function Home() {
             </div>
           </Link>
         ))}
-      </section>
-
-      {/* About Us physical details section */}
-      <section>
-        <AboutUs />
       </section>
     </div>
   );

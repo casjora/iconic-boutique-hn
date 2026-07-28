@@ -485,12 +485,13 @@ export const useStore = create((setOriginal, get) => {
       }
     },
 
-    uploadPdf: async (base64, fileName, model = "gemini-3.5-flash", startPage = 0, productsParsedSoFar = [], pagesText = null) => {
+    uploadPdf: async (base64, fileName, model = "gemini-3.5-flash", startPage = 0, productsParsedSoFar = [], pagesText = null, signal = null) => {
       set({ loading: true, error: null });
       try {
         const res = await fetch('/api/products/upload-pdf', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal,
           body: JSON.stringify({ 
             pdfBase64: base64, 
             fileName,
@@ -507,7 +508,11 @@ export const useStore = create((setOriginal, get) => {
         }
         return data; // returns { success, products, error, failedPageIndex, pagesText, productsParsedSoFar, model }
       } catch (err) {
-        set({ error: err.message, loading: false });
+        set({ loading: false });
+        if (err.name === 'AbortError' || signal?.aborted) {
+          return { success: false, cancelled: true };
+        }
+        set({ error: err.message });
         return { success: false, error: err.message };
       }
     },

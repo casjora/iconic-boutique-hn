@@ -2,7 +2,7 @@ import { useStore } from '../store';
 import { useNavigate } from 'react-router-dom';
 import { 
   ShoppingBag, Heart, User, LogOut, Settings, Barcode, 
-  TrendingUp, ClipboardList, Package, Sparkles, Home, Menu, X 
+  TrendingUp, ClipboardList, Package, Sparkles, Home, Menu, X, Info 
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -68,6 +68,10 @@ export default function Navbar() {
               
               <button onClick={() => handleNav('catalog')} className={navItemClass('catalog')}>
                 <Package className="h-3.5 w-3.5" /> Catálogo
+              </button>
+
+              <button onClick={() => handleNav('about-us')} className={navItemClass('about-us')}>
+                <Info className="h-3.5 w-3.5" /> Nosotros
               </button>
 
               {user && (
@@ -180,6 +184,10 @@ export default function Navbar() {
 
             <button onClick={() => handleNav('catalog')} className={mobileNavItemClass('catalog')}>
               <Package className="h-4 w-4" /> Catálogo de Fragancias
+            </button>
+
+            <button onClick={() => handleNav('about-us')} className={mobileNavItemClass('about-us')}>
+              <Info className="h-4 w-4" /> Nosotros
             </button>
 
             {user && (

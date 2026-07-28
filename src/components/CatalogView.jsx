@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../store';
 import { Link, useLocation } from 'react-router-dom';
 import PerfumeCard from './PerfumeCard';
-import { Percent, Award, Sparkles, Search, SlidersHorizontal, RefreshCw, Flame,Heart } from 'lucide-react';
+import { Percent, Award, Heart, Sparkles, Search, SlidersHorizontal, RefreshCw, Flame } from 'lucide-react';
 import { isProductSet, getProductPromoDiscount } from '../utils/productHelper';
 
 export default function CatalogView({ favoritesOnly = false }) {
@@ -52,10 +52,18 @@ export default function CatalogView({ favoritesOnly = false }) {
   }, [products, favorites, favoritesOnly]);
 
   // Extract unique brands for the filter select
+  const categoryFilteredProducts = useMemo(() => {
+    return baseProducts.filter(p => {
+      if (selectedCategory === 'Todas') return true;
+      if (selectedCategory === 'Sets / Estuches') return isProductSet(p);
+      return p.category?.trim() === selectedCategory;
+    });
+  }, [baseProducts, selectedCategory]);
+
   const uniqueBrands = useMemo(() => {
-    const brands = baseProducts.map(p => p.brand?.trim()).filter(Boolean);
+    const brands = categoryFilteredProducts.map(p => p.brand?.trim()).filter(Boolean);
     return ['Todas', ...new Set(brands)].sort((a, b) => a.localeCompare(b));
-  }, [baseProducts]);
+  }, [categoryFilteredProducts]);
 
   // Extract unique categories for the filter select, removing any duplicate "Todas" or "Todas las Categorías"
   const uniqueCategories = useMemo(() => {
@@ -93,6 +101,7 @@ export default function CatalogView({ favoritesOnly = false }) {
   }, [baseProducts, searchTerm, selectedBrand, selectedCategory, showPromoOnly]);
 
   const isFiltering = searchTerm.trim() !== '' || selectedBrand !== 'Todas' || selectedCategory !== 'Todas' || showPromoOnly;
+  const isCategoryPage = location.pathname.startsWith('/category/');
 
   // Apply lazy loading count if user is not filtering
   const displayedProducts = useMemo(() => {
@@ -226,7 +235,7 @@ export default function CatalogView({ favoritesOnly = false }) {
           <span>Búsqueda y Filtros</span>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className={`grid gap-4 ${isCategoryPage ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
           {/* Text Search */}
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -259,22 +268,24 @@ export default function CatalogView({ favoritesOnly = false }) {
           </div>
 
           {/* Category Selector */}
-          <div>
-            <select
-              value={selectedCategory}
-              onChange={(e) => {
-                setSelectedCategory(e.target.value);
-                setVisibleCount(12); // Reset count on filter change
-              }}
-              className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold text-neutral-700 focus:ring-2 focus:ring-neutral-900 focus:border-transparent outline-none transition-all cursor-pointer"
-            >
-              <option value="Todas">Todas las Categorías</option>
-              <option value="Sets / Estuches">Estuches y Sets 🎁</option>
-              {uniqueCategories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          </div>
+          {!isCategoryPage && (
+            <div>
+              <select
+                value={selectedCategory}
+                onChange={(e) => {
+                  setSelectedCategory(e.target.value);
+                  setVisibleCount(12); // Reset count on filter change
+                }}
+                className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold text-neutral-700 focus:ring-2 focus:ring-neutral-900 focus:border-transparent outline-none transition-all cursor-pointer"
+              >
+                <option value="Todas">Todas las Categorías</option>
+                <option value="Sets / Estuches">Estuches y Sets 🎁</option>
+                {uniqueCategories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {isFiltering && (

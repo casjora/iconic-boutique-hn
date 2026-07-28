@@ -14,6 +14,7 @@ import Inventory from './pages/Inventory';
 import Barcodes from './pages/Barcodes';
 import Config from './pages/Config';
 import Orders from './pages/Orders';
+import AboutUs from './components/AboutUs';
 import { Loader2, ShieldAlert } from 'lucide-react';
 
 export default function App() {
@@ -25,7 +26,7 @@ export default function App() {
   } = useStore();
 
   // Keep track of the last path we synchronized to prevent infinite routing loops
-  const lastPathRef = useRef(null);
+  const lastPathRef = useRef(location.pathname);
 
   // Consolidated routing and view state synchronization
   useEffect(() => {
@@ -35,7 +36,7 @@ export default function App() {
     const isCategoryPath = path.startsWith('category/');
     const normalizedPath = isCategoryPath ? 'catalog' : path;
 
-    const validViews = ['home', 'catalog', 'favorites', 'cart', 'login', 'forgot-password', 'update-password', 'dashboard', 'inventory', 'barcodes', 'config', 'orders'];
+    const validViews = ['home', 'catalog', 'favorites', 'cart', 'login', 'forgot-password', 'update-password', 'dashboard', 'inventory', 'barcodes', 'config', 'orders', 'about-us'];
     const targetView = validViews.includes(normalizedPath) ? normalizedPath : 'home';
 
     if (location.pathname !== lastPathRef.current) {
@@ -77,6 +78,8 @@ export default function App() {
     switch (currentView) {
       case 'home':
         return <Home />;
+      case 'about-us':
+        return <AboutUs />;
       case 'catalog':
         return <Catalog />;
       case 'favorites':

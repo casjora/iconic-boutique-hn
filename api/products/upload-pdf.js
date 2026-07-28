@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { GoogleGenAI, Type } from "@google/genai";
 import OpenAI from "openai";
 import { PDFParse } from "pdf-parse";
@@ -37,23 +38,18 @@ export default async function handler(req, res) {
       const cleanBase64 = pdfBase64.replace(/^data:application\/pdf;base64,/, '').replace(/\s/g, '');
       const pdfBuffer = Buffer.from(cleanBase64, 'base64');
 
-      pagesText = await new Promise((resolve, reject) => {
+      pagesText = await new Promise(async (resolve, reject) => {
         try {
           const parser = new PDFParse({ data: new Uint8Array(pdfBuffer) });
-          parser.getText()
-            .then((result) => {
-              if (!result || !Array.isArray(result.pages)) {
-                reject(new Error("Formato de datos de PDF no válido o vacío"));
-                return;
-              }
-              const pages = result.pages.map(page => cleanExtractedText(page.text));
-              resolve(pages);
-            })
-            .catch((innerError) => {
-              reject(new Error(innerError?.message || "Error al extraer el texto del PDF"));
-            });
-        } catch (err) {
-          reject(new Error(err?.message || "Error al inicializar el lector PDF"));
+          const result = await parser.getText();
+          if (!result || !Array.isArray(result.pages)) {
+            reject(new Error("Formato de datos de PDF no válido o vacío"));
+            return;
+          }
+          const pages = result.pages.map(page => cleanExtractedText(page.text));
+          resolve(pages);
+        } catch (innerError) {
+          reject(new Error(innerError?.message || "Error al extraer el texto del PDF"));
         }
       });
       console.log(`PDF cargado y extraído en upload-pdf con pdf-parse. Páginas: ${pagesText.length}`);
@@ -92,7 +88,7 @@ export default async function handler(req, res) {
     let totalProductosExtraidos = [...productsParsedSoFar];
 
     const geminiApiKey = process.env.GEMINI_API_KEY;
-    const deepseekApiKey = process.env.DEEP_SEEK_API || process.env.DEEPSEEK_API_KEY;
+    const deepseekApiKey = process.env.DEEP_SEEK_API || process.env.DEEPSEEK_API_KEY || process.env.DEEP_SEEK_API_KEY || process.env.DEEPSEEK_API;
 
     // 2. Process pages sequentially starting from startPage
     for (let i = startPage; i < pagesText.length; i++) {
@@ -128,6 +124,7 @@ export default async function handler(req, res) {
 
       let parsedSuccessfully = false;
       let lastError = null;
+      let modelUsedSuccess = "";
 
       for (const attempt of fallbacks) {
         console.log(`[Página ${i + 1} - Intento] Proveedor: ${attempt.provider}, Modelo: ${attempt.name}`);
@@ -158,7 +155,7 @@ export default async function handler(req, res) {
               "}\n\n" +
               "REGLAS CRÍTICAS:\n" +
               "1. No omitas ningún artículo presente en la tabla.\n" +
-              "2. Responde strictly con un JSON sin ningún texto explicativo ni formato Markdown adicional.";
+              "2. Responde estrictamente con un JSON sin ningún texto explicativo ni formato Markdown adicional.";
 
             const response = await openai.chat.completions.create({
               model: attempt.name,
@@ -179,7 +176,14 @@ export default async function handler(req, res) {
               throw new Error("La clave de API de Gemini no está configurada.");
             }
 
-            const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+            const ai = new GoogleGenAI({ 
+              apiKey: geminiApiKey,
+              httpOptions: {
+                headers: {
+                  'User-Agent': 'aistudio-build'
+                }
+              }
+            });
 
             const response = await ai.models.generateContent({
               model: attempt.name,
@@ -216,6 +220,7 @@ export default async function handler(req, res) {
             console.log(`-> Página ${i + 1} exitosa con ${attempt.provider}/${attempt.name}: Extraídos ${productosPagina.length} productos.`);
             totalProductosExtraidos = totalProductosExtraidos.concat(productosPagina);
             parsedSuccessfully = true;
+            modelUsedSuccess = attempt.name;
             break; // Siguiente página
           } else {
             throw new Error("El JSON devuelto no tiene un formato de lista válido.");
