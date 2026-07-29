@@ -162,7 +162,14 @@ export default function Inventory() {
         (p.barcode || '').toLowerCase().includes(term);
 
       const matchesBrand = selectedBrand === 'Todas' || p.brand?.trim() === selectedBrand;
-      const matchesCategory = selectedCategory === 'Todas' || p.category?.trim() === selectedCategory;
+      const pCat = p.category?.trim();
+      const matchesCategory = selectedCategory === 'Todas'
+        ? true
+        : selectedCategory === 'Damas'
+          ? (pCat === 'Damas' || pCat === 'Femenino' || pCat === 'Unisex')
+          : selectedCategory === 'Caballeros'
+            ? (pCat === 'Caballeros' || pCat === 'Masculino' || pCat === 'Unisex')
+            : pCat === selectedCategory;
 
       return matchesSearch && matchesBrand && matchesCategory;
     });
@@ -1276,7 +1283,6 @@ export default function Inventory() {
                       >
                         <option value="Damas" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Damas</option>
                         <option value="Caballeros" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Caballeros</option>
-                        <option value="Unisex" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Unisex</option>
                       </select>
                     </td>
                     <td className="px-4 py-2 text-right">
@@ -1967,7 +1973,6 @@ export default function Inventory() {
                   >
                     <option value="Damas" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Damas</option>
                     <option value="Caballeros" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Caballeros</option>
-                    <option value="Unisex" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Unisex</option>
                   </select>
                 </div>
               </div>

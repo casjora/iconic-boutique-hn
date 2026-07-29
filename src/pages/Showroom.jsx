@@ -45,15 +45,13 @@ export default function Showroom() {
 
       switch (activeTab) {
         case 'damas':
-          return p.category === 'Damas' && !setFlag;
+          return (p.category === 'Damas' || p.category === 'Femenino' || p.category === 'Unisex') && !setFlag;
         case 'caballeros':
-          return p.category === 'Caballeros' && !setFlag;
-        case 'unisex':
-          return p.category === 'Unisex' && !setFlag;
+          return (p.category === 'Caballeros' || p.category === 'Masculino' || p.category === 'Unisex') && !setFlag;
         case 'estuches-dama':
-          return (p.category === 'Damas' || p.category === 'Femenino') && setFlag;
+          return (p.category === 'Damas' || p.category === 'Femenino' || p.category === 'Unisex') && setFlag;
         case 'estuches-caballero':
-          return (p.category === 'Caballeros' || p.category === 'Masculino') && setFlag;
+          return (p.category === 'Caballeros' || p.category === 'Masculino' || p.category === 'Unisex') && setFlag;
         default:
           return true;
       }
@@ -168,7 +166,6 @@ export default function Showroom() {
         {[
           { id: 'damas', label: 'Damas' },
           { id: 'caballeros', label: 'Caballeros' },
-          { id: 'unisex', label: 'Unisex' },
           { id: 'estuches-dama', label: 'Estuches para Dama' },
           { id: 'estuches-caballero', label: 'Estuches para Caballero' }
         ].map(tab => (

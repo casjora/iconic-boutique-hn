@@ -75,14 +75,10 @@ export default function CatalogView({ favoritesOnly = false }) {
     return ['Todas', ...new Set(brands)].sort((a, b) => a.localeCompare(b));
   }, [categoryFilteredProducts]);
 
-  // Extract unique categories for the filter select, removing any duplicate "Todas" or "Todas las Categorías"
+  // Extract unique categories for the filter select, removing Unisex and duplicates
   const uniqueCategories = useMemo(() => {
-    const categories = baseProducts
-      .map(p => p.category?.trim())
-      .filter(Boolean)
-      .filter(cat => cat.toLowerCase() !== 'todas' && cat.toLowerCase() !== 'todas las categorías');
-    return [...new Set(categories)].sort((a, b) => a.localeCompare(b));
-  }, [baseProducts]);
+    return ['Damas', 'Caballeros'];
+  }, []);
 
   // Filter application
   const filteredProducts = useMemo(() => {
@@ -98,15 +94,20 @@ export default function CatalogView({ favoritesOnly = false }) {
       
       const matchesBrand = selectedBrand === 'Todas' || p.brand?.trim() === selectedBrand;
       
+      const pCat = (p.category || '').trim();
       const matchesCategory = selectedCategory === 'Todas'
         ? true
         : selectedCategory === 'Sets / Estuches'
           ? isProductSet(p)
           : selectedCategory === 'Estuches Dama'
-            ? (p.category === 'Damas' || p.category === 'Femenino') && isProductSet(p)
+            ? (pCat === 'Damas' || pCat === 'Femenino' || pCat === 'Unisex') && isProductSet(p)
             : selectedCategory === 'Estuches Caballero'
-              ? (p.category === 'Caballeros' || p.category === 'Masculino') && isProductSet(p)
-              : p.category?.trim() === selectedCategory;
+              ? (pCat === 'Caballeros' || pCat === 'Masculino' || pCat === 'Unisex') && isProductSet(p)
+              : selectedCategory === 'Damas'
+                ? (pCat === 'Damas' || pCat === 'Femenino' || pCat === 'Unisex') && !isProductSet(p)
+                : selectedCategory === 'Caballeros'
+                  ? (pCat === 'Caballeros' || pCat === 'Masculino' || pCat === 'Unisex') && !isProductSet(p)
+                  : pCat === selectedCategory;
       
       const matchesPromo = !showPromoOnly || getProductPromoDiscount(p) > 0;
       

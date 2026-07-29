@@ -207,7 +207,6 @@ export default function App() {
               <ul className="space-y-2 text-sm text-neutral-400">
                 <li><button onClick={() => setView('catalog')} className="hover:text-amber-400 cursor-pointer">Damas</button></li>
                 <li><button onClick={() => setView('catalog')} className="hover:text-amber-400 cursor-pointer">Caballeros</button></li>
-                <li><button onClick={() => setView('catalog')} className="hover:text-amber-400 cursor-pointer">Unisex</button></li>
                 <li><button onClick={() => setView('catalog')} className="hover:text-amber-400 cursor-pointer">Sets / Estuches</button></li>
               </ul>
             </div>

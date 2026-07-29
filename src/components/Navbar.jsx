@@ -47,16 +47,16 @@ export default function Navbar() {
           <div className="flex items-center gap-6">
             <button 
               onClick={() => handleNav('home')} 
-              className="flex items-center gap-2 cursor-pointer outline-none group text-left"
+              className="flex items-center gap-2.5 cursor-pointer outline-none group text-left mr-4 lg:mr-8 shrink-0"
             >
               <img 
-                src="https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&fit=crop&q=80&w=100" 
-                alt="Iconic Boutique Logo" 
-                className="h-9 w-9 rounded-xl object-cover shadow-md group-hover:scale-105 transition-transform border border-amber-400/30"
+                className="h-9 w-9 bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 rounded-xl flex items-center justify-center font-display font-black text-sm tracking-tighter group-hover:scale-105 transition-transform shadow-md object-cover" 
+                src="https://nsubmnvkojsmoykfcjgl.supabase.co/storage/v1/object/public/miscelaneas/iconic-icon.jpg" 
+                alt="iconic-icon" 
               />
               <div>
-                <h1 className="font-bold text-sm text-neutral-900 dark:text-neutral-100 uppercase tracking-widest leading-none font-['Montserrat','Futura',sans-serif]">
-                  ICONIC BOUTIQUE
+                <h1 className="font-['Montserrat',sans-serif] font-bold text-sm text-neutral-900 dark:text-neutral-100 uppercase tracking-widest leading-none">
+                  Iconic Boutique
                 </h1>
                 <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest leading-none mt-0.5 block">Honduras</span>
               </div>
