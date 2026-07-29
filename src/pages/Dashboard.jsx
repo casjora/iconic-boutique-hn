@@ -19,9 +19,7 @@ import {
   CheckCircle2,
   Clock,
   AlertTriangle,
-  Flame,
-  Zap,
-  Tag
+  Flame
 } from 'lucide-react';
 import { isProductSet } from '../utils/productHelper';
 
@@ -439,10 +437,10 @@ export default function Dashboard() {
     <div className="space-y-8 fade-in-up pb-10 max-w-7xl mx-auto w-full">
       
       {/* 1. Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-100 dark:border-neutral-800 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-100 dark:border-neutral-800 pb-5">
         <div>
-          <h2 className="font-display text-2xl font-black text-neutral-900 dark:text-neutral-100 tracking-tight flex items-center gap-2">
-            <TrendingUp className="h-6 w-6 text-emerald-600 dark:text-emerald-400 animate-pulse" /> Panel de Control y Inteligencia Comercial
+          <h2 className="font-display text-xl sm:text-2xl font-black text-neutral-900 dark:text-neutral-100 tracking-tight flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600 dark:text-emerald-400 animate-pulse flex-shrink-0" /> Panel de Control e Inteligencia Comercial
           </h2>
           <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
             Análisis de ventas, rotación de marcas, clientes destacados y capital en riesgo en inventarios.
@@ -450,15 +448,15 @@ export default function Dashboard() {
         </div>
 
         {/* Global Controls */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
           
           {/* Timeframe Selector */}
-          <div className="flex items-center gap-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 px-3 py-2 rounded-xl shadow-sm">
-            <Calendar className="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
+          <div className="flex-1 sm:flex-none flex items-center gap-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 px-3 py-2 rounded-xl shadow-sm">
+            <Calendar className="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500 flex-shrink-0" />
             <select
               value={timeframe}
               onChange={(e) => setTimeframe(e.target.value)}
-              className="bg-transparent text-xs font-bold text-neutral-700 dark:text-neutral-200 focus:outline-none cursor-pointer"
+              className="bg-transparent text-xs font-bold text-neutral-700 dark:text-neutral-200 focus:outline-none cursor-pointer w-full"
             >
               <option value="all" className="dark:bg-neutral-800">Todo el Historial</option>
               <option value="month" className="dark:bg-neutral-800">Este Mes (Calendario)</option>
@@ -470,10 +468,10 @@ export default function Dashboard() {
 
           <button
             onClick={handleRefresh}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer active:scale-95"
           >
             <RefreshCw className="h-3.5 w-3.5" />
-            Sincronizar
+            <span>Sincronizar</span>
           </button>
         </div>
       </div>
@@ -482,30 +480,30 @@ export default function Dashboard() {
       {/* 2. VENTAS Y RENDIMIENTO COMERCIAL                          */}
       {/* ========================================================= */}
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-black text-neutral-900 dark:text-neutral-100 uppercase tracking-wider font-mono border-l-4 border-emerald-500 pl-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <h3 className="text-xs sm:text-sm font-black text-neutral-900 dark:text-neutral-100 uppercase tracking-wider font-mono border-l-4 border-emerald-500 pl-3">
             Ventas y Resultados Financieros del Período
           </h3>
-          <span className="text-[10px] font-extrabold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 rounded-full border border-emerald-100 dark:border-emerald-800 uppercase font-mono">
+          <span className="self-start sm:self-auto text-[10px] font-extrabold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 rounded-full border border-emerald-100 dark:border-emerald-800 uppercase font-mono">
             Filtrado: {timeframe === 'all' ? 'Todo' : timeframe === 'month' ? 'Este Mes' : timeframe === 'last30' ? 'Últimos 30 días' : timeframe === 'last90' ? 'Últimos 90 días' : 'Este Año'}
           </span>
         </div>
 
         {/* Key metrics counters grid */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           
           {/* Sales closed */}
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-sm flex items-start gap-4">
-            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-2xl flex-shrink-0">
-              <DollarSign className="h-6 w-6" />
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-4 sm:p-6 shadow-sm flex items-start gap-3.5 sm:gap-4">
+            <div className="p-2.5 sm:p-3 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-2xl flex-shrink-0">
+              <DollarSign className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <div className="space-y-1 overflow-hidden">
               <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest font-mono">Ventas Cerradas</span>
-              <span className="block text-2xl font-black text-neutral-950 dark:text-neutral-100 font-mono truncate">
+              <span className="block text-xl sm:text-2xl font-black text-neutral-950 dark:text-neutral-100 font-mono truncate">
                 L. {salesStats.completedRevenue.toLocaleString()}
               </span>
               <span className="block text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
-                <CheckCircle2 className="h-3 w-3" /> {salesStats.completedCount} cotizaciones entregadas
+                <CheckCircle2 className="h-3 w-3 flex-shrink-0" /> {salesStats.completedCount} cotizaciones entregadas
               </span>
             </div>
           </div>
@@ -891,12 +889,12 @@ export default function Dashboard() {
         </div>
 
         {/* Row of detailed lists for current timeframe */}
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
           
           {/* Top Wholesale buyers / loyalty list */}
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-sm space-y-4">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-4 sm:p-6 shadow-sm space-y-4">
             <h3 className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-sm border-b border-neutral-100 dark:border-neutral-800 pb-3 flex items-center gap-2">
-              <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /> Top Distribuidores y Clientes del Período
+              <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" /> Top Distribuidores y Clientes del Período
             </h3>
 
             {topCustomers.length === 0 ? (
@@ -904,28 +902,28 @@ export default function Dashboard() {
                 No se registran clientes con órdenes entregadas en este período.
               </p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs divide-y divide-neutral-100 dark:divide-neutral-800">
+              <div className="overflow-x-auto -mx-2 sm:mx-0">
+                <table className="w-full text-left text-xs divide-y divide-neutral-100 dark:divide-neutral-800 min-w-[360px]">
                   <thead className="bg-neutral-50 dark:bg-neutral-800/70 text-neutral-500 dark:text-neutral-400 font-bold">
                     <tr>
-                      <th className="p-3 text-left">Cliente / Distribuidor</th>
-                      <th className="p-3 text-center">Órdenes</th>
-                      <th className="p-3 text-right">Volumen Comprado</th>
+                      <th className="p-2.5 sm:p-3 text-left">Cliente / Distribuidor</th>
+                      <th className="p-2.5 sm:p-3 text-center">Órdenes</th>
+                      <th className="p-2.5 sm:p-3 text-right">Volumen Comprado</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
                     {topCustomers.map((cust, idx) => (
                       <tr key={idx} className="hover:bg-neutral-50/30 dark:hover:bg-neutral-800/30">
-                        <td className="p-3 font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
-                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-neutral-900 dark:bg-amber-400 text-white dark:text-neutral-950 text-[8px] font-mono font-bold">
+                        <td className="p-2.5 sm:p-3 font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-neutral-900 dark:bg-amber-400 text-white dark:text-neutral-950 text-[8px] font-mono font-bold flex-shrink-0">
                             {idx + 1}
                           </span>
-                          <span className="truncate max-w-[150px]">{cust.name}</span>
+                          <span className="truncate max-w-[120px] sm:max-w-[160px]">{cust.name}</span>
                         </td>
-                        <td className="p-3 text-center font-bold text-neutral-600 dark:text-neutral-400 font-mono">
+                        <td className="p-2.5 sm:p-3 text-center font-bold text-neutral-600 dark:text-neutral-400 font-mono whitespace-nowrap">
                           {cust.ordersCount} ({cust.totalQty} u)
                         </td>
-                        <td className="p-3 text-right font-black font-mono text-emerald-600 dark:text-emerald-400">
+                        <td className="p-2.5 sm:p-3 text-right font-black font-mono text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                           L. {cust.totalSpent.toLocaleString()}
                         </td>
                       </tr>
@@ -937,9 +935,9 @@ export default function Dashboard() {
           </div>
 
           {/* Top Selling Products rotation */}
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-sm space-y-4">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-4 sm:p-6 shadow-sm space-y-4">
             <h3 className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-sm border-b border-neutral-100 dark:border-neutral-800 pb-3 flex items-center gap-1.5">
-              <ShoppingBag className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /> Rotación de Perfumes (Más Vendidos)
+              <ShoppingBag className="h-4 w-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" /> Rotación de Perfumes (Más Vendidos)
             </h3>
 
             {topSellingProducts.length === 0 ? (
@@ -947,28 +945,28 @@ export default function Dashboard() {
                 No se registran ventas para el período seleccionado.
               </p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs divide-y divide-neutral-100 dark:divide-neutral-800">
+              <div className="overflow-x-auto -mx-2 sm:mx-0">
+                <table className="w-full text-left text-xs divide-y divide-neutral-100 dark:divide-neutral-800 min-w-[360px]">
                   <thead className="bg-neutral-50 dark:bg-neutral-800/70 text-neutral-500 dark:text-neutral-400 font-bold">
                     <tr>
-                      <th className="p-3">Perfume</th>
-                      <th className="p-3 text-center">Unidades</th>
-                      <th className="p-3 text-right">Recaudado</th>
+                      <th className="p-2.5 sm:p-3">Perfume</th>
+                      <th className="p-2.5 sm:p-3 text-center">Unidades</th>
+                      <th className="p-2.5 sm:p-3 text-right">Recaudado</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
                     {topSellingProducts.map((item, idx) => (
                       <tr key={idx} className="hover:bg-neutral-50/30 dark:hover:bg-neutral-800/30">
-                        <td className="p-3">
+                        <td className="p-2.5 sm:p-3">
                           <span className="block text-[8px] font-bold text-neutral-400 dark:text-neutral-500 uppercase font-mono">{item.brand}</span>
-                          <span className="font-bold text-neutral-900 dark:text-neutral-100 truncate max-w-[150px] block">{item.name}</span>
+                          <span className="font-bold text-neutral-900 dark:text-neutral-100 truncate max-w-[120px] sm:max-w-[160px] block">{item.name}</span>
                         </td>
-                        <td className="p-3 text-center font-black font-mono text-neutral-900 dark:text-neutral-100">
+                        <td className="p-2.5 sm:p-3 text-center font-black font-mono text-neutral-900 dark:text-neutral-100 whitespace-nowrap">
                           <span className="inline-block bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 px-1.5 py-0.5 rounded-lg border border-emerald-100 dark:border-emerald-800 text-[10px]">
                             {item.quantity} u.
                           </span>
                         </td>
-                        <td className="p-3 text-right font-black font-mono text-emerald-600 dark:text-emerald-400">
+                        <td className="p-2.5 sm:p-3 text-right font-black font-mono text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                           L. {item.revenue.toLocaleString()}
                         </td>
                       </tr>
@@ -987,21 +985,21 @@ export default function Dashboard() {
       {/* 3. INVENTARIO FÍSICO Y CAPITAL EN STOCK                   */}
       {/* ========================================================= */}
       <div className="space-y-6 pt-5 border-t border-neutral-200 dark:border-neutral-800">
-        <h3 className="text-sm font-black text-neutral-900 dark:text-neutral-100 uppercase tracking-wider font-mono border-l-4 border-amber-500 pl-3">
+        <h3 className="text-xs sm:text-sm font-black text-neutral-900 dark:text-neutral-100 uppercase tracking-wider font-mono border-l-4 border-amber-500 pl-3">
           Inventario Físico y Costos en Stock (Estadísticas en Tiempo Real)
         </h3>
 
         {/* Static inventory metrics counters */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           
           {/* Public active retail value of stock */}
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-sm flex items-start gap-4">
-            <div className="p-3 bg-neutral-950 dark:bg-neutral-800 text-amber-400 rounded-2xl flex-shrink-0">
-              <Package className="h-6 w-6" />
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-4 sm:p-6 shadow-sm flex items-start gap-3.5 sm:gap-4">
+            <div className="p-2.5 sm:p-3 bg-neutral-950 dark:bg-neutral-800 text-amber-400 rounded-2xl flex-shrink-0">
+              <Package className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <div className="space-y-1 overflow-hidden">
               <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest font-mono">Valor Público en Stock</span>
-              <span className="block text-2xl font-black text-neutral-950 dark:text-neutral-100 font-mono truncate">
+              <span className="block text-xl sm:text-2xl font-black text-neutral-950 dark:text-neutral-100 font-mono truncate">
                 L. {inventoryStats.totalInventoryValue.toLocaleString()}
               </span>
               <span className="block text-[10px] font-medium text-neutral-500 dark:text-neutral-400">
@@ -1011,13 +1009,13 @@ export default function Dashboard() {
           </div>
 
           {/* Investment Capital (FOB/CIF total) */}
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-sm flex items-start gap-4">
-            <div className="p-3 bg-neutral-900 dark:bg-neutral-800 text-amber-500 dark:text-amber-400 rounded-2xl flex-shrink-0">
-              <BarChart3 className="h-6 w-6" />
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-4 sm:p-6 shadow-sm flex items-start gap-3.5 sm:gap-4">
+            <div className="p-2.5 sm:p-3 bg-neutral-900 dark:bg-neutral-800 text-amber-500 dark:text-amber-400 rounded-2xl flex-shrink-0">
+              <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <div className="space-y-1 overflow-hidden">
               <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest font-mono">Costo Inversión de Stock</span>
-              <span className="block text-2xl font-black text-neutral-950 dark:text-neutral-100 font-mono truncate">
+              <span className="block text-xl sm:text-2xl font-black text-neutral-950 dark:text-neutral-100 font-mono truncate">
                 L. {inventoryStats.totalInventoryCost.toLocaleString()}
               </span>
               <span className="block text-[10px] font-semibold text-neutral-500 dark:text-neutral-400">
@@ -1027,13 +1025,13 @@ export default function Dashboard() {
           </div>
 
           {/* Expected gross profit on stock */}
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-sm flex items-start gap-4">
-            <div className="p-3 bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 rounded-2xl flex-shrink-0">
-              <DollarSign className="h-6 w-6" />
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-4 sm:p-6 shadow-sm flex items-start gap-3.5 sm:gap-4">
+            <div className="p-2.5 sm:p-3 bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 rounded-2xl flex-shrink-0">
+              <DollarSign className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <div className="space-y-1 overflow-hidden">
               <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest font-mono">Ganancia Estimada Stock</span>
-              <span className="block text-2xl font-black text-purple-950 dark:text-purple-300 font-mono truncate">
+              <span className="block text-xl sm:text-2xl font-black text-purple-950 dark:text-purple-300 font-mono truncate">
                 L. {inventoryStats.expectedProfit.toLocaleString()}
               </span>
               <span className="block text-[10px] font-semibold text-purple-700 dark:text-purple-400">
@@ -1043,18 +1041,18 @@ export default function Dashboard() {
           </div>
 
           {/* Total units & unique brands stats card */}
-          <div className="bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+          <div className="bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-4 sm:p-6 shadow-sm flex flex-col justify-between">
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="space-y-0.5">
-                <span className="block text-base font-black text-neutral-950 dark:text-neutral-100 font-mono">{inventoryStats.uniqueFragrances}</span>
+                <span className="block text-sm sm:text-base font-black text-neutral-950 dark:text-neutral-100 font-mono">{inventoryStats.uniqueFragrances}</span>
                 <span className="text-[8px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider font-mono block">Fragancias</span>
               </div>
               <div className="space-y-0.5 border-x border-neutral-200 dark:border-neutral-800">
-                <span className="block text-base font-black text-neutral-950 dark:text-neutral-100 font-mono">{inventoryStats.totalUnitsInStock}</span>
+                <span className="block text-sm sm:text-base font-black text-neutral-950 dark:text-neutral-100 font-mono">{inventoryStats.totalUnitsInStock}</span>
                 <span className="text-[8px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider font-mono block">Unidades</span>
               </div>
               <div className="space-y-0.5">
-                <span className="block text-base font-black text-neutral-950 dark:text-neutral-100 font-mono">{inventoryStats.totalSets}</span>
+                <span className="block text-sm sm:text-base font-black text-neutral-950 dark:text-neutral-100 font-mono">{inventoryStats.totalSets}</span>
                 <span className="text-[8px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider font-mono block">Sets/Combos</span>
               </div>
             </div>

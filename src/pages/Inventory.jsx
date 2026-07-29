@@ -1071,12 +1071,12 @@ export default function Inventory() {
   };
 
   return (
-    <div className="space-y-6 fade-in-up max-w-7xl mx-auto">
+    <div className="space-y-6 fade-in-up max-w-7xl mx-auto w-full">
       
       {/* Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="font-display text-2xl font-black text-neutral-900 dark:text-neutral-100 tracking-tight">
+          <h2 className="font-display text-xl sm:text-2xl font-black text-neutral-900 dark:text-neutral-100 tracking-tight">
             Gestión de Inventario y Perfumes
           </h2>
           <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
@@ -1312,14 +1312,14 @@ export default function Inventory() {
       ) : null}
 
       {/* PDF AI Parser block */}
-      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-sm space-y-6">
-          <div className="border-b border-neutral-100 dark:border-neutral-800 pb-3 flex items-center justify-between">
-            <h3 className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-base flex items-center gap-1.5">
-              <FileUp className="h-5 w-5 text-indigo-500 animate-bounce" /> Importador Inteligente (Facturas PDF por IA, CSV o Excel)
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-4 sm:p-6 shadow-sm space-y-6">
+          <div className="border-b border-neutral-100 dark:border-neutral-800 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h3 className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-sm sm:text-base flex items-center gap-1.5">
+              <FileUp className="h-5 w-5 text-indigo-500 animate-bounce flex-shrink-0" /> Importador Inteligente (Facturas PDF por IA, CSV o Excel)
             </h3>
             
             {/* Model Selector */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-start sm:self-auto">
               <label htmlFor="ai-model-picker" className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">Modelo:</label>
               <select
                 id="ai-model-picker"
@@ -1468,22 +1468,22 @@ export default function Inventory() {
 
       {/* Interactive Inventory List table */}
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h3 className="font-display font-black text-neutral-900 dark:text-neutral-100 text-base">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h3 className="font-display font-black text-neutral-900 dark:text-neutral-100 text-sm sm:text-base">
             Listado de Fragancias en Stock
           </h3>
           <button
             type="button"
             onClick={() => setIsExportModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4.5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm"
           >
             <Download className="h-4 w-4" /> Exportar Catálogo Clientes
           </button>
         </div>
 
         {/* Filter and Search Box */}
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-5 shadow-sm space-y-4">
-          <div className="grid gap-4 sm:grid-cols-3">
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-4 sm:p-5 shadow-sm space-y-4">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
             <div className="sm:col-span-2 relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                 <Search className="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
@@ -1514,13 +1514,13 @@ export default function Inventory() {
 
         {/* Bulk Promotions Panel (Only for Owner and Seller) */}
         {(user?.role === 'owner' || user?.role === 'vendedor') && (
-          <div className="bg-amber-50/40 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-3xl p-5 shadow-sm space-y-3">
+          <div className="bg-amber-50/40 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-3xl p-4 sm:p-5 shadow-sm space-y-3">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="space-y-0.5 text-left">
                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/60 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                  <Percent className="h-2 w-2" /> Descuento Masivo (Bulk)
+                  <Percent className="h-2.5 w-2.5" /> Descuento Masivo (Bulk)
                 </span>
-                <h4 className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-sm uppercase tracking-tight">
+                <h4 className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-xs sm:text-sm uppercase tracking-tight">
                   Aplicar Oferta a Lista Filtrada ({filteredProducts.length} perfumes)
                 </h4>
                 <p className="text-[11px] text-neutral-500 dark:text-neutral-400 font-medium leading-normal max-w-xl">
@@ -1529,13 +1529,13 @@ export default function Inventory() {
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
-                <div className="flex items-center bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden shadow-sm h-10 px-1.5 gap-1">
+                <div className="flex items-center bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-x-auto shadow-sm h-10 px-1.5 gap-1 max-w-full">
                   {[0, 10, 20, 30, 40].map((pct) => (
                     <button
                       key={pct}
                       type="button"
                       onClick={() => handleApplyBulkDiscount(pct)}
-                      className="px-2.5 py-1 rounded-lg text-[10px] font-black cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200"
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-black cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 whitespace-nowrap"
                     >
                       {pct === 0 ? 'Quitar' : `${pct}%`}
                     </button>
@@ -1577,16 +1577,16 @@ export default function Inventory() {
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-neutral-200 dark:divide-neutral-800 text-left text-xs font-semibold text-neutral-700 dark:text-neutral-200">
-              <thead className="bg-neutral-50 dark:bg-neutral-800/70 text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest font-mono">
+              <thead className="bg-neutral-50 dark:bg-neutral-800/70 text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest font-mono whitespace-nowrap">
                 <tr>
-                  <th className="px-6 py-4">Fragancia</th>
-                  <th className="px-6 py-4">Presentación</th>
-                  <th className="px-6 py-4">Costo (HNL)</th>
-                  <th className="px-6 py-4">Precio Público (HNL)</th>
-                  <th className="px-6 py-4">Precio VIP (HNL)</th>
-                  <th className="px-6 py-4">Stock</th>
-                  <th className="px-6 py-4">Código / Barcode</th>
-                  <th className="px-6 py-4 text-right">Acciones</th>
+                  <th className="px-3 sm:px-6 py-3.5">Fragancia</th>
+                  <th className="px-3 sm:px-6 py-3.5">Presentación</th>
+                  <th className="px-3 sm:px-6 py-3.5">Costo (HNL)</th>
+                  <th className="px-3 sm:px-6 py-3.5">Precio Público (HNL)</th>
+                  <th className="px-3 sm:px-6 py-3.5">Precio VIP (HNL)</th>
+                  <th className="px-3 sm:px-6 py-3.5">Stock</th>
+                  <th className="px-3 sm:px-6 py-3.5">Código / Barcode</th>
+                  <th className="px-3 sm:px-6 py-3.5 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
@@ -1602,10 +1602,10 @@ export default function Inventory() {
                     
                     return (
                       <tr key={p.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
-                        <td className="px-6 py-4 space-y-1">
+                        <td className="px-3 sm:px-6 py-3.5 space-y-1 min-w-[140px]">
                           <span className="font-mono text-[9px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">{p.brand}</span>
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-bold text-neutral-900 dark:text-neutral-100 text-sm leading-tight">
+                            <span className="font-bold text-neutral-900 dark:text-neutral-100 text-xs sm:text-sm leading-tight">
                               {p.name}
                             </span>
                             {isSet && (
@@ -1620,11 +1620,11 @@ export default function Inventory() {
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-neutral-500 dark:text-neutral-400 font-semibold">{p.size}</td>
-                        <td className="px-6 py-4 font-mono text-neutral-950 dark:text-neutral-100 font-bold">L. {p.cost.toLocaleString()}</td>
-                        <td className="px-6 py-4 font-mono text-neutral-950 dark:text-neutral-100 font-bold">L. {p.pricePublic.toLocaleString()}</td>
-                        <td className="px-6 py-4 font-mono text-neutral-950 dark:text-neutral-100 font-bold">L. {p.pricePromotional.toLocaleString()}</td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 sm:px-6 py-3.5 text-neutral-500 dark:text-neutral-400 font-semibold whitespace-nowrap">{p.size}</td>
+                        <td className="px-3 sm:px-6 py-3.5 font-mono text-neutral-950 dark:text-neutral-100 font-bold whitespace-nowrap">L. {p.cost.toLocaleString()}</td>
+                        <td className="px-3 sm:px-6 py-3.5 font-mono text-neutral-950 dark:text-neutral-100 font-bold whitespace-nowrap">L. {p.pricePublic.toLocaleString()}</td>
+                        <td className="px-3 sm:px-6 py-3.5 font-mono text-neutral-950 dark:text-neutral-100 font-bold whitespace-nowrap">L. {p.pricePromotional.toLocaleString()}</td>
+                        <td className="px-3 sm:px-6 py-3.5 whitespace-nowrap">
                           <span className={`inline-block px-2 py-1 rounded text-xs font-mono font-black ${
                             p.stock <= 0
                               ? 'bg-red-50 dark:bg-rose-950/80 text-red-700 dark:text-rose-300'
@@ -1635,15 +1635,15 @@ export default function Inventory() {
                             {p.stock} u
                           </span>
                         </td>
-                        <td className="px-6 py-4 space-y-1">
-                          <span className="font-mono text-neutral-500 dark:text-neutral-400 text-[10px] block">{p.barcode}</span>
+                        <td className="px-3 sm:px-6 py-3.5 space-y-1 min-w-[100px]">
+                          <span className="font-mono text-neutral-500 dark:text-neutral-400 text-[10px] block truncate">{p.barcode}</span>
                           {/* Mini visual representation of Code 128 */}
                           <div 
                             className="w-16 h-4 opacity-50 dark:invert overflow-hidden"
                             dangerouslySetInnerHTML={{ __html: generateBarcodeSVG(p.barcode || p.id).replace('height="70"', 'height="10"').replace('style="background:white; padding:10px; border-radius:4px;"', 'style="background:transparent; padding:0;"') }}
                           />
                         </td>
-                        <td className="px-6 py-4 text-right space-x-1.5">
+                        <td className="px-3 sm:px-6 py-3.5 text-right whitespace-nowrap space-x-1">
                           <button
                             onClick={() => handleOpenEdit(p)}
                             className="p-1.5 text-neutral-400 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg cursor-pointer transition-colors"
