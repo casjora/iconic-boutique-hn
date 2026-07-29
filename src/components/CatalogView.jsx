@@ -30,12 +30,18 @@ export default function CatalogView({ favoritesOnly = false }) {
     } else if (path === '/category/damas') {
       setSelectedCategory('Damas');
       setShowPromoOnly(false);
+    } else if (path === '/category/unisex') {
+      setSelectedCategory('Unisex');
+      setShowPromoOnly(false);
+    } else if (path === '/category/estuches-dama') {
+      setSelectedCategory('Estuches Dama');
+      setShowPromoOnly(false);
+    } else if (path === '/category/estuches-caballero') {
+      setSelectedCategory('Estuches Caballero');
+      setShowPromoOnly(false);
     } else if (path === '/category/regalos') {
       setSelectedCategory('Sets / Estuches');
       setShowPromoOnly(false);
-    } else if (path === '/category/mas-vendidos') {
-      setSelectedCategory('Todas');
-      setShowPromoOnly(true);
     } else {
       setSelectedCategory('Todas');
       setShowPromoOnly(false);
@@ -43,13 +49,17 @@ export default function CatalogView({ favoritesOnly = false }) {
     setVisibleCount(12);
   }, [location.pathname]);
 
-  // Filters favorites if favoritesOnly is active
+  // Filters base products: guest users only see featuredPublic items
   const baseProducts = useMemo(() => {
-    if (favoritesOnly) {
-      return products.filter(p => favorites.includes(p.id));
+    let list = products;
+    if (!user) {
+      list = list.filter(p => p.featuredPublic !== false);
     }
-    return products;
-  }, [products, favorites, favoritesOnly]);
+    if (favoritesOnly) {
+      return list.filter(p => favorites.includes(p.id));
+    }
+    return list;
+  }, [products, favorites, favoritesOnly, user]);
 
   // Extract unique brands for the filter select
   const categoryFilteredProducts = useMemo(() => {
@@ -92,7 +102,11 @@ export default function CatalogView({ favoritesOnly = false }) {
         ? true
         : selectedCategory === 'Sets / Estuches'
           ? isProductSet(p)
-          : p.category?.trim() === selectedCategory;
+          : selectedCategory === 'Estuches Dama'
+            ? (p.category === 'Damas' || p.category === 'Femenino') && isProductSet(p)
+            : selectedCategory === 'Estuches Caballero'
+              ? (p.category === 'Caballeros' || p.category === 'Masculino') && isProductSet(p)
+              : p.category?.trim() === selectedCategory;
       
       const matchesPromo = !showPromoOnly || getProductPromoDiscount(p) > 0;
       

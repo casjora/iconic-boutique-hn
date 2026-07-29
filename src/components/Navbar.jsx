@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   ShoppingBag, Heart, User, LogOut, Settings, Barcode, 
   TrendingUp, ClipboardList, Package, Sparkles, Home, Menu, X, Info,
-  Sun, Moon
+  Sun, Moon, Eye
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -49,13 +49,14 @@ export default function Navbar() {
               onClick={() => handleNav('home')} 
               className="flex items-center gap-2 cursor-pointer outline-none group text-left"
             >
-{/*               <div className="h-9 w-9 bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 rounded-xl flex items-center justify-center font-display font-black text-sm tracking-tighter group-hover:scale-105 transition-transform shadow-md">
-                IB
-              </div> */}
-              <img className="h-9 w-9 bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 rounded-xl flex items-center justify-center font-display font-black text-sm tracking-tighter group-hover:scale-105 transition-transform shadow-md" src="https://nsubmnvkojsmoykfcjgl.supabase.co/storage/v1/object/public/miscelaneas/iconic-icon.jpg" alt="iconic-icon" />
+              <img 
+                src="https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&fit=crop&q=80&w=100" 
+                alt="Iconic Boutique Logo" 
+                className="h-9 w-9 rounded-xl object-cover shadow-md group-hover:scale-105 transition-transform border border-amber-400/30"
+              />
               <div>
-                <h1 className="font-display font-black text-sm text-neutral-900 dark:text-neutral-100 uppercase tracking-widest leading-none">
-                  Iconic Boutique
+                <h1 className="font-bold text-sm text-neutral-900 dark:text-neutral-100 uppercase tracking-widest leading-none font-['Montserrat','Futura',sans-serif]">
+                  ICONIC BOUTIQUE
                 </h1>
                 <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest leading-none mt-0.5 block">Honduras</span>
               </div>
@@ -92,6 +93,10 @@ export default function Navbar() {
 
                   <button onClick={() => handleNav('orders')} className={navItemClass('orders')}>
                     <ClipboardList className="h-3.5 w-3.5" /> Pedidos
+                  </button>
+
+                  <button onClick={() => handleNav('showroom')} className={navItemClass('showroom')}>
+                    <Eye className="h-3.5 w-3.5 text-amber-500" /> Plan Público
                   </button>
 
                   <button onClick={() => handleNav('inventory')} className={navItemClass('inventory')}>
@@ -225,6 +230,10 @@ export default function Navbar() {
 
                 <button onClick={() => handleNav('orders')} className={mobileNavItemClass('orders')}>
                   <ClipboardList className="h-4 w-4" /> Pedidos y Ventas
+                </button>
+
+                <button onClick={() => handleNav('showroom')} className={mobileNavItemClass('showroom')}>
+                  <Eye className="h-4 w-4 text-amber-500" /> Plan Público
                 </button>
 
                 <button onClick={() => handleNav('inventory')} className={mobileNavItemClass('inventory')}>

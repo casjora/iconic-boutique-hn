@@ -4,10 +4,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const categories = [
-  { name: 'Para Caballeros', path: '/category/caballeros', image: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&q=80&w=800' },
   { name: 'Para Damas', path: '/category/damas', image: 'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&fit=crop&q=80&w=800' },
-  { name: 'Estuches de Regalo', path: '/category/regalos', image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&q=80&w=800' },
-  { name: 'Los Más Vendidos', path: '/category/mas-vendidos', image: 'https://images.unsplash.com/photo-1588405748880-12d1d2a59f75?auto=format&fit=crop&q=80&w=800' }
+  { name: 'Para Caballeros', path: '/category/caballeros', image: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&q=80&w=800' },
+  { name: 'Unisex', path: '/category/unisex', image: 'https://images.unsplash.com/photo-1588405748880-12d1d2a59f75?auto=format&fit=crop&q=80&w=800' },
+  { name: 'Estuches para Dama', path: '/category/estuches-dama', image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&q=80&w=800' },
+  { name: 'Estuches para Caballero', path: '/category/estuches-caballero', image: 'https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&q=80&w=800' }
 ];
 
 export default function Home() {
@@ -77,7 +78,7 @@ export default function Home() {
       </section>
 
       {/* Categories Grid */}
-      <section className="grid grid-cols-2 gap-6 md:grid-cols-4">
+      <section className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-5">
         {categories.map((cat) => (
           <Link key={cat.name} to={cat.path} className="group relative aspect-square overflow-hidden rounded-3xl bg-neutral-100 border border-neutral-200 shadow-sm">
             <img src={cat.image} alt={cat.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />

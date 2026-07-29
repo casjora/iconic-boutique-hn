@@ -74,6 +74,8 @@ export default function Inventory() {
   const [additionalDiscount, setAdditionalDiscount] = useState(0); // Optional extra % discount
   const [groupByBrand, setGroupByBrand] = useState(true);
   const [onlyInStock, setOnlyInStock] = useState(true);
+  const [includeImages, setIncludeImages] = useState(true);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const enrichAndSetParsedProducts = (rawItems) => {
     if (!rawItems || !Array.isArray(rawItems)) {
@@ -711,7 +713,30 @@ export default function Inventory() {
     setIsExportModalOpen(false);
   };
 
-  const handleExportPDF = () => {
+  const loadImageBase64 = (url) => {
+    return new Promise((resolve) => {
+      if (!url) return resolve(null);
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth || 200;
+          canvas.height = img.naturalHeight || 200;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+          resolve(dataURL);
+        } catch (e) {
+          resolve(null);
+        }
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+  };
+
+  const handleExportPDF = async () => {
     const listToExport = exportRange === 'filtered' ? filteredProducts : products;
     let items = onlyInStock ? listToExport.filter(p => p.stock > 0) : listToExport;
     
@@ -729,219 +754,296 @@ export default function Inventory() {
     } else {
       items = [...items].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     }
-    
-    const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-    });
-    
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    
-    let y = 20;
-    let pageNum = 1;
-    
-    const drawHeader = () => {
-      doc.setFillColor(17, 24, 39); // deep slate/gray
-      doc.rect(0, 0, pageWidth, 14, 'F');
+
+    setIsExportingPdf(true);
+
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
       
-      doc.setTextColor(255, 255, 255);
-      doc.setFont('Helvetica', 'bold');
-      doc.setFontSize(8);
-      doc.text('IMPORTACIONES HONDURAS - CATÁLOGO DE CLIENTES', 15, 9);
-      
-      const today = new Date().toLocaleDateString('es-HN', { year: 'numeric', month: 'long', day: 'numeric' });
-      doc.text(today.toUpperCase(), pageWidth - 15, 9, { align: 'right' });
-      
-      y = 25;
-    };
-    
-    const drawFooter = () => {
-      doc.setFontSize(7);
-      doc.setTextColor(150, 150, 150);
-      doc.setFont('Helvetica', 'normal');
-      doc.text(`Catálogo Comercial de Fragancias  |  Pág. ${pageNum}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
-    };
-    
-    drawHeader();
-    
-    // Title
-    doc.setTextColor(17, 24, 39);
-    doc.setFontSize(16);
-    doc.setFont('Helvetica', 'bold');
-    doc.text('CATÁLOGO DE FRAGANCIAS EXCLUSIVAS', 15, y);
-    y += 5;
-    
-    doc.setTextColor(107, 114, 128);
-    doc.setFontSize(8);
-    doc.setFont('Helvetica', 'normal');
-    doc.text('Precios vigentes al público y ofertas especiales disponibles.', 15, y);
-    y += 10;
-    
-    const colX = {
-      brand: 15,
-      name: groupByBrand ? 15 : 45,
-      size: 105,
-      publicPrice: 125,
-      discount: 145,
-      vipPrice: 168,
-      stock: 188
-    };
-    
-    // Draw column headers
-    doc.setFillColor(243, 244, 246);
-    doc.rect(15, y - 4, pageWidth - 30, 6, 'F');
-    doc.setDrawColor(229, 231, 235);
-    doc.line(15, y + 2, pageWidth - 15, y + 2);
-    
-    doc.setTextColor(107, 114, 128);
-    doc.setFontSize(7);
-    doc.setFont('Helvetica', 'bold');
-    
-    if (!groupByBrand) {
-      doc.text('MARCA', colX.brand, y);
-    }
-    doc.text('FRAGANCIA', colX.name, y);
-    doc.text('TAMAÑO', colX.size, y);
-    doc.text('DETALLE', colX.publicPrice, y);
-    if (includeDiscount) {
-      doc.text('OFERTA', colX.discount, y);
-    }
-    if (includeVIP) {
-      doc.text('MAYORISTA (VIP)', colX.vipPrice, y);
-    }
-    doc.text('STOCK', colX.stock, y);
-    
-    y += 7;
-    
-    let lastBrand = '';
-    
-    items.forEach((p) => {
-      // Check pagination
-      if (y > pageHeight - 22) {
-        drawFooter();
-        doc.addPage();
-        pageNum++;
-        drawHeader();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      const drawHeader = (pageNum) => {
+        doc.setFillColor(17, 24, 39);
+        doc.rect(0, 0, pageWidth, 14, 'F');
         
-        // Re-draw headers
-        doc.setFillColor(243, 244, 246);
-        doc.rect(15, y - 4, pageWidth - 30, 6, 'F');
-        doc.setDrawColor(229, 231, 235);
-        doc.line(15, y + 2, pageWidth - 15, y + 2);
-        
-        doc.setTextColor(107, 114, 128);
-        doc.setFontSize(7);
+        doc.setTextColor(255, 255, 255);
         doc.setFont('Helvetica', 'bold');
-        if (!groupByBrand) {
-          doc.text('MARCA', colX.brand, y);
-        }
-        doc.text('FRAGANCIA', colX.name, y);
-        doc.text('TAMAÑO', colX.size, y);
-        doc.text('DETALLE', colX.publicPrice, y);
-        if (includeDiscount) {
-          doc.text('OFERTA', colX.discount, y);
-        }
-        if (includeVIP) {
-          doc.text('MAYORISTA (VIP)', colX.vipPrice, y);
-        }
-        doc.text('STOCK', colX.stock, y);
-        y += 7;
-      }
+        doc.setFontSize(8);
+        doc.text('ICONIC BOUTIQUE - CATÁLOGO DE CLIENTES', 12, 9);
+        
+        const today = new Date().toLocaleDateString('es-HN', { year: 'numeric', month: 'long', day: 'numeric' });
+        doc.text(today.toUpperCase(), pageWidth - 12, 9, { align: 'right' });
+      };
       
-      // Brand headers
-      if (groupByBrand && p.brand !== lastBrand) {
-        if (y > pageHeight - 32) {
-          drawFooter();
-          doc.addPage();
-          pageNum++;
-          drawHeader();
-          
+      const drawFooter = (pageNum) => {
+        doc.setFontSize(7);
+        doc.setTextColor(150, 150, 150);
+        doc.setFont('Helvetica', 'normal');
+        doc.text(`Catálogo Comercial de Fragancias  |  Pág. ${pageNum}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+      };
+
+      if (includeImages) {
+        // Pre-load image URLs in parallel
+        const loadedImages = await Promise.all(
+          items.map(p => p.image_url ? loadImageBase64(p.image_url) : Promise.resolve(null))
+        );
+
+        let currentPage = 1;
+        drawHeader(currentPage);
+
+        items.forEach((p, idx) => {
+          const posOnPage = idx % 9;
+          if (idx > 0 && posOnPage === 0) {
+            drawFooter(currentPage);
+            doc.addPage();
+            currentPage++;
+            drawHeader(currentPage);
+          }
+
+          const col = posOnPage % 3;
+          const row = Math.floor(posOnPage / 3);
+
+          const cardW = 58;
+          const cardH = 78;
+          const gapX = 6;
+          const gapY = 6;
+          const startX = 12 + col * (cardW + gapX);
+          const startY = 22 + row * (cardH + gapY);
+
+          // Outer card border
+          doc.setDrawColor(229, 231, 235);
+          doc.setFillColor(255, 255, 255);
+          doc.roundedRect(startX, startY, cardW, cardH, 2.5, 2.5, 'FD');
+
+          // Image box
+          const imgW = 46;
+          const imgH = 34;
+          const imgX = startX + (cardW - imgW) / 2;
+          const imgY = startY + 3;
+
+          const base64Img = loadedImages[idx];
+          if (base64Img) {
+            try {
+              doc.addImage(base64Img, 'JPEG', imgX, imgY, imgW, imgH);
+            } catch (e) {
+              doc.setFillColor(243, 244, 246);
+              doc.rect(imgX, imgY, imgW, imgH, 'F');
+              doc.setTextColor(156, 163, 175);
+              doc.setFontSize(7);
+              doc.text('Iconic Boutique', imgX + imgW / 2, imgY + imgH / 2, { align: 'center' });
+            }
+          } else {
+            doc.setFillColor(243, 244, 246);
+            doc.rect(imgX, imgY, imgW, imgH, 'F');
+            doc.setTextColor(156, 163, 175);
+            doc.setFontSize(7);
+            doc.text('Iconic Boutique', imgX + imgW / 2, imgY + imgH / 2, { align: 'center' });
+          }
+
+          // Brand
+          doc.setTextColor(156, 163, 175);
+          doc.setFont('Helvetica', 'bold');
+          doc.setFontSize(6.5);
+          const brandTxt = (p.brand || 'GENÉRICO').toUpperCase();
+          doc.text(brandTxt.substring(0, 26), startX + 4, startY + 41);
+
+          // Name & Presentation combined
+          doc.setTextColor(17, 24, 39);
+          doc.setFont('Helvetica', 'bold');
+          doc.setFontSize(7.5);
+          const fullName = `${p.name || ''}${p.size ? ' (' + p.size + ')' : ''}`;
+          const splitName = doc.splitTextToSize(fullName, cardW - 8);
+          const nameLines = splitName.slice(0, 2);
+          doc.text(nameLines, startX + 4, startY + 45.5);
+
+          // Pricing block
+          const priceY = startY + 56;
+          doc.setFontSize(7);
+
+          const origPublicPrice = p.pricePublic || 0;
+          const activePromoDiscount = getProductPromoDiscount(p) || 0;
+          const finalDiscountPercent = Math.min(100, Math.max(0, activePromoDiscount + Number(additionalDiscount || 0)));
+
+          if (includeDiscount && finalDiscountPercent > 0) {
+            const discountedPrice = Math.round(origPublicPrice * (1 - finalDiscountPercent / 100));
+            
+            doc.setTextColor(156, 163, 175);
+            doc.setFont('Helvetica', 'normal');
+            doc.text(`Reg: L. ${origPublicPrice.toLocaleString()}`, startX + 4, priceY);
+
+            doc.setTextColor(225, 29, 72);
+            doc.setFont('Helvetica', 'bold');
+            doc.text(`Oferta: L. ${discountedPrice.toLocaleString()} (-${finalDiscountPercent}%)`, startX + 4, priceY + 4);
+          } else {
+            doc.setTextColor(31, 41, 55);
+            doc.setFont('Helvetica', 'bold');
+            doc.text(`Precio: L. ${origPublicPrice.toLocaleString()}`, startX + 4, priceY);
+          }
+
+          if (includeVIP) {
+            const vipPrice = p.pricePromotional || 0;
+            doc.setTextColor(5, 150, 105);
+            doc.setFont('Helvetica', 'bold');
+            doc.text(`Precio Mayorista: L. ${vipPrice.toLocaleString()}`, startX + 4, priceY + (includeDiscount && finalDiscountPercent > 0 ? 8 : 4));
+          }
+
+          // Category Label
+          doc.setTextColor(107, 114, 128);
+          doc.setFont('Helvetica', 'normal');
+          doc.setFontSize(6);
+          const catLabel = p.category === 'Masculino' ? 'Caballeros' : p.category === 'Unisex' ? 'Unisex' : 'Damas';
+          doc.text(`Categoría: ${catLabel}`, startX + 4, startY + 74);
+        });
+
+        drawFooter(currentPage);
+      } else {
+        // Table View without Presentación column
+        let y = 20;
+        let pageNum = 1;
+        drawHeader(pageNum);
+
+        doc.setTextColor(17, 24, 39);
+        doc.setFontSize(14);
+        doc.setFont('Helvetica', 'bold');
+        doc.text('CATÁLOGO DE FRAGANCIAS EXCLUSIVAS', 15, y);
+        y += 5;
+
+        doc.setTextColor(107, 114, 128);
+        doc.setFontSize(8);
+        doc.setFont('Helvetica', 'normal');
+        doc.text('Precios vigentes al público y precios mayoristas disponibles.', 15, y);
+        y += 10;
+
+        const colX = {
+          brand: 15,
+          name: groupByBrand ? 15 : 45,
+          publicPrice: 115,
+          discount: 140,
+          vipPrice: 165,
+          stock: 188
+        };
+
+        const drawTableHeaders = () => {
           doc.setFillColor(243, 244, 246);
           doc.rect(15, y - 4, pageWidth - 30, 6, 'F');
           doc.setDrawColor(229, 231, 235);
           doc.line(15, y + 2, pageWidth - 15, y + 2);
-          
+
           doc.setTextColor(107, 114, 128);
           doc.setFontSize(7);
           doc.setFont('Helvetica', 'bold');
+
+          if (!groupByBrand) {
+            doc.text('MARCA', colX.brand, y);
+          }
           doc.text('FRAGANCIA', colX.name, y);
-          doc.text('TAMAÑO', colX.size, y);
           doc.text('DETALLE', colX.publicPrice, y);
           if (includeDiscount) {
             doc.text('OFERTA', colX.discount, y);
           }
           if (includeVIP) {
-            doc.text('MAYORISTA (VIP)', colX.vipPrice, y);
+            doc.text('PRECIO MAYORISTA', colX.vipPrice, y);
           }
           doc.text('STOCK', colX.stock, y);
           y += 7;
-        }
-        
-        lastBrand = p.brand;
-        doc.setFillColor(249, 250, 251);
-        doc.rect(15, y - 3, pageWidth - 30, 5, 'F');
-        doc.setTextColor(17, 24, 39);
-        doc.setFont('Helvetica', 'bold');
-        doc.setFontSize(8);
-        doc.text((p.brand || 'GENÉRICO').toUpperCase(), 17, y);
-        y += 5.5;
-      }
-      
-      doc.setTextColor(55, 65, 81);
-      doc.setFont('Helvetica', 'normal');
-      doc.setFontSize(8);
-      
-      if (!groupByBrand) {
-        doc.text((p.brand || '').substring(0, 16), colX.brand, y);
-      }
-      
-      const nameStr = (p.name || '');
-      const maxLen = groupByBrand ? 44 : 28;
-      const truncatedName = nameStr.length > maxLen ? nameStr.substring(0, maxLen - 3) + '...' : nameStr;
-      doc.setFont('Helvetica', 'bold');
-      doc.text(truncatedName, colX.name, y);
-      
-      doc.setFont('Helvetica', 'normal');
-      doc.text(p.size || '100 ml', colX.size, y);
-      
-      const origPublicPrice = p.pricePublic || 0;
-      doc.text(`L. ${origPublicPrice.toLocaleString()}`, colX.publicPrice, y);
-      
-      if (includeDiscount) {
-        const activePromoDiscount = getProductPromoDiscount(p) || 0;
-        const finalDiscountPercent = Math.min(100, Math.max(0, activePromoDiscount + Number(additionalDiscount || 0)));
-        if (finalDiscountPercent > 0) {
-          const discountedPrice = Math.round(origPublicPrice * (1 - finalDiscountPercent / 100));
-          doc.setFont('Helvetica', 'bold');
-          doc.setTextColor(220, 38, 38);
-          doc.text(`L. ${discountedPrice.toLocaleString()} (-${finalDiscountPercent}%)`, colX.discount, y);
-          doc.setFont('Helvetica', 'normal');
+        };
+
+        drawTableHeaders();
+
+        let lastBrand = '';
+
+        items.forEach((p) => {
+          if (y > pageHeight - 22) {
+            drawFooter(pageNum);
+            doc.addPage();
+            pageNum++;
+            drawHeader(pageNum);
+            drawTableHeaders();
+          }
+
+          if (groupByBrand && p.brand !== lastBrand) {
+            if (y > pageHeight - 32) {
+              drawFooter(pageNum);
+              doc.addPage();
+              pageNum++;
+              drawHeader(pageNum);
+              drawTableHeaders();
+            }
+
+            lastBrand = p.brand;
+            doc.setFillColor(249, 250, 251);
+            doc.rect(15, y - 3, pageWidth - 30, 5, 'F');
+            doc.setTextColor(17, 24, 39);
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(8);
+            doc.text((p.brand || 'GENÉRICO').toUpperCase(), 17, y);
+            y += 5.5;
+          }
+
           doc.setTextColor(55, 65, 81);
-        } else {
-          doc.text('-', colX.discount, y);
-        }
+          doc.setFont('Helvetica', 'normal');
+          doc.setFontSize(8);
+
+          if (!groupByBrand) {
+            doc.text((p.brand || '').substring(0, 16), colX.brand, y);
+          }
+
+          const fullProdName = `${p.name || ''}${p.size ? ' (' + p.size + ')' : ''}`;
+          doc.setFont('Helvetica', 'bold');
+          const maxNameWidth = groupByBrand ? 95 : 65;
+          const splitName = doc.splitTextToSize(fullProdName, maxNameWidth);
+          doc.text(splitName[0], colX.name, y);
+
+          doc.setFont('Helvetica', 'normal');
+          const origPublicPrice = p.pricePublic || 0;
+          doc.text(`L. ${origPublicPrice.toLocaleString()}`, colX.publicPrice, y);
+
+          if (includeDiscount) {
+            const activePromoDiscount = getProductPromoDiscount(p) || 0;
+            const finalDiscountPercent = Math.min(100, Math.max(0, activePromoDiscount + Number(additionalDiscount || 0)));
+            if (finalDiscountPercent > 0) {
+              const discountedPrice = Math.round(origPublicPrice * (1 - finalDiscountPercent / 100));
+              doc.setFont('Helvetica', 'bold');
+              doc.setTextColor(220, 38, 38);
+              doc.text(`L. ${discountedPrice.toLocaleString()} (-${finalDiscountPercent}%)`, colX.discount, y);
+              doc.setFont('Helvetica', 'normal');
+              doc.setTextColor(55, 65, 81);
+            } else {
+              doc.text('-', colX.discount, y);
+            }
+          }
+
+          if (includeVIP) {
+            const vipPrice = p.pricePromotional || 0;
+            doc.text(`L. ${vipPrice.toLocaleString()}`, colX.vipPrice, y);
+          }
+
+          const stockStr = p.stock > 0 ? `${p.stock} u` : 'Agotado';
+          doc.text(stockStr, colX.stock, y);
+
+          doc.setDrawColor(243, 244, 246);
+          doc.line(15, y + 1.2, pageWidth - 15, y + 1.2);
+
+          y += (splitName.length > 1 ? 7 : 5);
+        });
+
+        drawFooter(pageNum);
       }
-      
-      if (includeVIP) {
-        const vipPrice = p.pricePromotional || 0;
-        doc.text(`L. ${vipPrice.toLocaleString()}`, colX.vipPrice, y);
-      }
-      
-      const stockStr = p.stock > 0 ? `${p.stock} u` : 'Agotado';
-      doc.text(stockStr, colX.stock, y);
-      
-      doc.setDrawColor(243, 244, 246);
-      doc.line(15, y + 1.2, pageWidth - 15, y + 1.2);
-      
-      y += 5;
-    });
-    
-    drawFooter();
-    const timestamp = new Date().toISOString().slice(0, 10);
-    doc.save(`Catalogo_Perfumes_Clientes_${timestamp}.pdf`);
-    setIsExportModalOpen(false);
+
+      const timestamp = new Date().toISOString().slice(0, 10);
+      doc.save(`Catalogo_Perfumes_Clientes_${timestamp}.pdf`);
+      setIsExportModalOpen(false);
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+      alert('Hubo un inconveniente al generar el PDF: ' + err.message);
+    } finally {
+      setIsExportingPdf(false);
+    }
   };
 
   const handleExecuteExport = () => {
@@ -1668,11 +1770,21 @@ export default function Inventory() {
                   <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-neutral-700 dark:text-neutral-200">
                     <input
                       type="checkbox"
+                      checked={includeImages}
+                      onChange={(e) => setIncludeImages(e.target.checked)}
+                      className="rounded accent-neutral-950 dark:accent-amber-400 h-4 w-4"
+                    />
+                    <span>Incluir imágenes (Catálogo 9 por pág.)</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-neutral-700 dark:text-neutral-200">
+                    <input
+                      type="checkbox"
                       checked={includeVIP}
                       onChange={(e) => setIncludeVIP(e.target.checked)}
                       className="rounded accent-neutral-950 dark:accent-amber-400 h-4 w-4"
                     />
-                    <span>Incluir precio Mayorista (VIP)</span>
+                    <span>Incluir Precio Mayorista</span>
                   </label>
 
                   <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-neutral-700 dark:text-neutral-200">
@@ -1736,16 +1848,28 @@ export default function Inventory() {
               <button
                 type="button"
                 onClick={() => setIsExportModalOpen(false)}
-                className="px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 text-xs font-bold rounded-xl cursor-pointer transition-all"
+                disabled={isExportingPdf}
+                className="px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 text-xs font-bold rounded-xl cursor-pointer transition-all disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={handleExecuteExport}
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer"
+                disabled={isExportingPdf}
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer disabled:opacity-50"
               >
-                <Download className="h-3.5 w-3.5" /> Generar y Descargar
+                {isExportingPdf ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Procesando PDF con imágenes...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-3.5 w-3.5" />
+                    <span>Generar y Descargar</span>
+                  </>
+                )}
               </button>
             </div>
 
@@ -1879,7 +2003,7 @@ export default function Inventory() {
                 </div>
                 <div>
                   <label htmlFor="prod-vip" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
-                    VIP (HNL)
+                    Mayorista (HNL)
                   </label>
                   <input
                     id="prod-vip"

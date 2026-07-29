@@ -20,7 +20,9 @@ const mapProductFromDb = (p) => {
     category: uiCategory,
     barcode: p.barcode || '',
     description: p.description || '',
-    image_url: p.image_url || ''
+    image_url: p.image_url || '',
+    featuredPublic: p.featured_public !== undefined ? Boolean(p.featured_public) : true,
+    publicDiscount: Number(p.public_discount || 0)
   };
 };
 
@@ -46,7 +48,9 @@ const mapProductToDb = (p) => {
     category: dbCategory,
     barcode: generatedBarcode,
     description: p.description || '',
-    image_url: p.image_url || p.imageUrl || ''
+    image_url: p.image_url || p.imageUrl || '',
+    featured_public: p.featuredPublic !== undefined ? Boolean(p.featuredPublic) : true,
+    public_discount: Number(p.publicDiscount || 0)
   };
   
   return dbRecord;
@@ -171,9 +175,14 @@ export const useStore = create((setOriginal, get) => {
 
         if (profileErr) throw profileErr;
 
-        let mappedRole = 'client';
-        if (profile.role === 'dueño' || profile.role === 'owner') mappedRole = 'owner';
-        else if (profile.role === 'vendedor') mappedRole = 'vendedor';
+        let mappedRole = 'detalle';
+        if (profile) {
+          const r = String(profile.role || '').toLowerCase();
+          if (r === 'dueño' || r === 'owner') mappedRole = 'owner';
+          else if (r === 'vendedor') mappedRole = 'vendedor';
+          else if (r === 'mayorista') mappedRole = 'mayorista';
+          else mappedRole = 'detalle';
+        }
 
         if (session.user.user_metadata?.role !== profile.role) {
           try {
@@ -236,9 +245,14 @@ export const useStore = create((setOriginal, get) => {
 
         if (profileErr) throw profileErr;
 
-        let mappedRole = 'client';
-        if (profile.role === 'dueño' || profile.role === 'owner') mappedRole = 'owner';
-        else if (profile.role === 'vendedor') mappedRole = 'vendedor';
+        let mappedRole = 'detalle';
+        if (profile) {
+          const r = String(profile.role || '').toLowerCase();
+          if (r === 'dueño' || r === 'owner') mappedRole = 'owner';
+          else if (r === 'vendedor') mappedRole = 'vendedor';
+          else if (r === 'mayorista') mappedRole = 'mayorista';
+          else mappedRole = 'detalle';
+        }
 
         if (data.user.user_metadata?.role !== profile.role) {
           try {
@@ -322,10 +336,13 @@ export const useStore = create((setOriginal, get) => {
           }
         }
 
-        let mappedRole = 'client';
+        let mappedRole = 'detalle';
         if (profile) {
-          if (profile.role === 'dueño' || profile.role === 'owner') mappedRole = 'owner';
-          else if (profile.role === 'vendedor') mappedRole = 'vendedor';
+          const r = String(profile.role || '').toLowerCase();
+          if (r === 'dueño' || r === 'owner') mappedRole = 'owner';
+          else if (r === 'vendedor') mappedRole = 'vendedor';
+          else if (r === 'mayorista') mappedRole = 'mayorista';
+          else mappedRole = 'detalle';
         }
 
         const userEmail = data.user.email || '';
@@ -1191,5 +1208,45 @@ export const useStore = create((setOriginal, get) => {
         itemsSkipped,
         stockAdjusted
       };
+    },
+
+    updateShowroomCuration: async (updatedItems) => {
+      set({ loading: true, error: null });
+      try {
+        const { products } = get();
+        const updatedProducts = products.map(p => {
+          const update = updatedItems.find(u => u.id === p.id);
+          if (update) {
+            return {
+              ...p,
+              featuredPublic: update.featuredPublic !== undefined ? update.featuredPublic : p.featuredPublic,
+              publicDiscount: update.publicDiscount !== undefined ? update.publicDiscount : p.publicDiscount
+            };
+          }
+          return p;
+        });
+
+        for (const item of updatedItems) {
+          const dbPayload = {};
+          if (item.featuredPublic !== undefined) dbPayload.featured_public = Boolean(item.featuredPublic);
+          if (item.publicDiscount !== undefined) dbPayload.public_discount = Number(item.publicDiscount || 0);
+
+          try {
+            await supabase
+              .from('products')
+              .update(dbPayload)
+              .eq('id', item.id);
+          } catch (e) {
+            console.warn('DB update error for item:', item.id, e);
+          }
+        }
+
+        set({ products: updatedProducts, loading: false });
+        return true;
+      } catch (err) {
+        console.error('Error updating showroom curation:', err);
+        set({ error: err.message, loading: false });
+        return false;
+      }
     }
 }});
