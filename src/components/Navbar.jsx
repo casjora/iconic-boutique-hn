@@ -84,7 +84,7 @@ export default function Navbar() {
               />
               <div className="leading-none flex flex-col justify-center">
                 {/* ICONIC con fuente Syne/Brand en peso 900 / extra bold */}
-                <h1 className="font-['Syne',sans-serif] font-extrabold text-base sm:text-lg text-neutral-900 dark:text-neutral-100 uppercase tracking-tight leading-none">
+                <h1 className="font-['Syne',sans-serif]  text-base sm:text-lg text-neutral-900 dark:text-neutral-100 uppercase tracking-tight leading-none">
                   ICONIC
                 </h1>
 
