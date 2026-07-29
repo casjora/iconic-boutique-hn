@@ -7,7 +7,7 @@ export default function AboutUs() {
   const handleTrack = (e) => {
     e.preventDefault();
     if (!guideNo.trim()) return;
-    const url = `https://products.loginextsolutions.com/trackall/#/order?ordno=${encodeURIComponent(guideNo.trim())}&aid=c586fa65-473e-454d-826b-448cea88b320&userType=DELIVERCI`;
+    const url = `https://products.loginextsolutions.com/trackall/#/order?ordno=CS${encodeURIComponent(guideNo.trim())}&aid=c586fa65-473e-454d-826b-448cea88b320&userType=DELIVERCI`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -109,7 +109,7 @@ export default function AboutUs() {
                 Seguimiento de Guías Cargo Expreso
               </h4>
               <p className="text-[11px] text-neutral-500">
-                Introduce tu número de guía recibido para rastrear tu paquete en tiempo real a través del portal de Loginext:
+                Introduce tu número de guía recibido para rastrear tu paquete en tiempo real a través del portal de CaEx:
               </p>
             </div>
 
@@ -120,7 +120,7 @@ export default function AboutUs() {
                   required
                   value={guideNo}
                   onChange={(e) => setGuideNo(e.target.value)}
-                  placeholder="Ej. 1002345678"
+                  placeholder="Ej. 411634993-1"
                   className="block w-full px-4 py-2.5 bg-white border border-neutral-200 rounded-xl text-xs focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none font-mono"
                 />
               </div>
@@ -138,7 +138,7 @@ export default function AboutUs() {
               <p className="text-[10px] text-neutral-400 font-mono">
                 * Enlace destino:{' '}
                 <a
-                  href={`https://products.loginextsolutions.com/trackall/#/order?ordno=${guideNo.trim()}&aid=c586fa65-473e-454d-826b-448cea88b320&userType=DELIVERCI`}
+                  href={`https://products.loginextsolutions.com/trackall/#/order?ordno=CS${guideNo.trim()}&aid=c586fa65-473e-454d-826b-448cea88b320&userType=DELIVERCI`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-indigo-600 hover:underline inline-flex items-center gap-0.5"

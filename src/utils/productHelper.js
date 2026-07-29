@@ -28,3 +28,21 @@ export function isProductSet(product) {
     sizeLower.includes('pzs')
   );
 }
+
+export function getProductPromoDiscount(product) {
+  if (!product || !product.description) return 0;
+  const match = product.description.match(/\[PROMO:(\d+)\]/);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
+export function cleanProductDescription(description) {
+  if (!description) return '';
+  return description.replace(/\[PROMO:\d+\]/g, '').trim();
+}
+
+export function setProductPromoDiscount(description, discountPercent) {
+  const cleanDesc = cleanProductDescription(description);
+  if (!discountPercent || Number(discountPercent) <= 0) return cleanDesc;
+  return `${cleanDesc}\n\n[PROMO:${Number(discountPercent)}]`.trim();
+}
+

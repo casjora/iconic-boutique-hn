@@ -1,9 +1,8 @@
-
 import CatalogView from '../components/CatalogView';
 
 export default function Favorites() {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto">
       <CatalogView favoritesOnly={true} />
     </div>
   );

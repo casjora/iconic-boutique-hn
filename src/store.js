@@ -20,7 +20,9 @@ const mapProductFromDb = (p) => {
     category: uiCategory,
     barcode: p.barcode || '',
     description: p.description || '',
-    image_url: p.image_url || ''
+    image_url: p.image_url || '',
+    featuredPublic: p.featured_public !== undefined && p.featured_public !== null ? Boolean(p.featured_public) : true,
+    publicDiscount: Number(p.public_discount || 0)
   };
 };
 
@@ -36,17 +38,19 @@ const mapProductToDb = (p) => {
 
   const dbRecord = {
     id: generatedId,
-    name: p.name,
-    brand: p.brand,
-    size: p.size,
+    name: p.name ? String(p.name).trim() : 'Perfume Desconocido',
+    brand: p.brand ? String(p.brand).trim() : 'Marca Desconocida',
+    size: p.size ? String(p.size).trim() : '100 ml',
     cost: Number(p.cost || 0),
-    price_public: Number(p.pricePublic || 0),
-    price_promotional: Number(p.pricePromotional || 0),
+    price_public: Number(p.pricePublic !== undefined ? p.pricePublic : (p.price_public || 0)),
+    price_promotional: Number(p.pricePromotional !== undefined ? p.pricePromotional : (p.price_promotional || 0)),
     stock: Number(p.stock || 0),
     category: dbCategory,
     barcode: generatedBarcode,
     description: p.description || '',
-    image_url: p.image_url || ''
+    image_url: p.image_url || p.imageUrl || '',
+    featured_public: p.featuredPublic !== undefined ? Boolean(p.featuredPublic) : true,
+    public_discount: Number(p.publicDiscount || 0)
   };
   
   return dbRecord;
@@ -92,12 +96,54 @@ export const useStore = create((setOriginal, get) => {
     cart: [],
     favorites: [],
     telegramConfig: { token: '', chatId: '', active: false },
-    currentView: 'home',
+    currentView: (() => {
+      if (typeof window !== 'undefined' && window.location) {
+        const path = window.location.pathname.substring(1) || 'home';
+        const isCategoryPath = path.startsWith('category/');
+        const normalizedPath = isCategoryPath ? 'catalog' : path;
+        const validViews = ['home', 'catalog', 'favorites', 'cart', 'login', 'forgot-password', 'update-password', 'dashboard', 'inventory', 'barcodes', 'config', 'orders', 'about-us'];
+        return validViews.includes(normalizedPath) ? normalizedPath : 'home';
+      }
+      return 'home';
+    })(),
     loading: false,
     error: null,
     searchTerm: '',
     categoryFilter: 'Todos',
     brandFilter: 'Todas',
+    theme: (() => {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const saved = localStorage.getItem('theme');
+        if (saved === 'dark' || saved === 'light') return saved;
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
+      }
+      return 'light';
+    })(),
+
+    toggleTheme: () => {
+      const current = get().theme;
+      const nextTheme = current === 'dark' ? 'light' : 'dark';
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('theme', nextTheme);
+        if (nextTheme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }
+      set({ theme: nextTheme });
+    },
+
+    initTheme: () => {
+      const currentTheme = get().theme;
+      if (typeof window !== 'undefined') {
+        if (currentTheme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }
+    },
 
     setView: (view) => set({ currentView: view, error: null }),
     setError: (err) => {
@@ -129,9 +175,28 @@ export const useStore = create((setOriginal, get) => {
 
         if (profileErr) throw profileErr;
 
-        let mappedRole = 'client';
-        if (profile.role === 'dueño' || profile.role === 'owner') mappedRole = 'owner';
-        else if (profile.role === 'vendedor') mappedRole = 'vendedor';
+        let mappedRole = 'detalle';
+        if (profile) {
+          const r = String(profile.role || '').toLowerCase();
+          if (r === 'dueño' || r === 'owner') mappedRole = 'owner';
+          else if (r === 'vendedor') mappedRole = 'vendedor';
+          else if (r === 'mayorista') mappedRole = 'mayorista';
+          else mappedRole = 'detalle';
+        }
+
+        if (session.user.user_metadata?.role !== profile.role) {
+          try {
+            await supabase.auth.updateUser({
+              data: {
+                ...session.user.user_metadata,
+                role: profile.role,
+                name: profile.name
+              }
+            });
+          } catch (e) {
+            console.warn('Metadata sync warning:', e);
+          }
+        }
 
         const email = session.user.email || '';
         const id = email.includes('@iconicboutique.hn') ? email.split('@')[0] : email;
@@ -180,9 +245,28 @@ export const useStore = create((setOriginal, get) => {
 
         if (profileErr) throw profileErr;
 
-        let mappedRole = 'client';
-        if (profile.role === 'dueño' || profile.role === 'owner') mappedRole = 'owner';
-        else if (profile.role === 'vendedor') mappedRole = 'vendedor';
+        let mappedRole = 'detalle';
+        if (profile) {
+          const r = String(profile.role || '').toLowerCase();
+          if (r === 'dueño' || r === 'owner') mappedRole = 'owner';
+          else if (r === 'vendedor') mappedRole = 'vendedor';
+          else if (r === 'mayorista') mappedRole = 'mayorista';
+          else mappedRole = 'detalle';
+        }
+
+        if (data.user.user_metadata?.role !== profile.role) {
+          try {
+            await supabase.auth.updateUser({
+              data: {
+                ...data.user.user_metadata,
+                role: profile.role,
+                name: profile.name
+              }
+            });
+          } catch (e) {
+            console.warn('Metadata sync warning:', e);
+          }
+        }
 
         const userEmail = data.user.email || '';
         const emailConfirmed = !!(data.user.email_confirmed_at || data.user.confirmed_at || userEmail.endsWith('@iconicboutique.hn'));
@@ -252,10 +336,13 @@ export const useStore = create((setOriginal, get) => {
           }
         }
 
-        let mappedRole = 'client';
+        let mappedRole = 'detalle';
         if (profile) {
-          if (profile.role === 'dueño' || profile.role === 'owner') mappedRole = 'owner';
-          else if (profile.role === 'vendedor') mappedRole = 'vendedor';
+          const r = String(profile.role || '').toLowerCase();
+          if (r === 'dueño' || r === 'owner') mappedRole = 'owner';
+          else if (r === 'vendedor') mappedRole = 'vendedor';
+          else if (r === 'mayorista') mappedRole = 'mayorista';
+          else mappedRole = 'detalle';
         }
 
         const userEmail = data.user.email || '';
@@ -345,11 +432,40 @@ export const useStore = create((setOriginal, get) => {
         }
         
         if (updates && updates.length > 0) {
+          const currentProducts = get().products;
           const dbUpdates = updates.map(u => {
+            const original = currentProducts.find(p => p.id === u.id) || {};
+            
+            const name = u.name ? String(u.name).trim() : (original.name || 'Perfume Desconocido');
+            const brand = u.brand ? String(u.brand).trim() : (original.brand || 'Marca Desconocida');
+            const size = u.size ? String(u.size).trim() : (original.size || '100 ml');
+            
+            let dbCategory = undefined;
+            const categoryToUse = u.category !== undefined ? u.category : original.category;
+            if (categoryToUse !== undefined) {
+              if (categoryToUse === 'Caballeros' || categoryToUse === 'Masculino' || categoryToUse === 'Niños') dbCategory = 'Masculino';
+              else if (categoryToUse === 'Unisex') dbCategory = 'Unisex';
+              else if (categoryToUse === 'Damas' || categoryToUse === 'Femenino') dbCategory = 'Femenino';
+            }
+            if (!dbCategory && original.category) {
+              if (original.category === 'Masculino' || original.category === 'Caballeros') dbCategory = 'Masculino';
+              else if (original.category === 'Unisex') dbCategory = 'Unisex';
+              else dbCategory = 'Femenino';
+            }
+
             return {
               id: u.id,
-              ...(u.stock !== undefined && { stock: Number(u.stock) }),
-              ...(u.cost !== undefined && { cost: Number(u.cost) })
+              name,
+              brand,
+              size,
+              stock: Number(u.stock !== undefined ? u.stock : (original.stock || 0)),
+              cost: Number(u.cost !== undefined ? u.cost : (original.cost || 0)),
+              price_public: Number(u.pricePublic !== undefined ? u.pricePublic : (original.pricePublic || 0)),
+              price_promotional: Number(u.pricePromotional !== undefined ? u.pricePromotional : (original.pricePromotional || 0)),
+              category: dbCategory || 'Femenino',
+              barcode: original.barcode || null,
+              description: original.description || null,
+              image_url: original.imageUrl || null
             };
           });
           const { error: updErr } = await supabase.from('products').upsert(dbUpdates);
@@ -436,6 +552,34 @@ export const useStore = create((setOriginal, get) => {
       }
     },
 
+    applyBulkDiscount: async (productIds, discountPercent) => {
+      set({ loading: true, error: null });
+      try {
+        const { products } = get();
+        const dbUpdates = [];
+        for (const p of products) {
+          if (productIds.includes(p.id)) {
+            const cleanDesc = p.description ? p.description.replace(/\[PROMO:\d+\]/g, '').trim() : '';
+            const newDesc = discountPercent > 0 ? `${cleanDesc}\n\n[PROMO:${discountPercent}]`.trim() : cleanDesc;
+            
+            const dbProduct = mapProductToDb({ ...p, description: newDesc });
+            dbUpdates.push(dbProduct);
+          }
+        }
+
+        if (dbUpdates.length > 0) {
+          const { error } = await supabase.from('products').upsert(dbUpdates);
+          if (error) throw error;
+        }
+
+        await get().fetchProducts();
+        return true;
+      } catch (err) {
+        set({ error: err.message, loading: false });
+        return false;
+      }
+    },
+
     deleteProduct: async (id) => {
       set({ loading: true, error: null });
       try {
@@ -457,24 +601,35 @@ export const useStore = create((setOriginal, get) => {
       }
     },
 
-    uploadPdf: async (base64, fileName) => {
+    uploadPdf: async (base64, fileName, model = "gemini-3.5-flash", startPage = 0, productsParsedSoFar = [], pagesText = null, signal = null) => {
       set({ loading: true, error: null });
       try {
         const res = await fetch('/api/products/upload-pdf', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pdfBase64: base64, fileName })
+          signal,
+          body: JSON.stringify({ 
+            pdfBase64: base64, 
+            fileName,
+            model,
+            startPage,
+            productsParsedSoFar,
+            pagesText
+          })
         });
-        if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.error || 'Error al procesar el PDF con IA');
-        }
         const data = await res.json();
         set({ loading: false });
-        return data.products;
+        if (!res.ok) {
+          throw new Error(data.error || 'Error al procesar el PDF con IA');
+        }
+        return data; // returns { success, products, error, failedPageIndex, pagesText, productsParsedSoFar, model }
       } catch (err) {
-        set({ error: err.message, loading: false });
-        return null;
+        set({ loading: false });
+        if (err.name === 'AbortError' || signal?.aborted) {
+          return { success: false, cancelled: true };
+        }
+        set({ error: err.message });
+        return { success: false, error: err.message };
       }
     },
 
@@ -630,17 +785,102 @@ export const useStore = create((setOriginal, get) => {
     updateOrderStatus: async (id, status) => {
       set({ loading: true, error: null });
       try {
-        const response = await fetch('/api/update-order-status', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ id, status })
-        });
+        let apiSuccess = false;
+        let apiError = null;
 
-        const resData = await response.json();
-        if (!response.ok || !resData.success) {
-          throw new Error(resData.error || 'Fallo al actualizar el estado de la orden');
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const token = session?.access_token;
+
+          const response = await fetch('/api/update-order-status', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ id, status })
+          });
+
+          const responseText = await response.text();
+          let resData = null;
+          try {
+            resData = JSON.parse(responseText);
+          } catch {
+            // Not JSON
+          }
+
+          if (response.ok && resData && resData.success) {
+            apiSuccess = true;
+          } else if (resData && resData.error) {
+            apiError = resData.error;
+          }
+        } catch (fetchErr) {
+          console.warn('API update-order-status failed, falling back to direct DB:', fetchErr);
+        }
+
+        if (!apiSuccess) {
+          // Direct Supabase fallback
+          const { data: currentOrder, error: orderErr } = await supabase
+            .from('orders')
+            .select('status')
+            .eq('id', id)
+            .maybeSingle();
+
+          if (orderErr) throw orderErr;
+          if (!currentOrder) {
+            throw new Error(apiError || 'No se encontró la orden especificada');
+          }
+
+          const oldStatus = currentOrder.status || 'pendiente';
+
+          if (oldStatus !== 'entregado' && status === 'entregado') {
+            const { data: items } = await supabase
+              .from('order_items')
+              .select('product_id, quantity')
+              .eq('order_id', id);
+
+            if (items) {
+              for (const item of items) {
+                const { data: prod } = await supabase
+                  .from('products')
+                  .select('stock')
+                  .eq('id', item.product_id)
+                  .maybeSingle();
+
+                if (prod) {
+                  const newStock = Math.max(0, Number(prod.stock || 0) - Number(item.quantity || 0));
+                  await supabase.from('products').update({ stock: newStock }).eq('id', item.product_id);
+                }
+              }
+            }
+          } else if (oldStatus === 'entregado' && status !== 'entregado') {
+            const { data: items } = await supabase
+              .from('order_items')
+              .select('product_id, quantity')
+              .eq('order_id', id);
+
+            if (items) {
+              for (const item of items) {
+                const { data: prod } = await supabase
+                  .from('products')
+                  .select('stock')
+                  .eq('id', item.product_id)
+                  .maybeSingle();
+
+                if (prod) {
+                  const newStock = Number(prod.stock || 0) + Number(item.quantity || 0);
+                  await supabase.from('products').update({ stock: newStock }).eq('id', item.product_id);
+                }
+              }
+            }
+          }
+
+          const { error: updateErr } = await supabase
+            .from('orders')
+            .update({ status })
+            .eq('id', id);
+
+          if (updateErr) throw updateErr;
         }
 
         set((state) => ({
@@ -891,12 +1131,7 @@ export const useStore = create((setOriginal, get) => {
     fetchFavorites: async () => {
       const user = get().user;
       if (!user || !user.uid) {
-        try {
-          const guestFavs = JSON.parse(localStorage.getItem('iconic_favorites_guest') || '[]');
-          set({ favorites: guestFavs });
-        } catch {
-          set({ favorites: [] });
-        }
+        set({ favorites: [] });
         return;
       }
 
@@ -910,17 +1145,14 @@ export const useStore = create((setOriginal, get) => {
         set({ favorites: (data || []).map(f => f.product_id) });
       } catch (err) {
         console.error('Error fetching favorites:', err);
-        try {
-          const guestFavs = JSON.parse(localStorage.getItem('iconic_favorites_guest') || '[]');
-          set({ favorites: guestFavs });
-        } catch {
-          set({ favorites: [] });
-        }
+        set({ favorites: [] });
       }
     },
 
     toggleFavorite: async (productId) => {
       const user = get().user;
+      if (!user || !user.uid) return;
+
       const currentFavs = get().favorites;
       const isFav = currentFavs.includes(productId);
       const updatedFavs = isFav 
@@ -928,11 +1160,6 @@ export const useStore = create((setOriginal, get) => {
         : [...currentFavs, productId];
 
       set({ favorites: updatedFavs });
-
-      if (!user || !user.uid) {
-        localStorage.setItem('iconic_favorites_guest', JSON.stringify(updatedFavs));
-        return;
-      }
 
       try {
         if (isFav) {
@@ -948,10 +1175,8 @@ export const useStore = create((setOriginal, get) => {
             .insert({ user_id: user.uid, product_id: productId });
           if (error) throw error;
         }
-        localStorage.setItem('iconic_favorites_guest', JSON.stringify(updatedFavs));
       } catch (err) {
         console.error('Error toggling favorite in DB:', err);
-        localStorage.setItem('iconic_favorites_guest', JSON.stringify(updatedFavs));
       }
     },
 
@@ -983,5 +1208,52 @@ export const useStore = create((setOriginal, get) => {
         itemsSkipped,
         stockAdjusted
       };
+    },
+
+    updateShowroomCuration: async (updatedItems) => {
+      set({ loading: true, error: null });
+      try {
+        const { products } = get();
+        const updatedProducts = products.map(p => {
+          const update = updatedItems.find(u => u.id === p.id);
+          if (update) {
+            return {
+              ...p,
+              featuredPublic: update.featuredPublic !== undefined ? Boolean(update.featuredPublic) : p.featuredPublic,
+              publicDiscount: update.publicDiscount !== undefined ? Number(update.publicDiscount || 0) : p.publicDiscount
+            };
+          }
+          return p;
+        });
+
+        // Fast parallel update in chunks of 20
+        const chunkSize = 20;
+        for (let i = 0; i < updatedItems.length; i += chunkSize) {
+          const chunk = updatedItems.slice(i, i + chunkSize);
+          await Promise.all(
+            chunk.map(item => {
+              const dbPayload = {};
+              if (item.featuredPublic !== undefined) dbPayload.featured_public = Boolean(item.featuredPublic);
+              if (item.publicDiscount !== undefined) dbPayload.public_discount = Number(item.publicDiscount || 0);
+
+              return supabase
+                .from('products')
+                .update(dbPayload)
+                .eq('id', item.id)
+                .then(({ error }) => {
+                  if (error) console.warn('DB update error for item:', item.id, error);
+                })
+                .catch(e => console.warn('DB update catch:', item.id, e));
+            })
+          );
+        }
+
+        set({ products: updatedProducts, loading: false });
+        return true;
+      } catch (err) {
+        console.error('Error updating showroom curation:', err);
+        set({ error: err.message, loading: false });
+        return false;
+      }
     }
 }});

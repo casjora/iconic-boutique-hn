@@ -10,8 +10,6 @@ export default function UpdatePassword() {
   const [password, setPassword] = useState('');
   const [status, setStatus] = useState({ type: '', message: '' });
 
-  // In Supabase Auth, when clicking the reset password link, the user is automatically logged in 
-  // via a recovery session if the hash is valid, so we can just update the user's password.
   useEffect(() => {
     supabase.auth.onAuthStateChange((event, _session) => {
       if (event === 'PASSWORD_RECOVERY') {
@@ -47,7 +45,7 @@ export default function UpdatePassword() {
   };
 
   return (
-    <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       <div className="w-full max-w-md space-y-8 bg-white p-10 rounded-3xl shadow-sm border border-neutral-200 fade-in-up">
         
         <div className="text-center space-y-2">
@@ -97,7 +95,7 @@ export default function UpdatePassword() {
           <button
             type="submit"
             disabled={loading || !password}
-            className="group relative w-full flex justify-center py-3.5 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-neutral-900 hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-900 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+            className="group relative w-full flex justify-center py-3.5 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-neutral-900 hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-900 transition-all disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
           >
             {loading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
