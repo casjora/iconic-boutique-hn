@@ -46,21 +46,29 @@ export default function Navbar() {
           {/* Logo / Title Area */}
           <div className="flex items-center gap-3 xl:gap-6 min-w-0">
             <button 
-              onClick={() => handleNav('home')} 
-              className="flex items-center gap-2.5 cursor-pointer outline-none group text-left mr-2 xl:mr-6 shrink-0"
-            >
-              <img 
-                className="h-9 w-9 bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 rounded-xl flex items-center justify-center font-display font-black text-sm tracking-tighter group-hover:scale-105 transition-transform shadow-md object-cover" 
-                src="https://nsubmnvkojsmoykfcjgl.supabase.co/storage/v1/object/public/miscelaneas/iconic-icon.jpg" 
-                alt="iconic-icon" 
-              />
-              <div className="leading-none">
-                <h1 className="font-['Montserrat',sans-serif] font-black text-sm text-neutral-900 dark:text-neutral-100 uppercase tracking-widest leading-none">
-                  ICONIC
-                </h1>
-                <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest leading-none mt-0.5 block">BOUTIQUE</span>
-              </div>
-            </button>
+    onClick={() => handleNav('home')} 
+    className="flex items-center gap-2.5 cursor-pointer outline-none group text-left mr-2 xl:mr-6 shrink-0"
+  >
+    <img 
+      className="h-9 w-9 bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 rounded-xl flex items-center justify-center font-display font-black text-sm tracking-tighter group-hover:scale-105 transition-transform shadow-md object-cover" 
+      src="https://nsubmnvkojsmoykfcjgl.supabase.co/storage/v1/object/public/miscelaneas/iconic-icon.jpg" 
+      alt="iconic-icon" 
+    />
+    <div className="leading-none flex flex-col justify-center">
+      {/* ICONIC con fuente Syne/Brand en peso 900 / extra bold */}
+      <h1 className="font-['Syne',sans-serif]  text-base sm:text-lg text-neutral-900 dark:text-neutral-100 uppercase tracking-tight leading-none">
+        ICONIC
+      </h1>
+      
+      {/* Línea divisoria minimalista tipo logo (Opcional, coincide con la imagen) */}
+      <div className="h-[1px] w-full bg-neutral-300 dark:bg-neutral-700 my-0.5"></div>
+
+      {/* BOUTIQUE ultra extendido y fino */}
+      <span className="text-[8px] sm:text-[9px] font-light text-neutral-500 dark:text-amber-400 uppercase tracking-[0.35em] leading-none block pl-[1px]">
+        BOUTIQUE
+      </span>
+    </div>
+  </button>
 
             {/* Desktop main navigation links */}
             <nav className="hidden lg:flex items-center gap-1 overflow-x-auto no-scrollbar py-1">
