@@ -781,7 +781,7 @@ export default function Inventory() {
         doc.setTextColor(255, 255, 255);
         doc.setFont('Helvetica', 'bold');
         doc.setFontSize(8);
-        doc.text('ICONIC BOUTIQUE - CATÁLOGO DE CLIENTES', 12, 9);
+        doc.text('CATÁLOGO DE PERFUMES', 12, 9);
         
         const today = new Date().toLocaleDateString('es-HN', { year: 'numeric', month: 'long', day: 'numeric' });
         doc.text(today.toUpperCase(), pageWidth - 12, 9, { align: 'right' });
