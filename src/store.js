@@ -142,6 +142,20 @@ export const useStore = create((setOriginal, get) => {
         if (profile.role === 'dueño' || profile.role === 'owner') mappedRole = 'owner';
         else if (profile.role === 'vendedor') mappedRole = 'vendedor';
 
+        if (session.user.user_metadata?.role !== profile.role) {
+          try {
+            await supabase.auth.updateUser({
+              data: {
+                ...session.user.user_metadata,
+                role: profile.role,
+                name: profile.name
+              }
+            });
+          } catch (e) {
+            console.warn('Metadata sync warning:', e);
+          }
+        }
+
         const email = session.user.email || '';
         const id = email.includes('@iconicboutique.hn') ? email.split('@')[0] : email;
         const emailConfirmed = !!(session.user.email_confirmed_at || session.user.confirmed_at || email.endsWith('@iconicboutique.hn'));
@@ -192,6 +206,20 @@ export const useStore = create((setOriginal, get) => {
         let mappedRole = 'client';
         if (profile.role === 'dueño' || profile.role === 'owner') mappedRole = 'owner';
         else if (profile.role === 'vendedor') mappedRole = 'vendedor';
+
+        if (data.user.user_metadata?.role !== profile.role) {
+          try {
+            await supabase.auth.updateUser({
+              data: {
+                ...data.user.user_metadata,
+                role: profile.role,
+                name: profile.name
+              }
+            });
+          } catch (e) {
+            console.warn('Metadata sync warning:', e);
+          }
+        }
 
         const userEmail = data.user.email || '';
         const emailConfirmed = !!(data.user.email_confirmed_at || data.user.confirmed_at || userEmail.endsWith('@iconicboutique.hn'));
@@ -707,17 +735,102 @@ export const useStore = create((setOriginal, get) => {
     updateOrderStatus: async (id, status) => {
       set({ loading: true, error: null });
       try {
-        const response = await fetch('/api/update-order-status', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ id, status })
-        });
+        let apiSuccess = false;
+        let apiError = null;
 
-        const resData = await response.json();
-        if (!response.ok || !resData.success) {
-          throw new Error(resData.error || 'Fallo al actualizar el estado de la orden');
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const token = session?.access_token;
+
+          const response = await fetch('/api/update-order-status', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ id, status })
+          });
+
+          const responseText = await response.text();
+          let resData = null;
+          try {
+            resData = JSON.parse(responseText);
+          } catch {
+            // Not JSON
+          }
+
+          if (response.ok && resData && resData.success) {
+            apiSuccess = true;
+          } else if (resData && resData.error) {
+            apiError = resData.error;
+          }
+        } catch (fetchErr) {
+          console.warn('API update-order-status failed, falling back to direct DB:', fetchErr);
+        }
+
+        if (!apiSuccess) {
+          // Direct Supabase fallback
+          const { data: currentOrder, error: orderErr } = await supabase
+            .from('orders')
+            .select('status')
+            .eq('id', id)
+            .maybeSingle();
+
+          if (orderErr) throw orderErr;
+          if (!currentOrder) {
+            throw new Error(apiError || 'No se encontró la orden especificada');
+          }
+
+          const oldStatus = currentOrder.status || 'pendiente';
+
+          if (oldStatus !== 'entregado' && status === 'entregado') {
+            const { data: items } = await supabase
+              .from('order_items')
+              .select('product_id, quantity')
+              .eq('order_id', id);
+
+            if (items) {
+              for (const item of items) {
+                const { data: prod } = await supabase
+                  .from('products')
+                  .select('stock')
+                  .eq('id', item.product_id)
+                  .maybeSingle();
+
+                if (prod) {
+                  const newStock = Math.max(0, Number(prod.stock || 0) - Number(item.quantity || 0));
+                  await supabase.from('products').update({ stock: newStock }).eq('id', item.product_id);
+                }
+              }
+            }
+          } else if (oldStatus === 'entregado' && status !== 'entregado') {
+            const { data: items } = await supabase
+              .from('order_items')
+              .select('product_id, quantity')
+              .eq('order_id', id);
+
+            if (items) {
+              for (const item of items) {
+                const { data: prod } = await supabase
+                  .from('products')
+                  .select('stock')
+                  .eq('id', item.product_id)
+                  .maybeSingle();
+
+                if (prod) {
+                  const newStock = Number(prod.stock || 0) + Number(item.quantity || 0);
+                  await supabase.from('products').update({ stock: newStock }).eq('id', item.product_id);
+                }
+              }
+            }
+          }
+
+          const { error: updateErr } = await supabase
+            .from('orders')
+            .update({ status })
+            .eq('id', id);
+
+          if (updateErr) throw updateErr;
         }
 
         set((state) => ({

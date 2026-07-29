@@ -6,8 +6,6 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY ||
                     process.env.VITE_SUPABASE_PUBLISHABLE_KEY || 
                     'sb_publishable_FIp9glGAZJ1hLMp2pEKtcQ_BwSQPR1e';
 
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -17,6 +15,11 @@ export default async function handler(req, res) {
   if (!id || !status) {
     return res.status(400).json({ error: 'Faltan parámetros requeridos: id o status' });
   }
+
+  // Use caller's auth header if available, or service role / publishable key
+  const authHeader = req.headers.authorization;
+  const clientOptions = authHeader ? { global: { headers: { Authorization: authHeader } } } : {};
+  const supabase = createClient(supabaseUrl, supabaseKey, clientOptions);
 
   try {
     const { data: currentOrder, error: orderErr } = await supabase

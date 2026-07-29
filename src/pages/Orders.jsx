@@ -224,18 +224,18 @@ export default function Orders() {
 
       {/* View Detail Modal */}
       {viewingOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 backdrop-blur-[2px] p-4">
-          <div className="bg-white rounded-3xl border border-neutral-200 shadow-xl w-full max-w-lg overflow-hidden fade-in-up">
-            <div className="p-6 border-b border-neutral-100 flex items-center justify-between">
-              <h3 className="font-display font-bold text-neutral-900 text-base">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/50 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl border border-neutral-200 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col my-auto max-h-[85vh] fade-in-up">
+            <div className="p-5 sm:p-6 border-b border-neutral-100 flex items-center justify-between flex-shrink-0">
+              <h3 className="font-display font-bold text-neutral-900 text-base truncate pr-2">
                 Resumen de Orden: <span className="font-mono font-black">{viewingOrder.id}</span>
               </h3>
-              <button onClick={() => setViewingOrder(null)} className="text-neutral-400 hover:text-neutral-600 cursor-pointer">
+              <button onClick={() => setViewingOrder(null)} className="text-neutral-400 hover:text-neutral-600 cursor-pointer flex-shrink-0">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+            <div className="p-5 sm:p-6 space-y-4 flex-1 overflow-y-auto">
               {/* Client specifications */}
               <div className="grid grid-cols-2 gap-4 text-xs bg-neutral-50 p-4 rounded-2xl border border-neutral-100">
                 <div>
@@ -289,7 +289,7 @@ export default function Orders() {
             </div>
 
             {/* Total Footer */}
-            <div className="p-6 bg-neutral-50 border-t border-neutral-100 flex items-center justify-between">
+            <div className="p-5 sm:p-6 bg-neutral-50 border-t border-neutral-100 flex items-center justify-between flex-shrink-0">
               <span className="text-sm font-bold text-neutral-900">Total Cotizado</span>
               <span className="font-mono font-black text-neutral-950 text-lg">
                 L. {viewingOrder.total.toLocaleString()} HNL
@@ -301,18 +301,18 @@ export default function Orders() {
 
       {/* Edit Order Modal */}
       {editingOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 backdrop-blur-[2px] p-4">
-          <div className="bg-white rounded-3xl border border-neutral-200 shadow-xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh] fade-in-up">
-            <div className="p-6 border-b border-neutral-100 flex items-center justify-between flex-shrink-0">
-              <h3 className="font-display font-bold text-neutral-900 text-base">
-                Editar Detalles de Orden: <span className="font-mono font-black">{editingOrder.id}</span>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/50 backdrop-blur-sm p-3 sm:p-6 overflow-y-auto">
+          <div className="bg-white rounded-3xl border border-neutral-200 shadow-2xl w-full max-w-xl overflow-hidden flex flex-col my-auto max-h-[85vh] fade-in-up">
+            <div className="p-5 sm:p-6 border-b border-neutral-100 flex items-center justify-between flex-shrink-0">
+              <h3 className="font-display font-bold text-neutral-900 text-sm sm:text-base truncate pr-2">
+                Editar Detalles de Orden: <span className="font-mono font-black text-xs sm:text-sm">{editingOrder.id}</span>
               </h3>
-              <button onClick={() => setEditingOrder(null)} className="text-neutral-400 hover:text-neutral-600 cursor-pointer">
+              <button onClick={() => setEditingOrder(null)} className="text-neutral-400 hover:text-neutral-600 cursor-pointer flex-shrink-0">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveEdit} className="flex-1 overflow-y-auto p-6 space-y-5">
+            <form onSubmit={handleSaveEdit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 sm:space-y-5">
               
               {/* Cliente info fields */}
               <div className="grid gap-4 sm:grid-cols-2">
@@ -422,7 +422,7 @@ export default function Orders() {
 
             </form>
 
-            <div className="p-6 bg-neutral-50 border-t border-neutral-100 flex items-center justify-between flex-shrink-0">
+            <div className="p-5 sm:p-6 bg-neutral-50 border-t border-neutral-100 flex items-center justify-between flex-shrink-0">
               <div className="text-left">
                 <span className="text-[10px] text-neutral-400 block font-bold">Subtotal Estimado:</span>
                 <span className="font-mono font-black text-neutral-950 text-base">
