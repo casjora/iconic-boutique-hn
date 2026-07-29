@@ -178,19 +178,51 @@ export default function App() {
       </main>
 
       {/* Beautiful premium footer */}
-      <footer className="bg-white border-t border-neutral-200 py-8 print:hidden">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center space-y-3">
-          <p className="text-xs font-bold text-neutral-800 uppercase tracking-widest">
-            Iconic Boutique HN
-          </p>
-          <p className="text-[10px] text-neutral-400 font-semibold max-w-md mx-auto leading-relaxed">
-            Distribuidores de perfumería y fragancias 100% originales de diseñador en Honduras. Ubicados en Torre Metrópolis, Tegucigalpa.
-          </p>
-          <div className="border-t border-neutral-100 pt-3 text-[10px] text-neutral-400 font-semibold font-mono">
-            &copy; {new Date().getFullYear()} Iconic Boutique. Todos los derechos reservados.
-          </div>
-        </div>
-      </footer>
+    <footer className="bg-white border-t border-neutral-200 py-8 print:hidden">
+  <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center space-y-4">
+    <p className="text-xs font-bold text-neutral-800 uppercase tracking-widest">
+      Iconic Boutique HN
+    </p>
+
+    {/* Enlaces a Redes Sociales */}
+    <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-6 text-xs font-semibold text-neutral-600">
+      <a 
+        href="https://www.facebook.com/profile.php?id=61557724910199&ref=NONE_xav_ig_profile_page_web#" 
+        target="_blank" 
+        rel="noopener noreferrer" 
+        className="hover:text-neutral-900 transition-colors flex items-center gap-1"
+      >
+        Facebook
+      </a>
+      <span className="text-neutral-300 hidden sm:inline">•</span>
+      <a 
+        href="https://www.instagram.com/iconicboutiquehn/" 
+        target="_blank" 
+        rel="noopener noreferrer" 
+        className="hover:text-neutral-900 transition-colors flex items-center gap-1"
+      >
+        Instagram
+      </a>
+      <span className="text-neutral-300 hidden sm:inline">•</span>
+      <a 
+        href="https://wa.me/50498309309" 
+        target="_blank" 
+        rel="noopener noreferrer" 
+        className="text-emerald-600 hover:text-emerald-700 font-bold transition-colors flex items-center gap-1"
+      >
+        WhatsApp Business (+504 9830-9309)
+      </a>
+    </div>
+
+    <p className="text-[10px] text-neutral-400 font-semibold max-w-md mx-auto leading-relaxed">
+      Distribuidores de perfumería y fragancias 100% originales de diseñador en Honduras. Ubicados en Torre Metrópolis, Tegucigalpa.
+    </p>
+
+    <div className="border-t border-neutral-100 pt-3 text-[10px] text-neutral-400 font-semibold font-mono">
+      &copy; {new Date().getFullYear()} Iconic Boutique. Todos los derechos reservados.
+    </div>
+  </div>
+</footer>
     </div>
   );
 }

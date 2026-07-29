@@ -1,11 +1,14 @@
 import { useState, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '../store';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
 import { 
-  Plus, Edit2, Trash2, FileUp, Loader2, RefreshCw, Barcode, HelpCircle, 
-  Search, SlidersHorizontal, ArrowLeft, Tag, Info, AlertTriangle, PlayCircle, 
-  CheckCircle2, AlertCircle, ChevronRight, Check, Percent
+  Plus, Edit2, Trash2, FileUp, Loader2, RefreshCw, 
+  Search, AlertTriangle, PlayCircle, 
+  AlertCircle, Check, Percent, Download, Share2,
+  FileDown, FileSpreadsheet, FileText, X
 } from 'lucide-react';
 import { isProductSet, getProductPromoDiscount, cleanProductDescription, setProductPromoDiscount } from '../utils/productHelper';
 import { generateBarcodeSVG } from '../utils/barcode';
@@ -13,7 +16,8 @@ import { generateBarcodeSVG } from '../utils/barcode';
 export default function Inventory() {
   const { 
     products, addProduct, updateProduct, deleteProduct, 
-    uploadPdf, saveProductsBulk, applyBulkDiscount, loading, error, setError 
+    uploadPdf, saveProductsBulk, applyBulkDiscount, loading, error, setError,
+    user
   } = useStore();
 
   // Search & filter states
@@ -24,6 +28,7 @@ export default function Inventory() {
   // Slide-over or Modal states for single product CRUD
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
 
   // Form states
   const [formName, setFormName] = useState('');
@@ -59,6 +64,16 @@ export default function Inventory() {
   const [failedError, setFailedError] = useState('');
 
   const abortControllerRef = useRef(null);
+
+  // Client Catalog Export States
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState('pdf'); // 'pdf' | 'xlsx' | 'csv'
+  const [exportRange, setExportRange] = useState('filtered'); // 'filtered' | 'all'
+  const [includeVIP, setIncludeVIP] = useState(true);
+  const [includeDiscount, setIncludeDiscount] = useState(true);
+  const [additionalDiscount, setAdditionalDiscount] = useState(0); // Optional extra % discount
+  const [groupByBrand, setGroupByBrand] = useState(true);
+  const [onlyInStock, setOnlyInStock] = useState(true);
 
   const enrichAndSetParsedProducts = (rawItems) => {
     if (!rawItems || !Array.isArray(rawItems)) {
@@ -529,6 +544,14 @@ export default function Inventory() {
     setFormDescription('');
     setFormImageUrl('');
     setFormPromoDiscount(0);
+    setIsFormModalOpen(true);
+  };
+
+  const handleCloseFormModal = () => {
+    setIsFormModalOpen(false);
+    setIsEditing(false);
+    setEditingId(null);
+    setError(null);
   };
 
   const handleOpenEdit = (product) => {
@@ -543,12 +566,13 @@ export default function Inventory() {
     setFormPricePromotional(product.pricePromotional);
     setFormStock(product.stock);
     setFormCategory(product.category);
-    setFormBarcode(product.barcode);
+    setFormBarcode(product.barcode || '');
     
     const discount = getProductPromoDiscount(product);
     setFormPromoDiscount(discount);
     setFormDescription(cleanProductDescription(product.description || ''));
     setFormImageUrl(product.image_url || '');
+    setIsFormModalOpen(true);
   };
 
   const handleSaveProduct = async (e) => {
@@ -576,7 +600,21 @@ export default function Inventory() {
       : await addProduct(data);
 
     if (ok) {
-      handleOpenAdd(); // Reset to clean fields
+      setIsFormModalOpen(false);
+      setIsEditing(false);
+      setEditingId(null);
+      setFormName('');
+      setFormBrand('');
+      setFormSize('100 ml');
+      setFormCost('');
+      setFormPricePublic('');
+      setFormPricePromotional('');
+      setFormStock('');
+      setFormCategory('Damas');
+      setFormBarcode('');
+      setFormDescription('');
+      setFormImageUrl('');
+      setFormPromoDiscount(0);
     }
   };
 
@@ -608,17 +646,334 @@ export default function Inventory() {
     }
   };
 
+  const handleExportExcelCsv = (format) => {
+    const listToExport = exportRange === 'filtered' ? filteredProducts : products;
+    let items = onlyInStock ? listToExport.filter(p => p.stock > 0) : listToExport;
+    
+    if (items.length === 0) {
+      alert('No hay perfumes para exportar con la configuración seleccionada.');
+      return;
+    }
+    
+    if (groupByBrand) {
+      items = [...items].sort((a, b) => {
+        const brandCompare = (a.brand || '').localeCompare(b.brand || '');
+        if (brandCompare !== 0) return brandCompare;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+    } else {
+      items = [...items].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    }
+    
+    const exportData = items.map(p => {
+      const origPublicPrice = p.pricePublic || 0;
+      const activePromoDiscount = getProductPromoDiscount(p) || 0;
+      const finalDiscountPercent = Math.min(100, Math.max(0, activePromoDiscount + Number(additionalDiscount || 0)));
+      const discountedPrice = finalDiscountPercent > 0 
+        ? Math.round(origPublicPrice * (1 - finalDiscountPercent / 100))
+        : origPublicPrice;
+        
+      const record = {
+        'Marca': (p.brand || 'Genérico').toUpperCase(),
+        'Fragancia': p.name || 'Sin nombre',
+        'Presentación': p.size || '100 ml',
+        'Precio Detalle (HNL)': origPublicPrice,
+      };
+      
+      if (includeDiscount) {
+        record['Descuento Aplicado %'] = finalDiscountPercent;
+        record['Precio con Descuento (HNL)'] = discountedPrice;
+      }
+      
+      if (includeVIP) {
+        record['Precio VIP / Mayorista (HNL)'] = p.pricePromotional || 0;
+      }
+      
+      record['Stock Disponible'] = p.stock > 0 ? `${p.stock} unidades` : 'Agotado';
+      record['Categoría'] = p.category === 'Masculino' ? 'Caballeros' : p.category === 'Unisex' ? 'Unisex' : 'Damas';
+      
+      return record;
+    });
+    
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Catálogo');
+    
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `Catalogo_Perfumes_Clientes_${timestamp}.${format}`;
+    
+    if (format === 'xlsx') {
+      XLSX.writeFile(wb, filename);
+    } else {
+      XLSX.writeFile(wb, filename, { bookType: 'csv' });
+    }
+    
+    setIsExportModalOpen(false);
+  };
+
+  const handleExportPDF = () => {
+    const listToExport = exportRange === 'filtered' ? filteredProducts : products;
+    let items = onlyInStock ? listToExport.filter(p => p.stock > 0) : listToExport;
+    
+    if (items.length === 0) {
+      alert('No hay perfumes para exportar con la configuración seleccionada.');
+      return;
+    }
+    
+    if (groupByBrand) {
+      items = [...items].sort((a, b) => {
+        const brandCompare = (a.brand || '').localeCompare(b.brand || '');
+        if (brandCompare !== 0) return brandCompare;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+    } else {
+      items = [...items].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    }
+    
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+    
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    
+    let y = 20;
+    let pageNum = 1;
+    
+    const drawHeader = () => {
+      doc.setFillColor(17, 24, 39); // deep slate/gray
+      doc.rect(0, 0, pageWidth, 14, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.text('IMPORTACIONES HONDURAS - CATÁLOGO DE CLIENTES', 15, 9);
+      
+      const today = new Date().toLocaleDateString('es-HN', { year: 'numeric', month: 'long', day: 'numeric' });
+      doc.text(today.toUpperCase(), pageWidth - 15, 9, { align: 'right' });
+      
+      y = 25;
+    };
+    
+    const drawFooter = () => {
+      doc.setFontSize(7);
+      doc.setTextColor(150, 150, 150);
+      doc.setFont('Helvetica', 'normal');
+      doc.text(`Catálogo Comercial de Fragancias  |  Pág. ${pageNum}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+    };
+    
+    drawHeader();
+    
+    // Title
+    doc.setTextColor(17, 24, 39);
+    doc.setFontSize(16);
+    doc.setFont('Helvetica', 'bold');
+    doc.text('CATÁLOGO DE FRAGANCIAS EXCLUSIVAS', 15, y);
+    y += 5;
+    
+    doc.setTextColor(107, 114, 128);
+    doc.setFontSize(8);
+    doc.setFont('Helvetica', 'normal');
+    doc.text('Precios vigentes al público y ofertas especiales disponibles.', 15, y);
+    y += 10;
+    
+    const colX = {
+      brand: 15,
+      name: groupByBrand ? 15 : 45,
+      size: 105,
+      publicPrice: 125,
+      discount: 145,
+      vipPrice: 168,
+      stock: 188
+    };
+    
+    // Draw column headers
+    doc.setFillColor(243, 244, 246);
+    doc.rect(15, y - 4, pageWidth - 30, 6, 'F');
+    doc.setDrawColor(229, 231, 235);
+    doc.line(15, y + 2, pageWidth - 15, y + 2);
+    
+    doc.setTextColor(107, 114, 128);
+    doc.setFontSize(7);
+    doc.setFont('Helvetica', 'bold');
+    
+    if (!groupByBrand) {
+      doc.text('MARCA', colX.brand, y);
+    }
+    doc.text('FRAGANCIA', colX.name, y);
+    doc.text('TAMAÑO', colX.size, y);
+    doc.text('DETALLE', colX.publicPrice, y);
+    if (includeDiscount) {
+      doc.text('OFERTA', colX.discount, y);
+    }
+    if (includeVIP) {
+      doc.text('MAYORISTA (VIP)', colX.vipPrice, y);
+    }
+    doc.text('STOCK', colX.stock, y);
+    
+    y += 7;
+    
+    let lastBrand = '';
+    
+    items.forEach((p) => {
+      // Check pagination
+      if (y > pageHeight - 22) {
+        drawFooter();
+        doc.addPage();
+        pageNum++;
+        drawHeader();
+        
+        // Re-draw headers
+        doc.setFillColor(243, 244, 246);
+        doc.rect(15, y - 4, pageWidth - 30, 6, 'F');
+        doc.setDrawColor(229, 231, 235);
+        doc.line(15, y + 2, pageWidth - 15, y + 2);
+        
+        doc.setTextColor(107, 114, 128);
+        doc.setFontSize(7);
+        doc.setFont('Helvetica', 'bold');
+        if (!groupByBrand) {
+          doc.text('MARCA', colX.brand, y);
+        }
+        doc.text('FRAGANCIA', colX.name, y);
+        doc.text('TAMAÑO', colX.size, y);
+        doc.text('DETALLE', colX.publicPrice, y);
+        if (includeDiscount) {
+          doc.text('OFERTA', colX.discount, y);
+        }
+        if (includeVIP) {
+          doc.text('MAYORISTA (VIP)', colX.vipPrice, y);
+        }
+        doc.text('STOCK', colX.stock, y);
+        y += 7;
+      }
+      
+      // Brand headers
+      if (groupByBrand && p.brand !== lastBrand) {
+        if (y > pageHeight - 32) {
+          drawFooter();
+          doc.addPage();
+          pageNum++;
+          drawHeader();
+          
+          doc.setFillColor(243, 244, 246);
+          doc.rect(15, y - 4, pageWidth - 30, 6, 'F');
+          doc.setDrawColor(229, 231, 235);
+          doc.line(15, y + 2, pageWidth - 15, y + 2);
+          
+          doc.setTextColor(107, 114, 128);
+          doc.setFontSize(7);
+          doc.setFont('Helvetica', 'bold');
+          doc.text('FRAGANCIA', colX.name, y);
+          doc.text('TAMAÑO', colX.size, y);
+          doc.text('DETALLE', colX.publicPrice, y);
+          if (includeDiscount) {
+            doc.text('OFERTA', colX.discount, y);
+          }
+          if (includeVIP) {
+            doc.text('MAYORISTA (VIP)', colX.vipPrice, y);
+          }
+          doc.text('STOCK', colX.stock, y);
+          y += 7;
+        }
+        
+        lastBrand = p.brand;
+        doc.setFillColor(249, 250, 251);
+        doc.rect(15, y - 3, pageWidth - 30, 5, 'F');
+        doc.setTextColor(17, 24, 39);
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.text((p.brand || 'GENÉRICO').toUpperCase(), 17, y);
+        y += 5.5;
+      }
+      
+      doc.setTextColor(55, 65, 81);
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(8);
+      
+      if (!groupByBrand) {
+        doc.text((p.brand || '').substring(0, 16), colX.brand, y);
+      }
+      
+      const nameStr = (p.name || '');
+      const maxLen = groupByBrand ? 44 : 28;
+      const truncatedName = nameStr.length > maxLen ? nameStr.substring(0, maxLen - 3) + '...' : nameStr;
+      doc.setFont('Helvetica', 'bold');
+      doc.text(truncatedName, colX.name, y);
+      
+      doc.setFont('Helvetica', 'normal');
+      doc.text(p.size || '100 ml', colX.size, y);
+      
+      const origPublicPrice = p.pricePublic || 0;
+      doc.text(`L. ${origPublicPrice.toLocaleString()}`, colX.publicPrice, y);
+      
+      if (includeDiscount) {
+        const activePromoDiscount = getProductPromoDiscount(p) || 0;
+        const finalDiscountPercent = Math.min(100, Math.max(0, activePromoDiscount + Number(additionalDiscount || 0)));
+        if (finalDiscountPercent > 0) {
+          const discountedPrice = Math.round(origPublicPrice * (1 - finalDiscountPercent / 100));
+          doc.setFont('Helvetica', 'bold');
+          doc.setTextColor(220, 38, 38);
+          doc.text(`L. ${discountedPrice.toLocaleString()} (-${finalDiscountPercent}%)`, colX.discount, y);
+          doc.setFont('Helvetica', 'normal');
+          doc.setTextColor(55, 65, 81);
+        } else {
+          doc.text('-', colX.discount, y);
+        }
+      }
+      
+      if (includeVIP) {
+        const vipPrice = p.pricePromotional || 0;
+        doc.text(`L. ${vipPrice.toLocaleString()}`, colX.vipPrice, y);
+      }
+      
+      const stockStr = p.stock > 0 ? `${p.stock} u` : 'Agotado';
+      doc.text(stockStr, colX.stock, y);
+      
+      doc.setDrawColor(243, 244, 246);
+      doc.line(15, y + 1.2, pageWidth - 15, y + 1.2);
+      
+      y += 5;
+    });
+    
+    drawFooter();
+    const timestamp = new Date().toISOString().slice(0, 10);
+    doc.save(`Catalogo_Perfumes_Clientes_${timestamp}.pdf`);
+    setIsExportModalOpen(false);
+  };
+
+  const handleExecuteExport = () => {
+    if (exportFormat === 'pdf') {
+      handleExportPDF();
+    } else {
+      handleExportExcelCsv(exportFormat);
+    }
+  };
+
   return (
     <div className="space-y-6 fade-in-up max-w-7xl mx-auto">
       
       {/* Title */}
-      <div>
-        <h2 className="font-display text-2xl font-black text-neutral-900 tracking-tight">
-          Gestión de Inventario y Perfumes
-        </h2>
-        <p className="text-xs text-neutral-500 mt-1">
-          Administra de forma manual tu stock, sube archivos CSV/Excel o carga facturas en PDF escaneadas con inteligencia artificial.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="font-display text-2xl font-black text-neutral-900 tracking-tight">
+            Gestión de Inventario y Perfumes
+          </h2>
+          <p className="text-xs text-neutral-500 mt-1">
+            Administra de forma manual tu stock, sube archivos CSV/Excel o carga facturas en PDF escaneadas con inteligencia artificial.
+          </p>
+        </div>
+        <div className="flex-shrink-0">
+          <button
+            type="button"
+            onClick={handleOpenAdd}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-5 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm"
+          >
+            <Plus className="h-4 w-4" /> Nuevo Perfume
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -839,11 +1194,8 @@ export default function Inventory() {
         </div>
       ) : null}
 
-      {/* Main setup layout: upload on top/left, manual form on right */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        
-        {/* PDF AI Parser block */}
-        <div className="lg:col-span-2 bg-white border border-neutral-200 rounded-3xl p-6 shadow-sm space-y-6">
+      {/* PDF AI Parser block */}
+      <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-sm space-y-6">
           <div className="border-b border-neutral-100 pb-3 flex items-center justify-between">
             <h3 className="font-display font-bold text-neutral-900 text-base flex items-center gap-1.5">
               <FileUp className="h-5 w-5 text-indigo-500 animate-bounce" /> Importador Inteligente (Facturas PDF por IA, CSV o Excel)
@@ -995,215 +1347,22 @@ export default function Inventory() {
           )}
         </div>
 
-        {/* Manual Product addition form */}
-        <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-sm">
-          <h3 className="font-display font-bold text-neutral-900 text-base border-b border-neutral-100 pb-3 flex items-center gap-1.5">
-            <Plus className="h-5 w-5 text-neutral-900" /> {isEditing ? 'Editar Perfume' : 'Agregar Perfume Manual'}
-          </h3>
 
-          <form onSubmit={handleSaveProduct} className="space-y-4 pt-3">
-            <div>
-              <label htmlFor="prod-brand" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
-                Marca / Diseñador
-              </label>
-              <input
-                id="prod-brand"
-                type="text"
-                required
-                value={formBrand}
-                onChange={(e) => setFormBrand(e.target.value)}
-                className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none"
-                placeholder="Ej. Carolina Herrera"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="prod-name" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
-                Nombre de la Fragancia
-              </label>
-              <input
-                id="prod-name"
-                type="text"
-                required
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none"
-                placeholder="Ej. Good Girl"
-              />
-            </div>
-
-            <div className="grid gap-3 grid-cols-2">
-              <div>
-                <label htmlFor="prod-size" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
-                  Presentación
-                </label>
-                <input
-                  id="prod-size"
-                  type="text"
-                  required
-                  value={formSize}
-                  onChange={(e) => setFormSize(e.target.value)}
-                  className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none"
-                  placeholder="Ej. 100 ml"
-                />
-              </div>
-              <div>
-                <label htmlFor="prod-category" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
-                  Categoría
-                </label>
-                <select
-                  id="prod-category"
-                  value={formCategory}
-                  onChange={(e) => setFormCategory(e.target.value)}
-                  className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none cursor-pointer"
-                >
-                  <option value="Damas">Damas</option>
-                  <option value="Caballeros">Caballeros</option>
-                  <option value="Unisex">Unisex</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid gap-3 grid-cols-3">
-              <div>
-                <label htmlFor="prod-cost" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
-                  Costo (HNL)
-                </label>
-                <input
-                  id="prod-cost"
-                  type="number"
-                  required
-                  value={formCost}
-                  onChange={(e) => setFormCost(e.target.value)}
-                  className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none font-mono"
-                  placeholder="0"
-                />
-              </div>
-              <div>
-                <label htmlFor="prod-public" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
-                  Púb (HNL)
-                </label>
-                <input
-                  id="prod-public"
-                  type="number"
-                  required
-                  value={formPricePublic}
-                  onChange={(e) => setFormPricePublic(e.target.value)}
-                  className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none font-mono"
-                  placeholder="0"
-                />
-              </div>
-              <div>
-                <label htmlFor="prod-vip" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
-                  VIP (HNL)
-                </label>
-                <input
-                  id="prod-vip"
-                  type="number"
-                  required
-                  value={formPricePromotional}
-                  onChange={(e) => setFormPricePromotional(e.target.value)}
-                  className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none font-mono"
-                  placeholder="0"
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-3 grid-cols-2">
-              <div>
-                <label htmlFor="prod-stock" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
-                  Stock Inicial
-                </label>
-                <input
-                  id="prod-stock"
-                  type="number"
-                  required
-                  value={formStock}
-                  onChange={(e) => setFormStock(e.target.value)}
-                  className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none font-mono"
-                  placeholder="0"
-                />
-              </div>
-              <div>
-                <label htmlFor="prod-barcode" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
-                  Código de Barras
-                </label>
-                <input
-                  id="prod-barcode"
-                  type="text"
-                  value={formBarcode}
-                  onChange={(e) => setFormBarcode(e.target.value)}
-                  className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none font-mono"
-                  placeholder="Vacío para generar"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="prod-promo-pct" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
-                Descuento de Oferta / Promoción (%)
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  id="prod-promo-pct"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={formPromoDiscount}
-                  onChange={(e) => setFormPromoDiscount(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
-                  className="block w-20 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none font-mono"
-                  placeholder="0"
-                />
-                <span className="text-[10px] text-neutral-500 font-bold">% de oferta sobre precio Público</span>
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="prod-image" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
-                URL de la Imagen
-              </label>
-              <input
-                id="prod-image"
-                type="url"
-                value={formImageUrl}
-                onChange={(e) => setFormImageUrl(e.target.value)}
-                className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none"
-                placeholder="https://images.unsplash.com/..."
-              />
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              {isEditing && (
-                <button
-                  type="button"
-                  onClick={handleOpenAdd}
-                  className="flex-1 py-2.5 px-4 bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-700 text-xs font-bold rounded-xl active:scale-95 transition-all cursor-pointer"
-                >
-                  Cancelar
-                </button>
-              )}
-              <button
-                type="submit"
-                disabled={loading || !formName || !formBrand || !formCost || !formPricePublic || !formPricePromotional || formStock === ''}
-                className="flex-1 py-2.5 px-4 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-              >
-                {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-                ) : (
-                  isEditing ? 'Actualizar Producto' : 'Guardar Producto'
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-
-      </div>
 
       {/* Interactive Inventory List table */}
       <div className="space-y-4">
-        <h3 className="font-display font-black text-neutral-900 text-base">
-          Listado de Fragancias en Stock
-        </h3>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <h3 className="font-display font-black text-neutral-900 text-base">
+            Listado de Fragancias en Stock
+          </h3>
+          <button
+            type="button"
+            onClick={() => setIsExportModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm"
+          >
+            <Download className="h-4 w-4" /> Exportar Catálogo Clientes
+          </button>
+        </div>
 
         {/* Filter and Search Box */}
         <div className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm space-y-4">
@@ -1236,64 +1395,66 @@ export default function Inventory() {
           </div>
         </div>
 
-        {/* Bulk Promotions Panel (Only for Owner) */}
-        <div className="bg-amber-50/40 border border-amber-200 rounded-3xl p-5 shadow-sm space-y-3">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="space-y-0.5 text-left">
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-amber-800 border border-amber-200">
-                <Percent className="h-2 w-2" /> Descuento Masivo (Bulk)
-              </span>
-              <h4 className="font-display font-bold text-neutral-900 text-sm uppercase tracking-tight">
-                Aplicar Oferta a Lista Filtrada ({filteredProducts.length} perfumes)
-              </h4>
-              <p className="text-[11px] text-neutral-500 font-medium leading-normal max-w-xl">
-                Aplica o remueve un descuento promocional masivo a los perfumes de la vista actual. El descuento se aplica sobre el precio Público.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="flex items-center bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-sm h-10 px-1.5 gap-1">
-                {[0, 10, 20, 30, 40].map((pct) => (
-                  <button
-                    key={pct}
-                    type="button"
-                    onClick={() => handleApplyBulkDiscount(pct)}
-                    className="px-2.5 py-1 rounded-lg text-[10px] font-black cursor-pointer hover:bg-neutral-100 transition-colors bg-neutral-50 border border-neutral-200 text-neutral-800"
-                  >
-                    {pct === 0 ? 'Quitar' : `${pct}%`}
-                  </button>
-                ))}
+        {/* Bulk Promotions Panel (Only for Owner and Seller) */}
+        {(user?.role === 'owner' || user?.role === 'vendedor') && (
+          <div className="bg-amber-50/40 border border-amber-200 rounded-3xl p-5 shadow-sm space-y-3">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-0.5 text-left">
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-amber-800 border border-amber-200">
+                  <Percent className="h-2 w-2" /> Descuento Masivo (Bulk)
+                </span>
+                <h4 className="font-display font-bold text-neutral-900 text-sm uppercase tracking-tight">
+                  Aplicar Oferta a Lista Filtrada ({filteredProducts.length} perfumes)
+                </h4>
+                <p className="text-[11px] text-neutral-500 font-medium leading-normal max-w-xl">
+                  Aplica o remueve un descuento promocional masivo a los perfumes de la vista actual. El descuento se aplica sobre el precio Público.
+                </p>
               </div>
 
-              {/* Custom input discount */}
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  placeholder="Otro %"
-                  id="custom-bulk-pct"
-                  className="w-16 h-10 px-2 bg-white border border-neutral-200 rounded-xl text-center text-xs font-black outline-none font-mono focus:ring-1 focus:ring-neutral-900 focus:border-transparent"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const customInput = document.getElementById('custom-bulk-pct');
-                    const val = Number(customInput?.value);
-                    if (val >= 0 && val <= 100) {
-                      handleApplyBulkDiscount(val);
-                    } else {
-                      alert('Por favor introduce un porcentaje de descuento válido entre 0 y 100.');
-                    }
-                  }}
-                  className="px-3 h-10 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-95 shadow-sm"
-                >
-                  Ok
-                </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-sm h-10 px-1.5 gap-1">
+                  {[0, 10, 20, 30, 40].map((pct) => (
+                    <button
+                      key={pct}
+                      type="button"
+                      onClick={() => handleApplyBulkDiscount(pct)}
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-black cursor-pointer hover:bg-neutral-100 transition-colors bg-neutral-50 border border-neutral-200 text-neutral-800"
+                    >
+                      {pct === 0 ? 'Quitar' : `${pct}%`}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Custom input discount */}
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    placeholder="Otro %"
+                    id="custom-bulk-pct"
+                    className="w-16 h-10 px-2 bg-white border border-neutral-200 rounded-xl text-center text-xs font-black outline-none font-mono focus:ring-1 focus:ring-neutral-900 focus:border-transparent"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const customInput = document.getElementById('custom-bulk-pct');
+                      const val = Number(customInput?.value);
+                      if (val >= 0 && val <= 100) {
+                        handleApplyBulkDiscount(val);
+                      } else {
+                        alert('Por favor introduce un porcentaje de descuento válido entre 0 y 100.');
+                      }
+                    }}
+                    className="px-3 h-10 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-95 shadow-sm"
+                  >
+                    Ok
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Inventory list Table */}
         <div className="bg-white border border-neutral-200 rounded-3xl overflow-hidden shadow-sm">
@@ -1390,6 +1551,438 @@ export default function Inventory() {
           </div>
         </div>
       </div>
+
+      {/* Client Catalog Export Modal */}
+      {isExportModalOpen && createPortal(
+        <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-neutral-100 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto space-y-6">
+            
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-neutral-100 pb-4">
+              <div className="space-y-1">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-700">
+                  <Share2 className="h-3.5 w-3.5" /> Compartir con Clientes
+                </span>
+                <h3 className="font-display font-black text-neutral-900 text-lg">
+                  Exportar Catálogo de Perfumes
+                </h3>
+                <p className="text-[11px] text-neutral-500 font-medium">
+                  Genera una versión personalizada para compartir sin revelar los costos de compra.
+                </p>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setIsExportModalOpen(false)}
+                className="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-neutral-700 transition-colors cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Body / Settings Form */}
+            <div className="space-y-4">
+              
+              {/* Formato de descarga */}
+              <div>
+                <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-2">
+                  Formato de Descarga
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setExportFormat('pdf')}
+                    className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      exportFormat === 'pdf'
+                        ? 'border-neutral-900 bg-neutral-50 text-neutral-900 font-bold'
+                        : 'border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600'
+                    }`}
+                  >
+                    <FileText className="h-5 w-5 text-rose-500" />
+                    <span className="text-[11px] font-bold">PDF Listo</span>
+                  </button>
+ 
+                  <button
+                    type="button"
+                    onClick={() => setExportFormat('xlsx')}
+                    className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      exportFormat === 'xlsx'
+                        ? 'border-neutral-900 bg-neutral-50 text-neutral-900 font-bold'
+                        : 'border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600'
+                    }`}
+                  >
+                    <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
+                    <span className="text-[11px] font-bold">Excel (.xlsx)</span>
+                  </button>
+ 
+                  <button
+                    type="button"
+                    onClick={() => setExportFormat('csv')}
+                    className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      exportFormat === 'csv'
+                        ? 'border-neutral-900 bg-neutral-50 text-neutral-900 font-bold'
+                        : 'border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600'
+                    }`}
+                  >
+                    <FileDown className="h-5 w-5 text-indigo-500" />
+                    <span className="text-[11px] font-bold">CSV (.csv)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Rango de exportación */}
+              <div>
+                <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-2">
+                  Rango de Productos
+                </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-neutral-700">
+                    <input
+                      type="radio"
+                      name="exportRange"
+                      checked={exportRange === 'filtered'}
+                      onChange={() => setExportRange('filtered')}
+                      className="accent-neutral-950"
+                    />
+                    <span>Solo los filtrados actualmente ({filteredProducts.length})</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-neutral-700">
+                    <input
+                      type="radio"
+                      name="exportRange"
+                      checked={exportRange === 'all'}
+                      onChange={() => setExportRange('all')}
+                      className="accent-neutral-950"
+                    />
+                    <span>Todo el inventario ({products.length})</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Opciones de columnas */}
+              <div className="space-y-3 bg-neutral-50 rounded-2xl p-4 border border-neutral-100">
+                <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
+                  Configuración de Columnas y Precios
+                </span>
+
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-neutral-700">
+                    <input
+                      type="checkbox"
+                      checked={includeVIP}
+                      onChange={(e) => setIncludeVIP(e.target.checked)}
+                      className="rounded accent-neutral-950 h-4 w-4"
+                    />
+                    <span>Incluir precio Mayorista (VIP)</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-neutral-700">
+                    <input
+                      type="checkbox"
+                      checked={includeDiscount}
+                      onChange={(e) => setIncludeDiscount(e.target.checked)}
+                      className="rounded accent-neutral-950 h-4 w-4"
+                    />
+                    <span>Incluir descuentos activos</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-neutral-700">
+                    <input
+                      type="checkbox"
+                      checked={groupByBrand}
+                      onChange={(e) => setGroupByBrand(e.target.checked)}
+                      className="rounded accent-neutral-950 h-4 w-4"
+                    />
+                    <span>Agrupar por marcas</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-neutral-700">
+                    <input
+                      type="checkbox"
+                      checked={onlyInStock}
+                      onChange={(e) => setOnlyInStock(e.target.checked)}
+                      className="rounded accent-neutral-950 h-4 w-4"
+                    />
+                    <span>Ocultar agotados (Stock 0)</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Descuento Adicional para Clientes */}
+              <div>
+                <label htmlFor="export-add-discount" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                  Descuento Adicional para Cliente (%)
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    id="export-add-discount"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={additionalDiscount}
+                    onChange={(e) => setAdditionalDiscount(Math.min(100, Math.max(0, Number(e.target.value))))}
+                    className="w-24 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent outline-none transition-all font-mono"
+                    placeholder="Ej. 10"
+                  />
+                  <span className="text-[10px] text-neutral-500 font-medium">
+                    Se sumará a los descuentos promocionales activos en los perfumes.
+                  </span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-3 border-t border-neutral-100 pt-4">
+              <button
+                type="button"
+                onClick={() => setIsExportModalOpen(false)}
+                className="px-4 py-2 bg-white border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-xs font-bold rounded-xl cursor-pointer transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteExport}
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer"
+              >
+                <Download className="h-3.5 w-3.5" /> Generar y Descargar
+              </button>
+            </div>
+
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Manual Add / Edit Modal Overlay */}
+      {isFormModalOpen && createPortal(
+        <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-neutral-100 rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto space-y-6">
+            
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-neutral-100 pb-4">
+              <div className="space-y-1">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-700">
+                  <Plus className="h-3.5 w-3.5" /> {isEditing ? 'Actualizar Fragancia' : 'Registrar Fragancia'}
+                </span>
+                <h3 className="font-display font-black text-neutral-900 text-lg">
+                  {isEditing ? 'Editar Perfume' : 'Agregar Perfume Manual'}
+                </h3>
+                <p className="text-[11px] text-neutral-500 font-medium">
+                  Completa los detalles de la fragancia para actualizar el inventario general.
+                </p>
+              </div>
+              <button 
+                type="button"
+                onClick={handleCloseFormModal}
+                className="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-neutral-700 transition-colors cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Body / Form */}
+            <form onSubmit={handleSaveProduct} className="space-y-4">
+              
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="prod-brand" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                    Marca / Diseñador
+                  </label>
+                  <input
+                    id="prod-brand"
+                    type="text"
+                    required
+                    value={formBrand}
+                    onChange={(e) => setFormBrand(e.target.value)}
+                    className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none"
+                    placeholder="Ej. Carolina Herrera"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="prod-name" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                    Nombre de la Fragancia
+                  </label>
+                  <input
+                    id="prod-name"
+                    type="text"
+                    required
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none"
+                    placeholder="Ej. Good Girl"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-3 grid-cols-2">
+                <div>
+                  <label htmlFor="prod-size" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                    Presentación
+                  </label>
+                  <input
+                    id="prod-size"
+                    type="text"
+                    required
+                    value={formSize}
+                    onChange={(e) => setFormSize(e.target.value)}
+                    className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none"
+                    placeholder="Ej. 100 ml"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="prod-category" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                    Categoría
+                  </label>
+                  <select
+                    id="prod-category"
+                    value={formCategory}
+                    onChange={(e) => setFormCategory(e.target.value)}
+                    className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none cursor-pointer"
+                  >
+                    <option value="Damas">Damas</option>
+                    <option value="Caballeros">Caballeros</option>
+                    <option value="Unisex">Unisex</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid gap-3 grid-cols-3">
+                <div>
+                  <label htmlFor="prod-cost" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                    Costo (HNL)
+                  </label>
+                  <input
+                    id="prod-cost"
+                    type="number"
+                    required
+                    value={formCost}
+                    onChange={(e) => setFormCost(e.target.value)}
+                    className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none font-mono"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="prod-public" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                    Púb (HNL)
+                  </label>
+                  <input
+                    id="prod-public"
+                    type="number"
+                    required
+                    value={formPricePublic}
+                    onChange={(e) => setFormPricePublic(e.target.value)}
+                    className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none font-mono"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="prod-vip" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                    VIP (HNL)
+                  </label>
+                  <input
+                    id="prod-vip"
+                    type="number"
+                    required
+                    value={formPricePromotional}
+                    onChange={(e) => setFormPricePromotional(e.target.value)}
+                    className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none font-mono"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-3 grid-cols-2">
+                <div>
+                  <label htmlFor="prod-stock" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                    Stock Inicial / Físico
+                  </label>
+                  <input
+                    id="prod-stock"
+                    type="number"
+                    required
+                    value={formStock}
+                    onChange={(e) => setFormStock(e.target.value)}
+                    className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none font-mono"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="prod-barcode" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                    Código de Barras
+                  </label>
+                  <input
+                    id="prod-barcode"
+                    type="text"
+                    value={formBarcode}
+                    onChange={(e) => setFormBarcode(e.target.value)}
+                    className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none font-mono"
+                    placeholder="Vacío para generar"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="prod-promo-pct" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                  Descuento de Oferta / Promoción (%)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    id="prod-promo-pct"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={formPromoDiscount}
+                    onChange={(e) => setFormPromoDiscount(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                    className="block w-20 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none font-mono"
+                    placeholder="0"
+                  />
+                  <span className="text-[10px] text-neutral-500 font-bold">% de oferta sobre precio Público</span>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="prod-image" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                  URL de la Imagen
+                </label>
+                <input
+                  id="prod-image"
+                  type="url"
+                  value={formImageUrl}
+                  onChange={(e) => setFormImageUrl(e.target.value)}
+                  className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none"
+                  placeholder="https://images.unsplash.com/..."
+                />
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-end gap-3 border-t border-neutral-100 pt-4">
+                <button
+                  type="button"
+                  onClick={handleCloseFormModal}
+                  className="px-4 py-2 bg-white border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-xs font-bold rounded-xl cursor-pointer transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading || !formName || !formBrand || !formCost || !formPricePublic || !formPricePromotional || formStock === ''}
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                  ) : (
+                    isEditing ? 'Actualizar Producto' : 'Guardar Producto'
+                  )}
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
 
     </div>
   );
