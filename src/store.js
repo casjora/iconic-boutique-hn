@@ -169,7 +169,7 @@ export const useStore = create((setOriginal, get) => {
 
         const { data: profile, error: profileErr } = await supabase
           .from('profiles')
-          .select('name, role')
+          .select('name, role, phone, address')
           .eq('id', session.user.id)
           .single();
 
@@ -208,7 +208,9 @@ export const useStore = create((setOriginal, get) => {
           role: mappedRole,
           uid: session.user.id,
           email,
-          emailConfirmed
+          emailConfirmed,
+          phone: profile.phone || '',
+          address: profile.address || ''
         };
 
         set({ user: loggedUser, checkingSession: false });
@@ -239,7 +241,7 @@ export const useStore = create((setOriginal, get) => {
 
         const { data: profile, error: profileErr } = await supabase
           .from('profiles')
-          .select('name, role')
+          .select('name, role, phone, address')
           .eq('id', data.user.id)
           .single();
 
@@ -277,7 +279,9 @@ export const useStore = create((setOriginal, get) => {
           role: mappedRole,
           uid: data.user.id,
           email: userEmail,
-          emailConfirmed
+          emailConfirmed,
+          phone: profile.phone || '',
+          address: profile.address || ''
         };
 
         set({ user: loggedUser, currentView: 'catalog', loading: false });
@@ -289,7 +293,7 @@ export const useStore = create((setOriginal, get) => {
       }
     },
 
-    register: async (id, name, pass) => {
+    register: async (id, name, pass, phone, address) => {
       set({ loading: true, error: null });
       try {
         let email = id.trim();
@@ -305,7 +309,9 @@ export const useStore = create((setOriginal, get) => {
           options: {
             data: {
               name,
-              role: roleToWrite
+              role: roleToWrite,
+              phone: phone || null,
+              address: address || null
             }
           }
         });
@@ -314,7 +320,7 @@ export const useStore = create((setOriginal, get) => {
 
         const { data: existingProfile } = await supabase
           .from('profiles')
-          .select('name, role')
+          .select('name, role, phone, address')
           .eq('id', data.user.id)
           .maybeSingle();
 
@@ -326,7 +332,9 @@ export const useStore = create((setOriginal, get) => {
             .insert({
               id: data.user.id,
               name,
-              role: roleToWrite
+              role: roleToWrite,
+              phone: phone || null,
+              address: address || null
             })
             .select()
             .maybeSingle();
@@ -354,7 +362,9 @@ export const useStore = create((setOriginal, get) => {
           role: mappedRole,
           uid: data.user.id,
           email: userEmail,
-          emailConfirmed
+          emailConfirmed,
+          phone: phone || '',
+          address: address || ''
         };
 
         set({ user: registeredUser, currentView: 'catalog', loading: false });
@@ -1228,6 +1238,9 @@ export const useStore = create((setOriginal, get) => {
 
         // Fast parallel update in chunks of 20
         const chunkSize = 20;
+        let hasErrors = false;
+        let lastError = null;
+
         for (let i = 0; i < updatedItems.length; i += chunkSize) {
           const chunk = updatedItems.slice(i, i + chunkSize);
           await Promise.all(
@@ -1241,11 +1254,23 @@ export const useStore = create((setOriginal, get) => {
                 .update(dbPayload)
                 .eq('id', item.id)
                 .then(({ error }) => {
-                  if (error) console.warn('DB update error for item:', item.id, error);
+                  if (error) {
+                    console.error('DB update error for item:', item.id, error);
+                    hasErrors = true;
+                    lastError = error;
+                  }
                 })
-                .catch(e => console.warn('DB update catch:', item.id, e));
+                .catch(e => {
+                  console.error('DB update catch:', item.id, e);
+                  hasErrors = true;
+                  lastError = e;
+                });
             })
           );
+        }
+
+        if (hasErrors) {
+          throw new Error(lastError?.message || 'Error al guardar algunos productos en la base de datos.');
         }
 
         set({ products: updatedProducts, loading: false });
@@ -1255,5 +1280,59 @@ export const useStore = create((setOriginal, get) => {
         set({ error: err.message, loading: false });
         return false;
       }
+    },
+
+    fetchCustomers: async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, name, role, phone, address, created_at')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return data || [];
+      } catch (err) {
+        console.error('Error fetching customers:', err);
+        return [];
+      }
+    },
+
+    updateCustomerRole: async (profileId, newRole) => {
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ role: newRole })
+          .eq('id', profileId);
+
+        if (error) throw error;
+        return { success: true };
+      } catch (err) {
+        console.error('Error updating customer role:', err);
+        return { success: false, error: err.message };
+      }
+    },
+
+    createCustomerManually: async (name, role, phone, address) => {
+      try {
+        const uniqueId = 'manual-client-' + Math.random().toString(36).substring(2, 11);
+        const { data, error } = await supabase
+          .from('profiles')
+          .insert({
+            id: uniqueId,
+            name,
+            role,
+            phone: phone || null,
+            address: address || null
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        return { success: true, data };
+      } catch (err) {
+        console.error('Error creating customer manually:', err);
+        return { success: false, error: err.message };
+      }
     }
-}});
+}
+});

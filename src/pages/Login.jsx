@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, User, Key, ArrowRight, Loader2, Sparkles, AlertCircle } from 'lucide-react';
+import { Mail, Lock, User, Key, ArrowRight, Loader2, Sparkles, AlertCircle, Phone, MapPin } from 'lucide-react';
 
 export default function Login() {
   const { login, register, loading, error, setError } = useStore();
@@ -14,6 +14,8 @@ export default function Login() {
   const [username, setUsername] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
 
   const handleTabChange = (targetMode) => {
     setError(null);
@@ -21,6 +23,8 @@ export default function Login() {
     setUsername('');
     setName('');
     setPassword('');
+    setPhone('');
+    setAddress('');
   };
 
   const handleSubmit = async (e) => {
@@ -40,7 +44,7 @@ export default function Login() {
         }
       }
     } else {
-      const ok = await register(username, name, password);
+      const ok = await register(username, name, password, phone, address);
       if (ok) {
         navigate('/catalog');
       }
@@ -117,25 +121,66 @@ export default function Login() {
           <div className="space-y-4">
             
             {mode === 'signup' && (
-              <div>
-                <label htmlFor="reg-name" className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2 block">
-                  Nombre Completo
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                    <User className="h-4 w-4 text-neutral-400" />
+              <>
+                <div>
+                  <label htmlFor="reg-name" className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2 block">
+                    Nombre Completo
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                      <User className="h-4 w-4 text-neutral-400" />
+                    </div>
+                    <input
+                      id="reg-name"
+                      type="text"
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="block w-full pl-10 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none"
+                      placeholder="Ej. Juan Pérez"
+                    />
                   </div>
-                  <input
-                    id="reg-name"
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="block w-full pl-10 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none"
-                    placeholder="Ej. Juan Pérez"
-                  />
                 </div>
-              </div>
+
+                <div>
+                  <label htmlFor="reg-phone" className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2 block">
+                    Número de Teléfono (WhatsApp)
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                      <Phone className="h-4 w-4 text-neutral-400" />
+                    </div>
+                    <input
+                      id="reg-phone"
+                      type="tel"
+                      required
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="block w-full pl-10 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none"
+                      placeholder="Ej. +504 9900-1122"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="reg-address" className="text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2 block">
+                    Dirección de Envío Preferida (Opcional)
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                      <MapPin className="h-4 w-4 text-neutral-400" />
+                    </div>
+                    <input
+                      id="reg-address"
+                      type="text"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      className="block w-full pl-10 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none"
+                      placeholder="Ej. Col. Las Minitas, Calle Principal Casa #4"
+                    />
+                  </div>
+                </div>
+              </>
             )}
 
             <div>
@@ -214,29 +259,6 @@ export default function Login() {
             )}
           </button>
         </form>
-
-        <div className="border border-indigo-100 bg-indigo-50/50 rounded-2xl p-4.5 space-y-2">
-          <h4 className="text-xs font-extrabold text-indigo-950 uppercase tracking-wider flex items-center gap-1.5">
-            <Sparkles className="h-3.5 w-3.5 text-indigo-600 animate-pulse" />
-            Credenciales de Acceso Rápido
-          </h4>
-          <p className="text-[11px] text-indigo-950 leading-relaxed">
-            Puedes simular o ingresar de inmediato a los perfiles preconfigurados de la tienda con las siguientes claves:
-          </p>
-          <div className="grid grid-cols-2 gap-3 text-[10px] font-semibold text-indigo-950 pt-1">
-            <div className="bg-white/80 p-2 rounded-lg border border-indigo-100">
-              <span className="block text-indigo-500 font-bold uppercase tracking-wider">Rol: Dueño / Owner</span>
-              <span className="block mt-1 font-mono">Usuario: <strong className="text-neutral-900">dueño</strong></span>
-              <span className="block font-mono">Clave: <strong className="text-neutral-900">dueño123</strong></span>
-            </div>
-            <div className="bg-white/80 p-2 rounded-lg border border-indigo-100">
-              <span className="block text-indigo-500 font-bold uppercase tracking-wider">Rol: Vendedor</span>
-              <span className="block mt-1 font-mono">Usuario: <strong className="text-neutral-900">vendedor</strong></span>
-              <span className="block font-mono">Clave: <strong className="text-neutral-900">vendedor123</strong></span>
-            </div>
-          </div>
-        </div>
-
       </div>
     </div>
   );

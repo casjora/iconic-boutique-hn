@@ -1,24 +1,76 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useStore } from '../store';
 
-const categories = [
-  { name: 'Para Damas', path: '/category/damas', image: 'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&fit=crop&q=80&w=800' },
-  { name: 'Para Caballeros', path: '/category/caballeros', image: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&q=80&w=800' },
-  { name: 'Estuches para Dama', path: '/category/estuches-dama', image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&q=80&w=800' },
-  { name: 'Estuches para Caballero', path: '/category/estuches-caballero', image: 'https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&q=80&w=800' }
-];
+const isEstuche = (p) => {
+  const text = ((p.name || '') + ' ' + (p.description || '') + ' ' + (p.brand || '')).toLowerCase();
+  return text.includes('estuche') || text.includes('set') || text.includes('kit') || text.includes('gift set');
+};
 
 export default function Home() {
+  const { products } = useStore();
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Dynamically compute category images from products curated in Showroom
+  const categories = useMemo(() => {
+    const getCategoryImage = (catKey, defaultImage) => {
+      const isSet = catKey.startsWith('estuches');
+      const isMale = catKey.includes('caballero') || catKey === 'caballeros';
+      const isFemale = catKey.includes('dama') || catKey === 'damas';
+
+      const match = products.find(p => {
+        // Must be selected in Showroom (featuredPublic is true)
+        if (!p.featuredPublic) return false;
+        
+        const setFlag = isEstuche(p);
+        if (isSet !== setFlag) return false;
+
+        const pCat = String(p.category || '');
+        const isProductMale = pCat === 'Caballeros' || pCat === 'Masculino' || pCat === 'Unisex';
+        const isProductFemale = pCat === 'Damas' || pCat === 'Femenino' || pCat === 'Unisex';
+
+        if (isMale && !isProductMale) return false;
+        if (isFemale && !isProductFemale) return false;
+
+        // Ensure the product has a valid image string
+        return p.image && p.image.startsWith('http');
+      });
+
+      return match ? match.image : defaultImage;
+    };
+
+    return [
+      { 
+        name: 'Para Damas', 
+        path: '/category/damas', 
+        image: getCategoryImage('damas', 'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&fit=crop&q=80&w=800') 
+      },
+      { 
+        name: 'Para Caballeros', 
+        path: '/category/caballeros', 
+        image: getCategoryImage('caballeros', 'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&q=80&w=800') 
+      },
+      { 
+        name: 'Estuches para Dama', 
+        path: '/category/estuches-dama', 
+        image: getCategoryImage('estuches-dama', 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&q=80&w=800') 
+      },
+      { 
+        name: 'Estuches para Caballero', 
+        path: '/category/estuches-caballero', 
+        image: getCategoryImage('estuches-caballero', 'https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&q=80&w=800') 
+      }
+    ];
+  }, [products]);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % categories.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [categories.length]);
 
   return (
     <div className="space-y-12 max-w-7xl mx-auto">
@@ -34,8 +86,8 @@ export default function Home() {
             className="absolute inset-0"
           >
             <img
-              src={categories[currentIndex].image}
-              alt={categories[currentIndex].name}
+              src={categories[currentIndex]?.image}
+              alt={categories[currentIndex]?.name}
               className="h-full w-full object-cover opacity-60"
             />
             <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center text-white bg-gradient-to-t from-neutral-950/40 via-transparent to-transparent">
@@ -45,7 +97,7 @@ export default function Home() {
                 transition={{ delay: 0.2 }}
                 className="font-display text-4xl sm:text-6xl font-black tracking-tight"
               >
-                {categories[currentIndex].name}
+                {categories[currentIndex]?.name}
               </motion.h2>
               <motion.div
                 initial={{ y: 20, opacity: 0 }}
@@ -53,7 +105,7 @@ export default function Home() {
                 transition={{ delay: 0.4 }}
                 className="mt-8"
               >
-                <Link to={categories[currentIndex].path} className="rounded-full bg-white px-8 py-3.5 text-xs font-black text-neutral-950 tracking-wider uppercase transition hover:bg-neutral-100 shadow-md">
+                <Link to={categories[currentIndex]?.path || '#'} className="rounded-full bg-white px-8 py-3.5 text-xs font-black text-neutral-950 tracking-wider uppercase transition hover:bg-neutral-100 shadow-md">
                   Explorar Colección
                 </Link>
               </motion.div>

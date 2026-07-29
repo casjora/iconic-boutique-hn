@@ -11,6 +11,7 @@ export default function Showroom() {
   const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
   
   // Local state for edits before saving
   // Map of productId -> { featuredPublic: boolean, publicDiscount: number }
@@ -128,18 +129,40 @@ export default function Showroom() {
   const handleSave = async () => {
     setSaving(true);
     setSuccessMsg('');
+    setErrorMsg('');
     
-    const payload = Object.entries(edits).map(([id, val]) => ({
-      id,
-      featuredPublic: val.featuredPublic,
-      publicDiscount: val.publicDiscount
-    }));
+    // Compare edits with the original products array to only send actual changes
+    const payload = [];
+    Object.entries(edits).forEach(([id, val]) => {
+      const original = products.find(p => p.id === id);
+      if (original) {
+        const hasFeaturedChanged = Boolean(original.featuredPublic) !== Boolean(val.featuredPublic);
+        const hasDiscountChanged = Number(original.publicDiscount || 0) !== Number(val.publicDiscount || 0);
+        
+        if (hasFeaturedChanged || hasDiscountChanged) {
+          payload.push({
+            id,
+            featuredPublic: val.featuredPublic,
+            publicDiscount: val.publicDiscount
+          });
+        }
+      }
+    });
+
+    if (payload.length === 0) {
+      setSaving(false);
+      setSuccessMsg('No hay cambios pendientes por guardar.');
+      setTimeout(() => setSuccessMsg(''), 4000);
+      return;
+    }
 
     const ok = await updateShowroomCuration(payload);
     setSaving(false);
     if (ok) {
-      setSuccessMsg('¡Selección de Plan Público guardada exitosamente!');
-      setTimeout(() => setSuccessMsg(''), 4000);
+      setSuccessMsg(`¡Selección de Plan Público guardada exitosamente (${payload.length} productos actualizados)!`);
+      setTimeout(() => setSuccessMsg(''), 5000);
+    } else {
+      setErrorMsg('Error de base de datos (recursión en RLS detectada). Por favor, ejecuta la actualización de seguridad en Supabase para habilitar la curaduría.');
     }
   };
 
@@ -176,6 +199,19 @@ export default function Showroom() {
           <div className="mt-4 p-4 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/80 rounded-2xl flex items-center gap-2.5 text-xs font-bold text-emerald-800 dark:text-emerald-300">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span>{successMsg}</span>
+          </div>
+        )}
+
+        {errorMsg && (
+          <div className="mt-4 p-4 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/80 rounded-2xl space-y-2 text-xs text-rose-800 dark:text-rose-300">
+            <div className="flex items-center gap-2.5 font-bold">
+              <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+              <span>Error al guardar cambios de Plan Público</span>
+            </div>
+            <p className="pl-6 text-[11px] leading-relaxed opacity-90">
+              Se ha detectado un error de recursión en las políticas de seguridad (RLS) de Supabase en tu base de datos de producción.
+              Para solucionarlo, copia el código SQL de <strong>supabase_schema.sql</strong> y ejecútalo en el editor SQL de tu panel de Supabase.
+            </p>
           </div>
         )}
       </div>
