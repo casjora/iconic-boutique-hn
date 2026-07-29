@@ -23,7 +23,7 @@ export default function Navbar() {
   };
 
   const navItemClass = (view) => {
-    const base = "inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ";
+    const base = "inline-flex items-center gap-1 px-2 xl:px-2.5 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer shrink-0 whitespace-nowrap ";
     if (currentView === view) {
       return base + "bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950 shadow-sm";
     }
@@ -40,30 +40,30 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 transition-colors duration-200">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
+      <div className="mx-auto max-w-[1600px] px-3 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between gap-2">
           
           {/* Logo / Title Area */}
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3 xl:gap-6 min-w-0">
             <button 
               onClick={() => handleNav('home')} 
-              className="flex items-center gap-2.5 cursor-pointer outline-none group text-left mr-4 lg:mr-8 shrink-0"
+              className="flex items-center gap-2.5 cursor-pointer outline-none group text-left mr-2 xl:mr-6 shrink-0"
             >
               <img 
                 className="h-9 w-9 bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 rounded-xl flex items-center justify-center font-display font-black text-sm tracking-tighter group-hover:scale-105 transition-transform shadow-md object-cover" 
                 src="https://nsubmnvkojsmoykfcjgl.supabase.co/storage/v1/object/public/miscelaneas/iconic-icon.jpg" 
                 alt="iconic-icon" 
               />
-              <div>
-                <h1 className="font-['Montserrat',sans-serif] font-bold text-sm text-neutral-900 dark:text-neutral-100 uppercase tracking-widest leading-none">
-                  Iconic Boutique
+              <div className="leading-none">
+                <h1 className="font-['Montserrat',sans-serif] font-black text-sm text-neutral-900 dark:text-neutral-100 uppercase tracking-widest leading-none">
+                  ICONIC
                 </h1>
-                <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest leading-none mt-0.5 block">Honduras</span>
+                <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest leading-none mt-0.5 block">BOUTIQUE</span>
               </div>
             </button>
 
             {/* Desktop main navigation links */}
-            <nav className="hidden lg:flex items-center gap-1.5">
+            <nav className="hidden lg:flex items-center gap-1 overflow-x-auto no-scrollbar py-1">
               <button onClick={() => handleNav('home')} className={navItemClass('home')}>
                 <Home className="h-3.5 w-3.5" /> Inicio
               </button>
@@ -118,7 +118,7 @@ export default function Navbar() {
           </div>
 
           {/* Right actions */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 shrink-0">
             {/* Dark Mode Toggle Button */}
             <button
               onClick={toggleTheme}

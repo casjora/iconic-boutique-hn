@@ -899,12 +899,21 @@ export default function Inventory() {
             doc.text(`Precio Mayorista: L. ${vipPrice.toLocaleString()}`, startX + 4, priceY + (includeDiscount && finalDiscountPercent > 0 ? 8 : 4));
           }
 
-          // Category Label
+          // Category & Stock Label
           doc.setTextColor(107, 114, 128);
           doc.setFont('Helvetica', 'normal');
           doc.setFontSize(6);
           const catLabel = p.category === 'Masculino' ? 'Caballeros' : p.category === 'Unisex' ? 'Unisex' : 'Damas';
           doc.text(`Categoría: ${catLabel}`, startX + 4, startY + 74);
+
+          const stockTxt = p.stock > 0 ? `Stock: ${p.stock} u.` : 'Agotado';
+          doc.setFont('Helvetica', 'bold');
+          if (p.stock > 0) {
+            doc.setTextColor(31, 41, 55);
+          } else {
+            doc.setTextColor(220, 38, 38);
+          }
+          doc.text(stockTxt, startX + cardW - 4, startY + 74, { align: 'right' });
         });
 
         drawFooter(currentPage);

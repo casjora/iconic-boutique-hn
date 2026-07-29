@@ -21,7 +21,7 @@ const mapProductFromDb = (p) => {
     barcode: p.barcode || '',
     description: p.description || '',
     image_url: p.image_url || '',
-    featuredPublic: p.featured_public !== undefined ? Boolean(p.featured_public) : true,
+    featuredPublic: p.featured_public !== undefined && p.featured_public !== null ? Boolean(p.featured_public) : true,
     publicDiscount: Number(p.public_discount || 0)
   };
 };
@@ -1219,26 +1219,33 @@ export const useStore = create((setOriginal, get) => {
           if (update) {
             return {
               ...p,
-              featuredPublic: update.featuredPublic !== undefined ? update.featuredPublic : p.featuredPublic,
-              publicDiscount: update.publicDiscount !== undefined ? update.publicDiscount : p.publicDiscount
+              featuredPublic: update.featuredPublic !== undefined ? Boolean(update.featuredPublic) : p.featuredPublic,
+              publicDiscount: update.publicDiscount !== undefined ? Number(update.publicDiscount || 0) : p.publicDiscount
             };
           }
           return p;
         });
 
-        for (const item of updatedItems) {
-          const dbPayload = {};
-          if (item.featuredPublic !== undefined) dbPayload.featured_public = Boolean(item.featuredPublic);
-          if (item.publicDiscount !== undefined) dbPayload.public_discount = Number(item.publicDiscount || 0);
+        // Fast parallel update in chunks of 20
+        const chunkSize = 20;
+        for (let i = 0; i < updatedItems.length; i += chunkSize) {
+          const chunk = updatedItems.slice(i, i + chunkSize);
+          await Promise.all(
+            chunk.map(item => {
+              const dbPayload = {};
+              if (item.featuredPublic !== undefined) dbPayload.featured_public = Boolean(item.featuredPublic);
+              if (item.publicDiscount !== undefined) dbPayload.public_discount = Number(item.publicDiscount || 0);
 
-          try {
-            await supabase
-              .from('products')
-              .update(dbPayload)
-              .eq('id', item.id);
-          } catch (e) {
-            console.warn('DB update error for item:', item.id, e);
-          }
+              return supabase
+                .from('products')
+                .update(dbPayload)
+                .eq('id', item.id)
+                .then(({ error }) => {
+                  if (error) console.warn('DB update error for item:', item.id, error);
+                })
+                .catch(e => console.warn('DB update catch:', item.id, e));
+            })
+          );
         }
 
         set({ products: updatedProducts, loading: false });

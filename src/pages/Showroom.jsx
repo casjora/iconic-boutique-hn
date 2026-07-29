@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../store';
 import { 
   Eye, EyeOff, Tag, Save, Search, CheckSquare, Square, 
@@ -18,12 +18,31 @@ export default function Showroom() {
     const initial = {};
     products.forEach(p => {
       initial[p.id] = {
-        featuredPublic: p.featuredPublic !== false,
+        featuredPublic: Boolean(p.featuredPublic),
         publicDiscount: p.publicDiscount || 0
       };
     });
     return initial;
   });
+
+  useEffect(() => {
+    if (products.length > 0) {
+      setEdits(prev => {
+        const next = { ...prev };
+        let hasChanges = false;
+        products.forEach(p => {
+          if (!next[p.id]) {
+            next[p.id] = {
+              featuredPublic: Boolean(p.featuredPublic),
+              publicDiscount: p.publicDiscount || 0
+            };
+            hasChanges = true;
+          }
+        });
+        return hasChanges ? next : prev;
+      });
+    }
+  }, [products]);
 
   const [bulkDiscountInput, setBulkDiscountInput] = useState('');
 

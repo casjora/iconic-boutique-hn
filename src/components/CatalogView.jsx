@@ -49,11 +49,12 @@ export default function CatalogView({ favoritesOnly = false }) {
     setVisibleCount(12);
   }, [location.pathname]);
 
-  // Filters base products: guest users only see featuredPublic items
+  // Filters base products: guest/public users only see featuredPublic items
   const baseProducts = useMemo(() => {
     let list = products;
-    if (!user) {
-      list = list.filter(p => p.featuredPublic !== false);
+    const isStaff = user?.role === 'owner' || user?.role === 'vendedor';
+    if (!isStaff) {
+      list = list.filter(p => p.featuredPublic === true);
     }
     if (favoritesOnly) {
       return list.filter(p => favorites.includes(p.id));
