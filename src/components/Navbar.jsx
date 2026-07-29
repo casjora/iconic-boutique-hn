@@ -49,9 +49,10 @@ export default function Navbar() {
               onClick={() => handleNav('home')} 
               className="flex items-center gap-2 cursor-pointer outline-none group text-left"
             >
-              <div className="h-9 w-9 bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 rounded-xl flex items-center justify-center font-display font-black text-sm tracking-tighter group-hover:scale-105 transition-transform shadow-md">
+{/*               <div className="h-9 w-9 bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 rounded-xl flex items-center justify-center font-display font-black text-sm tracking-tighter group-hover:scale-105 transition-transform shadow-md">
                 IB
-              </div>
+              </div> */}
+              <img className="h-9 w-9 bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 rounded-xl flex items-center justify-center font-display font-black text-sm tracking-tighter group-hover:scale-105 transition-transform shadow-md" src="https://nsubmnvkojsmoykfcjgl.supabase.co/storage/v1/object/public/miscelaneas/iconic-icon.jpg" alt="iconic-icon" />
               <div>
                 <h1 className="font-display font-black text-sm text-neutral-900 dark:text-neutral-100 uppercase tracking-widest leading-none">
                   Iconic Boutique
