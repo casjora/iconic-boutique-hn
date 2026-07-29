@@ -107,6 +107,39 @@ export const useStore = create((setOriginal, get) => {
     searchTerm: '',
     categoryFilter: 'Todos',
     brandFilter: 'Todas',
+    theme: (() => {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const saved = localStorage.getItem('theme');
+        if (saved === 'dark' || saved === 'light') return saved;
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
+      }
+      return 'light';
+    })(),
+
+    toggleTheme: () => {
+      const current = get().theme;
+      const nextTheme = current === 'dark' ? 'light' : 'dark';
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('theme', nextTheme);
+        if (nextTheme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }
+      set({ theme: nextTheme });
+    },
+
+    initTheme: () => {
+      const currentTheme = get().theme;
+      if (typeof window !== 'undefined') {
+        if (currentTheme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }
+    },
 
     setView: (view) => set({ currentView: view, error: null }),
     setError: (err) => {

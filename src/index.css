@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Space Grotesk", sans-serif;
@@ -8,7 +10,16 @@
 
 @layer base {
   body {
-    @apply bg-neutral-50 text-neutral-900 font-sans antialiased;
+    @apply bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100 font-sans antialiased transition-colors duration-200;
+  }
+
+  /* Enhanced contrast defaults for dark mode inputs, selects & dialogs */
+  .dark select option {
+    @apply bg-neutral-900 text-neutral-100;
+  }
+
+  .dark ::placeholder {
+    @apply text-neutral-500;
   }
 }
 

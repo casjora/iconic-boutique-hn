@@ -958,10 +958,10 @@ export default function Inventory() {
       {/* Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="font-display text-2xl font-black text-neutral-900 tracking-tight">
+          <h2 className="font-display text-2xl font-black text-neutral-900 dark:text-neutral-100 tracking-tight">
             Gestión de Inventario y Perfumes
           </h2>
-          <p className="text-xs text-neutral-500 mt-1">
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
             Administra de forma manual tu stock, sube archivos CSV/Excel o carga facturas en PDF escaneadas con inteligencia artificial.
           </p>
         </div>
@@ -969,7 +969,7 @@ export default function Inventory() {
           <button
             type="button"
             onClick={handleOpenAdd}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-5 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm"
           >
             <Plus className="h-4 w-4" /> Nuevo Perfume
           </button>
@@ -977,27 +977,27 @@ export default function Inventory() {
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800 flex items-start justify-between gap-2.5 relative">
+        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-xs font-semibold text-rose-800 dark:text-rose-300 flex items-start justify-between gap-2.5 relative">
           <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4 text-rose-500 flex-shrink-0" />
             <span>{error}</span>
           </div>
-          <button onClick={() => setError(null)} className="text-rose-500 hover:text-rose-700 font-extrabold cursor-pointer">✕</button>
+          <button onClick={() => setError(null)} className="text-rose-500 hover:text-rose-700 dark:hover:text-rose-300 font-extrabold cursor-pointer">✕</button>
         </div>
       )}
 
       {/* AI Parsing draft overview screen */}
       {isDrafting ? (
-        <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-sm space-y-6">
-          <div className="flex items-center justify-between border-b border-neutral-100 pb-4">
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-sm space-y-6">
+          <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-4">
             <div>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-800 mb-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 mb-2 border border-emerald-200 dark:border-emerald-800">
                 ✓ Extracción Completa con IA
               </span>
-              <h3 className="font-display font-black text-neutral-900 text-lg">
+              <h3 className="font-display font-black text-neutral-900 dark:text-neutral-100 text-lg">
                 Revisión de Perfumes Detectados en Factura
               </h3>
-              <p className="text-[11px] text-neutral-500 mt-0.5">
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
                 Revisa y edita los valores extraídos antes de registrarlos o sumarlos al inventario de Honduras.
               </p>
             </div>
@@ -1008,22 +1008,22 @@ export default function Inventory() {
                   setParsedProducts([]);
                   setIsDrafting(false);
                 }}
-                className="px-4 py-2 bg-white border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-xs font-bold rounded-xl active:scale-95 transition-all cursor-pointer"
+                className="px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 text-xs font-bold rounded-xl active:scale-95 transition-all cursor-pointer"
               >
                 Cancelar Carga
               </button>
               <button
                 onClick={handleSaveDraft}
-                className="px-5 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm"
+                className="px-5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm"
               >
                 Guardar en Inventario
               </button>
             </div>
           </div>
 
-          <div className="overflow-x-auto border border-neutral-200 rounded-2xl">
-            <table className="min-w-full divide-y divide-neutral-200 text-left text-xs font-semibold text-neutral-700">
-              <thead className="bg-neutral-50 text-[10px] font-bold text-neutral-500 uppercase tracking-widest font-mono">
+          <div className="overflow-x-auto border border-neutral-200 dark:border-neutral-800 rounded-2xl">
+            <table className="min-w-full divide-y divide-neutral-200 dark:divide-neutral-800 text-left text-xs font-semibold text-neutral-700 dark:text-neutral-200">
+              <thead className="bg-neutral-50 dark:bg-neutral-800/70 text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest font-mono">
                 <tr>
                   <th className="px-4 py-3">Marca</th>
                   <th className="px-4 py-3">Nombre Fragancia</th>
@@ -1037,15 +1037,15 @@ export default function Inventory() {
                   <th className="px-4 py-3 text-right">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100">
+              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
                 {parsedProducts.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-neutral-50/50">
+                  <tr key={idx} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
                     <td className="px-4 py-2">
                       <input
                         type="text"
                         value={item.brand}
                         onChange={(e) => handleUpdateDraftField(idx, 'brand', e.target.value)}
-                        className="w-24 px-2 py-1 bg-neutral-50 border border-neutral-200 rounded text-xs"
+                        className="w-24 px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs text-neutral-900 dark:text-neutral-100"
                       />
                     </td>
                     <td className="px-4 py-2">
@@ -1053,7 +1053,7 @@ export default function Inventory() {
                         type="text"
                         value={item.name}
                         onChange={(e) => handleUpdateDraftField(idx, 'name', e.target.value)}
-                        className="w-44 px-2 py-1 bg-neutral-50 border border-neutral-200 rounded text-xs"
+                        className="w-44 px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs text-neutral-900 dark:text-neutral-100"
                       />
                     </td>
                     <td className="px-4 py-2">
@@ -1086,15 +1086,15 @@ export default function Inventory() {
                               }}
                               className={`px-2 py-1 border rounded text-xs font-semibold outline-none transition-colors ${
                                 item.matchedProductId && item.matchedProductId !== 'new'
-                                  ? 'bg-emerald-50 border-emerald-300 text-emerald-900 focus:ring-1 focus:ring-emerald-400'
-                                  : 'bg-indigo-50/50 border-indigo-200 text-indigo-900 focus:ring-1 focus:ring-indigo-300'
+                                  ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 focus:ring-1 focus:ring-emerald-400'
+                                  : 'bg-indigo-50/50 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-700 text-indigo-900 dark:text-indigo-200 focus:ring-1 focus:ring-indigo-300'
                               }`}
                             >
-                              <option value="new">➕ Crear como Nuevo Perfume</option>
+                              <option value="new" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">➕ Crear como Nuevo Perfume</option>
                               {sameBrandProducts.length > 0 && (
                                 <optgroup label={`Existentes de ${item.brand}`}>
                                   {sameBrandProducts.map(p => (
-                                    <option key={p.id} value={p.id}>
+                                    <option key={p.id} value={p.id} className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">
                                       🔗 {p.name} ({p.size || 'N/A'}) - Stock: {p.stock}
                                     </option>
                                   ))}
@@ -1105,7 +1105,7 @@ export default function Inventory() {
                                   .filter(p => (p.brand || '').toLowerCase().trim() !== (item.brand || '').toLowerCase().trim())
                                   .slice(0, 100)
                                   .map(p => (
-                                    <option key={p.id} value={p.id}>
+                                    <option key={p.id} value={p.id} className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">
                                       🔗 {p.brand} - {p.name} ({p.size || 'N/A'})
                                     </option>
                                   ))
@@ -1114,12 +1114,12 @@ export default function Inventory() {
                             </select>
                             
                             {item.matchedProductId && item.matchedProductId !== 'new' ? (
-                              <span className="text-[10px] text-emerald-700 font-extrabold flex items-center gap-1">
-                                <Check className="h-3 w-3 text-emerald-600" /> Sumará +{item.stock} al stock existente
+                              <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-extrabold flex items-center gap-1">
+                                <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" /> Sumará +{item.stock} al stock existente
                               </span>
                             ) : (
-                              <span className="text-[10px] text-indigo-600 font-bold flex items-center gap-1">
-                                <Plus className="h-3 w-3 text-indigo-500" /> Se registrará como nuevo
+                              <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1">
+                                <Plus className="h-3 w-3 text-indigo-500 dark:text-indigo-400" /> Se registrará como nuevo
                               </span>
                             )}
                           </div>
@@ -1131,7 +1131,7 @@ export default function Inventory() {
                         type="text"
                         value={item.size}
                         onChange={(e) => handleUpdateDraftField(idx, 'size', e.target.value)}
-                        className="w-20 px-2 py-1 bg-neutral-50 border border-neutral-200 rounded text-xs"
+                        className="w-20 px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs text-neutral-900 dark:text-neutral-100"
                       />
                     </td>
                     <td className="px-4 py-2">
@@ -1139,7 +1139,7 @@ export default function Inventory() {
                         type="number"
                         value={item.cost}
                         onChange={(e) => handleUpdateDraftField(idx, 'cost', e.target.value)}
-                        className="w-20 px-2 py-1 bg-neutral-50 border border-neutral-200 rounded text-xs font-mono"
+                        className="w-20 px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs font-mono text-neutral-900 dark:text-neutral-100"
                       />
                     </td>
                     <td className="px-4 py-2">
@@ -1147,7 +1147,7 @@ export default function Inventory() {
                         type="number"
                         value={item.pricePublic}
                         onChange={(e) => handleUpdateDraftField(idx, 'pricePublic', e.target.value)}
-                        className="w-20 px-2 py-1 bg-neutral-50 border border-neutral-200 rounded text-xs font-mono"
+                        className="w-20 px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs font-mono text-neutral-900 dark:text-neutral-100"
                       />
                     </td>
                     <td className="px-4 py-2">
@@ -1155,7 +1155,7 @@ export default function Inventory() {
                         type="number"
                         value={item.pricePromotional}
                         onChange={(e) => handleUpdateDraftField(idx, 'pricePromotional', e.target.value)}
-                        className="w-20 px-2 py-1 bg-neutral-50 border border-neutral-200 rounded text-xs font-mono"
+                        className="w-20 px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs font-mono text-neutral-900 dark:text-neutral-100"
                       />
                     </td>
                     <td className="px-4 py-2">
@@ -1163,24 +1163,24 @@ export default function Inventory() {
                         type="number"
                         value={item.stock}
                         onChange={(e) => handleUpdateDraftField(idx, 'stock', e.target.value)}
-                        className="w-16 px-2 py-1 bg-neutral-50 border border-neutral-200 rounded text-xs font-mono"
+                        className="w-16 px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs font-mono text-neutral-900 dark:text-neutral-100"
                       />
                     </td>
                     <td className="px-4 py-2">
                       <select
                         value={item.category}
                         onChange={(e) => handleUpdateDraftField(idx, 'category', e.target.value)}
-                        className="px-2 py-1 bg-neutral-50 border border-neutral-200 rounded text-xs"
+                        className="px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs text-neutral-900 dark:text-neutral-100"
                       >
-                        <option value="Damas">Damas</option>
-                        <option value="Caballeros">Caballeros</option>
-                        <option value="Unisex">Unisex</option>
+                        <option value="Damas" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Damas</option>
+                        <option value="Caballeros" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Caballeros</option>
+                        <option value="Unisex" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Unisex</option>
                       </select>
                     </td>
                     <td className="px-4 py-2 text-right">
                       <button
                         onClick={() => handleRemoveDraftItem(idx)}
-                        className="p-1 text-neutral-400 hover:text-red-600 rounded cursor-pointer"
+                        className="p-1 text-neutral-400 hover:text-red-600 dark:hover:text-rose-400 rounded cursor-pointer"
                         title="Eliminar de la lista de carga"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -1195,20 +1195,20 @@ export default function Inventory() {
       ) : null}
 
       {/* PDF AI Parser block */}
-      <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-sm space-y-6">
-          <div className="border-b border-neutral-100 pb-3 flex items-center justify-between">
-            <h3 className="font-display font-bold text-neutral-900 text-base flex items-center gap-1.5">
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-sm space-y-6">
+          <div className="border-b border-neutral-100 dark:border-neutral-800 pb-3 flex items-center justify-between">
+            <h3 className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-base flex items-center gap-1.5">
               <FileUp className="h-5 w-5 text-indigo-500 animate-bounce" /> Importador Inteligente (Facturas PDF por IA, CSV o Excel)
             </h3>
             
             {/* Model Selector */}
             <div className="flex items-center gap-2">
-              <label htmlFor="ai-model-picker" className="text-[10px] font-extrabold text-neutral-400 uppercase tracking-wider">Modelo:</label>
+              <label htmlFor="ai-model-picker" className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">Modelo:</label>
               <select
                 id="ai-model-picker"
                 value={aiModel}
                 onChange={(e) => setAiModel(e.target.value)}
-                className="px-2 py-1 bg-neutral-50 border border-neutral-200 rounded-lg text-[11px] font-bold text-neutral-700 outline-none cursor-pointer"
+                className="px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-[11px] font-bold text-neutral-700 dark:text-neutral-200 outline-none cursor-pointer"
               >
                 <option value="gemini-3.6-flash">Gemini (Rápido)</option>
                 <option value="deepseek-v4-pro">DeepSeek v4 (Soporte)</option>
@@ -1218,20 +1218,20 @@ export default function Inventory() {
 
           {/* Error panel showing failure with fallback / retry / resume options */}
           {parsingFailed && (
-            <div className="border border-rose-200 bg-rose-50/40 rounded-2xl p-5 space-y-4">
+            <div className="border border-rose-200 dark:border-rose-800 bg-rose-50/40 dark:bg-rose-950/40 rounded-2xl p-5 space-y-4">
               <div className="flex gap-3">
-                <div className="p-2 bg-rose-100 text-rose-600 rounded-xl h-fit">
+                <div className="p-2 bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 rounded-xl h-fit">
                   <AlertTriangle className="h-5 w-5" />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-xs font-black text-rose-950 uppercase tracking-wider">
+                  <h4 className="text-xs font-black text-rose-950 dark:text-rose-200 uppercase tracking-wider">
                     Error al Procesar la Página {failedPageIdx + 1}
                   </h4>
-                  <p className="text-[11px] text-rose-800 font-medium leading-relaxed">
+                  <p className="text-[11px] text-rose-800 dark:text-rose-300 font-medium leading-relaxed">
                     {failedError}
                   </p>
                   {accumulatedProducts.length > 0 && (
-                    <p className="text-[10px] text-emerald-800 font-bold mt-1">
+                    <p className="text-[10px] text-emerald-800 dark:text-emerald-400 font-bold mt-1">
                       ✓ Se extrajeron exitosamente {accumulatedProducts.length} perfumes de las páginas anteriores.
                     </p>
                   )}
@@ -1239,21 +1239,21 @@ export default function Inventory() {
               </div>
 
               {/* Action buttons inside Error frame */}
-              <div className="bg-white border border-rose-100 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="bg-white dark:bg-neutral-900 border border-rose-100 dark:border-rose-900/50 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="space-y-1 text-left">
-                  <span className="text-[10px] font-extrabold text-neutral-400 uppercase block">Modelo de Reintento</span>
+                  <span className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase block">Modelo de Reintento</span>
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleUploadPdf(true, 'deepseek-v4-pro')}
                       disabled={isParsing}
-                      className="px-3 py-1.5 bg-neutral-950 text-white hover:bg-neutral-800 text-[10px] font-bold rounded-lg flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                      className="px-3 py-1.5 bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 hover:bg-neutral-800 text-[10px] font-bold rounded-lg flex items-center gap-1 cursor-pointer transition-all active:scale-95"
                     >
                       <RefreshCw className="h-3.5 w-3.5 animate-spin-slow" /> Reintentar Página {failedPageIdx + 1} con DeepSeek
                     </button>
                     <button
                       onClick={() => handleUploadPdf(true, 'gemini-2.5-flash')}
                       disabled={isParsing}
-                      className="px-3 py-1.5 bg-white border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-[10px] font-bold rounded-lg flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                      className="px-3 py-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 text-[10px] font-bold rounded-lg flex items-center gap-1 cursor-pointer transition-all active:scale-95"
                     >
                       <RefreshCw className="h-3.5 w-3.5" /> Reintentar con Gemini
                     </button>
@@ -1270,14 +1270,14 @@ export default function Inventory() {
                         setParsingFailed(false);
                       }
                     }}
-                    className="px-3 py-1.5 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-700 text-[10px] font-extrabold rounded-lg cursor-pointer transition-all"
+                    className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 text-[10px] font-extrabold rounded-lg cursor-pointer transition-all"
                   >
                     Guardar hasta aquí ({accumulatedProducts.length})
                   </button>
                   <button
                     type="button"
                     onClick={() => handleUploadPdf(false)}
-                    className="px-3 py-1.5 bg-white border border-neutral-200 hover:bg-neutral-50 text-neutral-600 text-[10px] font-bold rounded-lg cursor-pointer transition-all"
+                    className="px-3 py-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 text-[10px] font-bold rounded-lg cursor-pointer transition-all"
                   >
                     Empezar de nuevo (Pág. 1)
                   </button>
@@ -1290,7 +1290,7 @@ export default function Inventory() {
           {!isParsing ? (
             <div className="space-y-4">
               <label 
-                className="flex flex-col items-center justify-center border-2 border-dashed border-neutral-200 rounded-3xl bg-neutral-50/50 p-8 text-center cursor-pointer hover:bg-neutral-50 transition-all group relative min-h-[160px]"
+                className="flex flex-col items-center justify-center border-2 border-dashed border-neutral-200 dark:border-neutral-700 rounded-3xl bg-neutral-50/50 dark:bg-neutral-800/40 p-8 text-center cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all group relative min-h-[160px]"
               >
                 <input
                   type="file"
@@ -1301,27 +1301,27 @@ export default function Inventory() {
                 <span className="text-3xl mb-2 group-hover:scale-110 transition-transform">📄</span>
                 {fileName ? (
                   <div className="space-y-1">
-                    <span className="font-bold text-xs text-neutral-900 block font-mono">{fileName}</span>
-                    <span className="text-[10px] text-neutral-400 block font-semibold">Haz clic o arrastra para cambiar de archivo</span>
+                    <span className="font-bold text-xs text-neutral-900 dark:text-neutral-100 block font-mono">{fileName}</span>
+                    <span className="text-[10px] text-neutral-400 dark:text-neutral-500 block font-semibold">Haz clic o arrastra para cambiar de archivo</span>
                   </div>
                 ) : (
                   <div className="space-y-1">
-                    <span className="font-extrabold text-xs text-neutral-800 block">Cargar Factura (PDF) o Inventario (CSV / Excel)</span>
-                    <span className="text-[10px] text-neutral-400 block font-semibold">Soporta facturas escaneadas (IA), archivos CSV y hojas de cálculo XLS/XLSX</span>
+                    <span className="font-extrabold text-xs text-neutral-800 dark:text-neutral-200 block">Cargar Factura (PDF) o Inventario (CSV / Excel)</span>
+                    <span className="text-[10px] text-neutral-400 dark:text-neutral-500 block font-semibold">Soporta facturas escaneadas (IA), archivos CSV y hojas de cálculo XLS/XLSX</span>
                   </div>
                 )}
               </label>
 
               {pdfFile && pdfFile.name.endsWith('.pdf') && !parsingFailed && (
-                <div className="flex items-center justify-between bg-neutral-50 p-4 border border-neutral-200 rounded-2xl">
+                <div className="flex items-center justify-between bg-neutral-50 dark:bg-neutral-800/70 p-4 border border-neutral-200 dark:border-neutral-700 rounded-2xl">
                   <div className="text-left space-y-0.5">
-                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest font-mono">Listo para procesar</span>
-                    <span className="block text-xs font-extrabold text-neutral-800 truncate max-w-sm">{fileName}</span>
+                    <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest font-mono">Listo para procesar</span>
+                    <span className="block text-xs font-extrabold text-neutral-800 dark:text-neutral-200 truncate max-w-sm">{fileName}</span>
                   </div>
                   
                   <button
                     onClick={() => handleUploadPdf(false)}
-                    className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm"
+                    className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm"
                   >
                     <PlayCircle className="h-4 w-4" />
                     Iniciar Procesamiento por IA
@@ -1331,15 +1331,15 @@ export default function Inventory() {
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-10 space-y-4 text-center">
-              <Loader2 className="h-10 w-10 animate-spin text-indigo-600" />
+              <Loader2 className="h-10 w-10 animate-spin text-indigo-600 dark:text-indigo-400" />
               <div className="space-y-1">
-                <span className="font-display font-black text-neutral-900 text-base uppercase tracking-wider animate-pulse">Procesando Factura con IA</span>
-                <p className="text-xs text-neutral-500 font-mono font-semibold max-w-sm leading-relaxed">{parsingProgress}</p>
+                <span className="font-display font-black text-neutral-900 dark:text-neutral-100 text-base uppercase tracking-wider animate-pulse">Procesando Factura con IA</span>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 font-mono font-semibold max-w-sm leading-relaxed">{parsingProgress}</p>
               </div>
               <button
                 type="button"
                 onClick={handleCancelAiAnalysis}
-                className="mt-2 px-4 py-2 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold rounded-xl transition-all active:scale-95 cursor-pointer"
+                className="mt-2 px-4 py-2 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-bold rounded-xl transition-all active:scale-95 cursor-pointer"
               >
                 Cancelar Análisis
               </button>
@@ -1352,31 +1352,31 @@ export default function Inventory() {
       {/* Interactive Inventory List table */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h3 className="font-display font-black text-neutral-900 text-base">
+          <h3 className="font-display font-black text-neutral-900 dark:text-neutral-100 text-base">
             Listado de Fragancias en Stock
           </h3>
           <button
             type="button"
             onClick={() => setIsExportModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm"
+            className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm"
           >
             <Download className="h-4 w-4" /> Exportar Catálogo Clientes
           </button>
         </div>
 
         {/* Filter and Search Box */}
-        <div className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm space-y-4">
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-5 shadow-sm space-y-4">
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="sm:col-span-2 relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-neutral-400" />
+                <Search className="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
               </div>
               <input
                 type="text"
                 placeholder="Buscar perfume, marca o código de barras..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent outline-none transition-all"
+                className="block w-full pl-10 pr-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent outline-none transition-all"
               />
             </div>
 
@@ -1384,11 +1384,11 @@ export default function Inventory() {
               <select
                 value={selectedBrand}
                 onChange={(e) => setSelectedBrand(e.target.value)}
-                className="block w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold text-neutral-700 focus:ring-2 focus:ring-neutral-900 focus:border-transparent outline-none transition-all cursor-pointer"
+                className="block w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-700 dark:text-neutral-200 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent outline-none transition-all cursor-pointer"
               >
-                <option value="Todas">Todas las Marcas</option>
+                <option value="Todas" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Todas las Marcas</option>
                 {uniqueBrands.map(brand => (
-                  <option key={brand} value={brand}>{brand}</option>
+                  <option key={brand} value={brand} className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">{brand}</option>
                 ))}
               </select>
             </div>
@@ -1397,28 +1397,28 @@ export default function Inventory() {
 
         {/* Bulk Promotions Panel (Only for Owner and Seller) */}
         {(user?.role === 'owner' || user?.role === 'vendedor') && (
-          <div className="bg-amber-50/40 border border-amber-200 rounded-3xl p-5 shadow-sm space-y-3">
+          <div className="bg-amber-50/40 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-3xl p-5 shadow-sm space-y-3">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="space-y-0.5 text-left">
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-amber-800 border border-amber-200">
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/60 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                   <Percent className="h-2 w-2" /> Descuento Masivo (Bulk)
                 </span>
-                <h4 className="font-display font-bold text-neutral-900 text-sm uppercase tracking-tight">
+                <h4 className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-sm uppercase tracking-tight">
                   Aplicar Oferta a Lista Filtrada ({filteredProducts.length} perfumes)
                 </h4>
-                <p className="text-[11px] text-neutral-500 font-medium leading-normal max-w-xl">
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 font-medium leading-normal max-w-xl">
                   Aplica o remueve un descuento promocional masivo a los perfumes de la vista actual. El descuento se aplica sobre el precio Público.
                 </p>
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
-                <div className="flex items-center bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-sm h-10 px-1.5 gap-1">
+                <div className="flex items-center bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden shadow-sm h-10 px-1.5 gap-1">
                   {[0, 10, 20, 30, 40].map((pct) => (
                     <button
                       key={pct}
                       type="button"
                       onClick={() => handleApplyBulkDiscount(pct)}
-                      className="px-2.5 py-1 rounded-lg text-[10px] font-black cursor-pointer hover:bg-neutral-100 transition-colors bg-neutral-50 border border-neutral-200 text-neutral-800"
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-black cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200"
                     >
                       {pct === 0 ? 'Quitar' : `${pct}%`}
                     </button>
@@ -1433,7 +1433,7 @@ export default function Inventory() {
                     max="100"
                     placeholder="Otro %"
                     id="custom-bulk-pct"
-                    className="w-16 h-10 px-2 bg-white border border-neutral-200 rounded-xl text-center text-xs font-black outline-none font-mono focus:ring-1 focus:ring-neutral-900 focus:border-transparent"
+                    className="w-16 h-10 px-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-center text-xs font-black outline-none font-mono text-neutral-900 dark:text-neutral-100 focus:ring-1 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent"
                   />
                   <button
                     type="button"
@@ -1446,7 +1446,7 @@ export default function Inventory() {
                         alert('Por favor introduce un porcentaje de descuento válido entre 0 y 100.');
                       }
                     }}
-                    className="px-3 h-10 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-95 shadow-sm"
+                    className="px-3 h-10 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-95 shadow-sm"
                   >
                     Ok
                   </button>
@@ -1457,10 +1457,10 @@ export default function Inventory() {
         )}
 
         {/* Inventory list Table */}
-        <div className="bg-white border border-neutral-200 rounded-3xl overflow-hidden shadow-sm">
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-neutral-200 text-left text-xs font-semibold text-neutral-700">
-              <thead className="bg-neutral-50 text-[10px] font-bold text-neutral-500 uppercase tracking-widest font-mono">
+            <table className="min-w-full divide-y divide-neutral-200 dark:divide-neutral-800 text-left text-xs font-semibold text-neutral-700 dark:text-neutral-200">
+              <thead className="bg-neutral-50 dark:bg-neutral-800/70 text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest font-mono">
                 <tr>
                   <th className="px-6 py-4">Fragancia</th>
                   <th className="px-6 py-4">Presentación</th>
@@ -1472,10 +1472,10 @@ export default function Inventory() {
                   <th className="px-6 py-4 text-right">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100">
+              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
                 {filteredProducts.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="px-6 py-12 text-center text-neutral-400">
+                    <td colSpan="8" className="px-6 py-12 text-center text-neutral-400 dark:text-neutral-500">
                       <span>No se encontraron perfumes registrados.</span>
                     </td>
                   </tr>
@@ -1484,59 +1484,59 @@ export default function Inventory() {
                     const isSet = isProductSet(p);
                     
                     return (
-                      <tr key={p.id} className="hover:bg-neutral-50/50 transition-colors">
+                      <tr key={p.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
                         <td className="px-6 py-4 space-y-1">
-                          <span className="font-mono text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">{p.brand}</span>
+                          <span className="font-mono text-[9px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">{p.brand}</span>
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-bold text-neutral-900 text-sm leading-tight">
+                            <span className="font-bold text-neutral-900 dark:text-neutral-100 text-sm leading-tight">
                               {p.name}
                             </span>
                             {isSet && (
-                              <span className="inline-flex items-center rounded-full bg-indigo-50 px-1.5 py-0.5 text-[8px] font-extrabold text-indigo-700 uppercase tracking-wider border border-indigo-100">
+                              <span className="inline-flex items-center rounded-full bg-indigo-50 dark:bg-indigo-950/80 px-1.5 py-0.5 text-[8px] font-extrabold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border border-indigo-100 dark:border-indigo-800">
                                 Set
                               </span>
                             )}
                             {getProductPromoDiscount(p) > 0 && (
-                              <span className="inline-flex items-center rounded-full bg-rose-50 px-1.5 py-0.5 text-[8px] font-black text-rose-700 uppercase tracking-wider border border-rose-100">
+                              <span className="inline-flex items-center rounded-full bg-rose-50 dark:bg-rose-950/80 px-1.5 py-0.5 text-[8px] font-black text-rose-700 dark:text-rose-300 uppercase tracking-wider border border-rose-100 dark:border-rose-800">
                                 -{getProductPromoDiscount(p)}% Off
                               </span>
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-neutral-500 font-semibold">{p.size}</td>
-                        <td className="px-6 py-4 font-mono text-neutral-950 font-bold">L. {p.cost.toLocaleString()}</td>
-                        <td className="px-6 py-4 font-mono text-neutral-950 font-bold">L. {p.pricePublic.toLocaleString()}</td>
-                        <td className="px-6 py-4 font-mono text-neutral-950 font-bold">L. {p.pricePromotional.toLocaleString()}</td>
+                        <td className="px-6 py-4 text-neutral-500 dark:text-neutral-400 font-semibold">{p.size}</td>
+                        <td className="px-6 py-4 font-mono text-neutral-950 dark:text-neutral-100 font-bold">L. {p.cost.toLocaleString()}</td>
+                        <td className="px-6 py-4 font-mono text-neutral-950 dark:text-neutral-100 font-bold">L. {p.pricePublic.toLocaleString()}</td>
+                        <td className="px-6 py-4 font-mono text-neutral-950 dark:text-neutral-100 font-bold">L. {p.pricePromotional.toLocaleString()}</td>
                         <td className="px-6 py-4">
                           <span className={`inline-block px-2 py-1 rounded text-xs font-mono font-black ${
                             p.stock <= 0
-                              ? 'bg-red-50 text-red-700'
+                              ? 'bg-red-50 dark:bg-rose-950/80 text-red-700 dark:text-rose-300'
                               : p.stock <= 3
-                                ? 'bg-amber-50 text-amber-700 font-bold'
-                                : 'bg-neutral-100 text-neutral-900 font-bold'
+                                ? 'bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 font-bold'
+                                : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-bold'
                           }`}>
                             {p.stock} u
                           </span>
                         </td>
                         <td className="px-6 py-4 space-y-1">
-                          <span className="font-mono text-neutral-500 text-[10px] block">{p.barcode}</span>
+                          <span className="font-mono text-neutral-500 dark:text-neutral-400 text-[10px] block">{p.barcode}</span>
                           {/* Mini visual representation of Code 128 */}
                           <div 
-                            className="w-16 h-4 opacity-50 overflow-hidden"
+                            className="w-16 h-4 opacity-50 dark:invert overflow-hidden"
                             dangerouslySetInnerHTML={{ __html: generateBarcodeSVG(p.barcode || p.id).replace('height="70"', 'height="10"').replace('style="background:white; padding:10px; border-radius:4px;"', 'style="background:transparent; padding:0;"') }}
                           />
                         </td>
                         <td className="px-6 py-4 text-right space-x-1.5">
                           <button
                             onClick={() => handleOpenEdit(p)}
-                            className="p-1.5 text-neutral-400 hover:text-neutral-900 hover:bg-neutral-50 rounded-lg cursor-pointer transition-colors"
+                            className="p-1.5 text-neutral-400 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg cursor-pointer transition-colors"
                             title="Editar perfume"
                           >
                             <Edit2 className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(p.id)}
-                            className="p-1.5 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
+                            className="p-1.5 text-neutral-400 dark:text-neutral-400 hover:text-red-600 dark:hover:text-rose-400 hover:bg-red-50 dark:hover:bg-rose-950/40 rounded-lg cursor-pointer transition-colors"
                             title="Eliminar perfume"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -1555,25 +1555,25 @@ export default function Inventory() {
       {/* Client Catalog Export Modal */}
       {isExportModalOpen && createPortal(
         <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-neutral-100 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto space-y-6">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto space-y-6">
             
             {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-neutral-100 pb-4">
+            <div className="flex items-start justify-between border-b border-neutral-100 dark:border-neutral-800 pb-4">
               <div className="space-y-1">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-700">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
                   <Share2 className="h-3.5 w-3.5" /> Compartir con Clientes
                 </span>
-                <h3 className="font-display font-black text-neutral-900 text-lg">
+                <h3 className="font-display font-black text-neutral-900 dark:text-neutral-100 text-lg">
                   Exportar Catálogo de Perfumes
                 </h3>
-                <p className="text-[11px] text-neutral-500 font-medium">
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 font-medium">
                   Genera una versión personalizada para compartir sin revelar los costos de compra.
                 </p>
               </div>
               <button 
                 type="button"
                 onClick={() => setIsExportModalOpen(false)}
-                className="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-neutral-700 transition-colors cursor-pointer"
+                className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1584,7 +1584,7 @@ export default function Inventory() {
               
               {/* Formato de descarga */}
               <div>
-                <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-2">
+                <label className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-2">
                   Formato de Descarga
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -1593,34 +1593,34 @@ export default function Inventory() {
                     onClick={() => setExportFormat('pdf')}
                     className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
                       exportFormat === 'pdf'
-                        ? 'border-neutral-900 bg-neutral-50 text-neutral-900 font-bold'
-                        : 'border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600'
+                        ? 'border-neutral-900 dark:border-amber-400 bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-amber-300 font-bold'
+                        : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/50 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300'
                     }`}
                   >
                     <FileText className="h-5 w-5 text-rose-500" />
                     <span className="text-[11px] font-bold">PDF Listo</span>
                   </button>
- 
+
                   <button
                     type="button"
                     onClick={() => setExportFormat('xlsx')}
                     className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
                       exportFormat === 'xlsx'
-                        ? 'border-neutral-900 bg-neutral-50 text-neutral-900 font-bold'
-                        : 'border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600'
+                        ? 'border-neutral-900 dark:border-amber-400 bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-amber-300 font-bold'
+                        : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/50 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300'
                     }`}
                   >
                     <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
                     <span className="text-[11px] font-bold">Excel (.xlsx)</span>
                   </button>
- 
+
                   <button
                     type="button"
                     onClick={() => setExportFormat('csv')}
                     className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
                       exportFormat === 'csv'
-                        ? 'border-neutral-900 bg-neutral-50 text-neutral-900 font-bold'
-                        : 'border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600'
+                        ? 'border-neutral-900 dark:border-amber-400 bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-amber-300 font-bold'
+                        : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/50 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300'
                     }`}
                   >
                     <FileDown className="h-5 w-5 text-indigo-500" />
@@ -1631,27 +1631,27 @@ export default function Inventory() {
 
               {/* Rango de exportación */}
               <div>
-                <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-2">
+                <label className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-2">
                   Rango de Productos
                 </label>
                 <div className="flex gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-neutral-700">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-neutral-700 dark:text-neutral-200">
                     <input
                       type="radio"
                       name="exportRange"
                       checked={exportRange === 'filtered'}
                       onChange={() => setExportRange('filtered')}
-                      className="accent-neutral-950"
+                      className="accent-neutral-950 dark:accent-amber-400"
                     />
                     <span>Solo los filtrados actualmente ({filteredProducts.length})</span>
                   </label>
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-neutral-700">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-neutral-700 dark:text-neutral-200">
                     <input
                       type="radio"
                       name="exportRange"
                       checked={exportRange === 'all'}
                       onChange={() => setExportRange('all')}
-                      className="accent-neutral-950"
+                      className="accent-neutral-950 dark:accent-amber-400"
                     />
                     <span>Todo el inventario ({products.length})</span>
                   </label>
@@ -1659,48 +1659,48 @@ export default function Inventory() {
               </div>
 
               {/* Opciones de columnas */}
-              <div className="space-y-3 bg-neutral-50 rounded-2xl p-4 border border-neutral-100">
-                <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
+              <div className="space-y-3 bg-neutral-50 dark:bg-neutral-800/60 rounded-2xl p-4 border border-neutral-100 dark:border-neutral-800">
+                <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block mb-1">
                   Configuración de Columnas y Precios
                 </span>
 
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-neutral-700">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-neutral-700 dark:text-neutral-200">
                     <input
                       type="checkbox"
                       checked={includeVIP}
                       onChange={(e) => setIncludeVIP(e.target.checked)}
-                      className="rounded accent-neutral-950 h-4 w-4"
+                      className="rounded accent-neutral-950 dark:accent-amber-400 h-4 w-4"
                     />
                     <span>Incluir precio Mayorista (VIP)</span>
                   </label>
 
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-neutral-700">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-neutral-700 dark:text-neutral-200">
                     <input
                       type="checkbox"
                       checked={includeDiscount}
                       onChange={(e) => setIncludeDiscount(e.target.checked)}
-                      className="rounded accent-neutral-950 h-4 w-4"
+                      className="rounded accent-neutral-950 dark:accent-amber-400 h-4 w-4"
                     />
                     <span>Incluir descuentos activos</span>
                   </label>
 
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-neutral-700">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-neutral-700 dark:text-neutral-200">
                     <input
                       type="checkbox"
                       checked={groupByBrand}
                       onChange={(e) => setGroupByBrand(e.target.checked)}
-                      className="rounded accent-neutral-950 h-4 w-4"
+                      className="rounded accent-neutral-950 dark:accent-amber-400 h-4 w-4"
                     />
                     <span>Agrupar por marcas</span>
                   </label>
 
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-neutral-700">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-neutral-700 dark:text-neutral-200">
                     <input
                       type="checkbox"
                       checked={onlyInStock}
                       onChange={(e) => setOnlyInStock(e.target.checked)}
-                      className="rounded accent-neutral-950 h-4 w-4"
+                      className="rounded accent-neutral-950 dark:accent-amber-400 h-4 w-4"
                     />
                     <span>Ocultar agotados (Stock 0)</span>
                   </label>
@@ -1709,7 +1709,7 @@ export default function Inventory() {
 
               {/* Descuento Adicional para Clientes */}
               <div>
-                <label htmlFor="export-add-discount" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                <label htmlFor="export-add-discount" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
                   Descuento Adicional para Cliente (%)
                 </label>
                 <div className="flex items-center gap-3">
@@ -1720,10 +1720,10 @@ export default function Inventory() {
                     max="100"
                     value={additionalDiscount}
                     onChange={(e) => setAdditionalDiscount(Math.min(100, Math.max(0, Number(e.target.value))))}
-                    className="w-24 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent outline-none transition-all font-mono"
+                    className="w-24 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent outline-none transition-all font-mono"
                     placeholder="Ej. 10"
                   />
-                  <span className="text-[10px] text-neutral-500 font-medium">
+                  <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-medium">
                     Se sumará a los descuentos promocionales activos en los perfumes.
                   </span>
                 </div>
@@ -1732,18 +1732,18 @@ export default function Inventory() {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-end gap-3 border-t border-neutral-100 pt-4">
+            <div className="flex items-center justify-end gap-3 border-t border-neutral-100 dark:border-neutral-800 pt-4">
               <button
                 type="button"
                 onClick={() => setIsExportModalOpen(false)}
-                className="px-4 py-2 bg-white border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-xs font-bold rounded-xl cursor-pointer transition-all"
+                className="px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 text-xs font-bold rounded-xl cursor-pointer transition-all"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={handleExecuteExport}
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer"
               >
                 <Download className="h-3.5 w-3.5" /> Generar y Descargar
               </button>
@@ -1757,25 +1757,25 @@ export default function Inventory() {
       {/* Manual Add / Edit Modal Overlay */}
       {isFormModalOpen && createPortal(
         <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-neutral-100 rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto space-y-6">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto space-y-6">
             
             {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-neutral-100 pb-4">
+            <div className="flex items-start justify-between border-b border-neutral-100 dark:border-neutral-800 pb-4">
               <div className="space-y-1">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-700">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
                   <Plus className="h-3.5 w-3.5" /> {isEditing ? 'Actualizar Fragancia' : 'Registrar Fragancia'}
                 </span>
-                <h3 className="font-display font-black text-neutral-900 text-lg">
+                <h3 className="font-display font-black text-neutral-900 dark:text-neutral-100 text-lg">
                   {isEditing ? 'Editar Perfume' : 'Agregar Perfume Manual'}
                 </h3>
-                <p className="text-[11px] text-neutral-500 font-medium">
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 font-medium">
                   Completa los detalles de la fragancia para actualizar el inventario general.
                 </p>
               </div>
               <button 
                 type="button"
                 onClick={handleCloseFormModal}
-                className="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-neutral-700 transition-colors cursor-pointer"
+                className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1786,7 +1786,7 @@ export default function Inventory() {
               
               <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
                 <div>
-                  <label htmlFor="prod-brand" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                  <label htmlFor="prod-brand" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
                     Marca / Diseñador
                   </label>
                   <input
@@ -1795,13 +1795,13 @@ export default function Inventory() {
                     required
                     value={formBrand}
                     onChange={(e) => setFormBrand(e.target.value)}
-                    className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none"
+                    className="block w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent transition-all outline-none"
                     placeholder="Ej. Carolina Herrera"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="prod-name" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                  <label htmlFor="prod-name" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
                     Nombre de la Fragancia
                   </label>
                   <input
@@ -1810,7 +1810,7 @@ export default function Inventory() {
                     required
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
-                    className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none"
+                    className="block w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent transition-all outline-none"
                     placeholder="Ej. Good Girl"
                   />
                 </div>
@@ -1818,7 +1818,7 @@ export default function Inventory() {
 
               <div className="grid gap-3 grid-cols-2">
                 <div>
-                  <label htmlFor="prod-size" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                  <label htmlFor="prod-size" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
                     Presentación
                   </label>
                   <input
@@ -1827,30 +1827,30 @@ export default function Inventory() {
                     required
                     value={formSize}
                     onChange={(e) => setFormSize(e.target.value)}
-                    className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none"
+                    className="block w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent transition-all outline-none"
                     placeholder="Ej. 100 ml"
                   />
                 </div>
                 <div>
-                  <label htmlFor="prod-category" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                  <label htmlFor="prod-category" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
                     Categoría
                   </label>
                   <select
                     id="prod-category"
                     value={formCategory}
                     onChange={(e) => setFormCategory(e.target.value)}
-                    className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none cursor-pointer"
+                    className="block w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-700 dark:text-neutral-200 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent transition-all outline-none cursor-pointer"
                   >
-                    <option value="Damas">Damas</option>
-                    <option value="Caballeros">Caballeros</option>
-                    <option value="Unisex">Unisex</option>
+                    <option value="Damas" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Damas</option>
+                    <option value="Caballeros" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Caballeros</option>
+                    <option value="Unisex" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Unisex</option>
                   </select>
                 </div>
               </div>
 
               <div className="grid gap-3 grid-cols-3">
                 <div>
-                  <label htmlFor="prod-cost" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                  <label htmlFor="prod-cost" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
                     Costo (HNL)
                   </label>
                   <input
@@ -1859,12 +1859,12 @@ export default function Inventory() {
                     required
                     value={formCost}
                     onChange={(e) => setFormCost(e.target.value)}
-                    className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none font-mono"
+                    className="block w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent transition-all outline-none font-mono"
                     placeholder="0"
                   />
                 </div>
                 <div>
-                  <label htmlFor="prod-public" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                  <label htmlFor="prod-public" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
                     Púb (HNL)
                   </label>
                   <input
@@ -1873,12 +1873,12 @@ export default function Inventory() {
                     required
                     value={formPricePublic}
                     onChange={(e) => setFormPricePublic(e.target.value)}
-                    className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none font-mono"
+                    className="block w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent transition-all outline-none font-mono"
                     placeholder="0"
                   />
                 </div>
                 <div>
-                  <label htmlFor="prod-vip" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                  <label htmlFor="prod-vip" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
                     VIP (HNL)
                   </label>
                   <input
@@ -1887,7 +1887,7 @@ export default function Inventory() {
                     required
                     value={formPricePromotional}
                     onChange={(e) => setFormPricePromotional(e.target.value)}
-                    className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none font-mono"
+                    className="block w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent transition-all outline-none font-mono"
                     placeholder="0"
                   />
                 </div>
@@ -1895,7 +1895,7 @@ export default function Inventory() {
 
               <div className="grid gap-3 grid-cols-2">
                 <div>
-                  <label htmlFor="prod-stock" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                  <label htmlFor="prod-stock" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
                     Stock Inicial / Físico
                   </label>
                   <input
@@ -1904,12 +1904,12 @@ export default function Inventory() {
                     required
                     value={formStock}
                     onChange={(e) => setFormStock(e.target.value)}
-                    className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none font-mono"
+                    className="block w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent transition-all outline-none font-mono"
                     placeholder="0"
                   />
                 </div>
                 <div>
-                  <label htmlFor="prod-barcode" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                  <label htmlFor="prod-barcode" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
                     Código de Barras
                   </label>
                   <input
@@ -1917,14 +1917,14 @@ export default function Inventory() {
                     type="text"
                     value={formBarcode}
                     onChange={(e) => setFormBarcode(e.target.value)}
-                    className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none font-mono"
+                    className="block w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent transition-all outline-none font-mono"
                     placeholder="Vacío para generar"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="prod-promo-pct" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                <label htmlFor="prod-promo-pct" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
                   Descuento de Oferta / Promoción (%)
                 </label>
                 <div className="flex items-center gap-2">
@@ -1935,15 +1935,15 @@ export default function Inventory() {
                     max="100"
                     value={formPromoDiscount}
                     onChange={(e) => setFormPromoDiscount(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
-                    className="block w-20 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none font-mono"
+                    className="block w-20 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent transition-all outline-none font-mono"
                     placeholder="0"
                   />
-                  <span className="text-[10px] text-neutral-500 font-bold">% de oferta sobre precio Público</span>
+                  <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-bold">% de oferta sobre precio Público</span>
                 </div>
               </div>
 
               <div>
-                <label htmlFor="prod-image" className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                <label htmlFor="prod-image" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
                   URL de la Imagen
                 </label>
                 <input
@@ -1951,24 +1951,24 @@ export default function Inventory() {
                   type="url"
                   value={formImageUrl}
                   onChange={(e) => setFormImageUrl(e.target.value)}
-                  className="block w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all outline-none"
+                  className="block w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent transition-all outline-none"
                   placeholder="https://images.unsplash.com/..."
                 />
               </div>
 
               {/* Modal Footer */}
-              <div className="flex items-center justify-end gap-3 border-t border-neutral-100 pt-4">
+              <div className="flex items-center justify-end gap-3 border-t border-neutral-100 dark:border-neutral-800 pt-4">
                 <button
                   type="button"
                   onClick={handleCloseFormModal}
-                  className="px-4 py-2 bg-white border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-xs font-bold rounded-xl cursor-pointer transition-all"
+                  className="px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 text-xs font-bold rounded-xl cursor-pointer transition-all"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={loading || !formName || !formBrand || !formCost || !formPricePublic || !formPricePromotional || formStock === ''}
-                  className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer disabled:opacity-50"
                 >
                   {loading ? (
                     <Loader2 className="h-4 w-4 animate-spin mx-auto" />

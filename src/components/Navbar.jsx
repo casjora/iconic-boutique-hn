@@ -2,12 +2,13 @@ import { useStore } from '../store';
 import { useNavigate } from 'react-router-dom';
 import { 
   ShoppingBag, Heart, User, LogOut, Settings, Barcode, 
-  TrendingUp, ClipboardList, Package, Sparkles, Home, Menu, X, Info 
+  TrendingUp, ClipboardList, Package, Sparkles, Home, Menu, X, Info,
+  Sun, Moon
 } from 'lucide-react';
 import { useState } from 'react';
 
 export default function Navbar() {
-  const { user, cart, logout, currentView, setView } = useStore();
+  const { user, cart, logout, currentView, setView, theme, toggleTheme } = useStore();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -15,7 +16,6 @@ export default function Navbar() {
 
   const isOwner = user?.role === 'owner';
   const isVendedor = user?.role === 'vendedor';
-  const hasVipPrice = !!user;
 
   const handleNav = (view) => {
     navigate('/' + view);
@@ -25,21 +25,21 @@ export default function Navbar() {
   const navItemClass = (view) => {
     const base = "inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ";
     if (currentView === view) {
-      return base + "bg-neutral-900 text-white shadow-sm";
+      return base + "bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950 shadow-sm";
     }
-    return base + "text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100";
+    return base + "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800";
   };
 
   const mobileNavItemClass = (view) => {
     const base = "flex items-center gap-2.5 px-4 py-3 text-sm font-bold rounded-xl transition-all cursor-pointer ";
     if (currentView === view) {
-      return base + "bg-neutral-900 text-white shadow";
+      return base + "bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950 shadow";
     }
-    return base + "text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50";
+    return base + "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-800";
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-neutral-200">
+    <header className="sticky top-0 z-40 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 transition-colors duration-200">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           
@@ -49,11 +49,11 @@ export default function Navbar() {
               onClick={() => handleNav('home')} 
               className="flex items-center gap-2 cursor-pointer outline-none group text-left"
             >
-              <div className="h-9 w-9 bg-neutral-950 text-white rounded-xl flex items-center justify-center font-display font-black text-sm tracking-tighter group-hover:scale-105 transition-transform shadow-md">
+              <div className="h-9 w-9 bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 rounded-xl flex items-center justify-center font-display font-black text-sm tracking-tighter group-hover:scale-105 transition-transform shadow-md">
                 IB
               </div>
               <div>
-                <h1 className="font-display font-black text-sm text-neutral-900 uppercase tracking-widest leading-none">
+                <h1 className="font-display font-black text-sm text-neutral-900 dark:text-neutral-100 uppercase tracking-widest leading-none">
                   Iconic Boutique
                 </h1>
                 <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest leading-none mt-0.5 block">Honduras</span>
@@ -113,19 +113,33 @@ export default function Navbar() {
 
           {/* Right actions */}
           <div className="flex items-center gap-2.5">
+            {/* Dark Mode Toggle Button */}
+            <button
+              onClick={toggleTheme}
+              className="p-2.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 hover:text-amber-500 dark:hover:text-amber-400 hover:border-amber-400 transition-all cursor-pointer outline-none active:scale-95 shadow-xs"
+              aria-label="Cambiar tema"
+              title={theme === 'dark' ? "Cambiar a Modo Claro" : "Cambiar a Modo Oscuro"}
+            >
+              {theme === 'dark' ? (
+                <Sun className="h-4.5 w-4.5 text-amber-400 animate-spin-slow" />
+              ) : (
+                <Moon className="h-4.5 w-4.5 text-neutral-600" />
+              )}
+            </button>
+
             {/* Cart Button */}
             <button
               onClick={() => handleNav('cart')}
               className={`relative p-2.5 rounded-xl border transition-all cursor-pointer outline-none ${
                 currentView === 'cart'
-                  ? 'bg-neutral-900 border-neutral-900 text-white shadow-sm'
-                  : 'bg-white border-neutral-200 text-neutral-500 hover:text-neutral-900'
+                  ? 'bg-neutral-900 border-neutral-900 text-white dark:bg-amber-400 dark:border-amber-400 dark:text-neutral-950 shadow-sm'
+                  : 'bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
               }`}
               aria-label="Ver carrito"
             >
               <ShoppingBag className="h-4.5 w-4.5" />
               {cartCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-black text-neutral-950 font-mono shadow border-2 border-white ring-1 ring-amber-500/20">
+                <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-black text-neutral-950 font-mono shadow border-2 border-white dark:border-neutral-900 ring-1 ring-amber-500/20">
                   {cartCount}
                 </span>
               )}
@@ -133,19 +147,19 @@ export default function Navbar() {
 
             {/* Login / user action area */}
             {user ? (
-              <div className="hidden sm:flex items-center gap-2 border border-neutral-200 bg-neutral-50/50 rounded-xl px-2.5 py-1.5">
+              <div className="hidden sm:flex items-center gap-2 border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 rounded-xl px-2.5 py-1.5">
                 <div className="text-left leading-none">
-                  <span className="text-[9px] font-bold text-neutral-400 block uppercase tracking-widest leading-none">
+                  <span className="text-[9px] font-bold text-neutral-400 dark:text-neutral-500 block uppercase tracking-widest leading-none">
                     {user.role === 'owner' ? '👑 Dueño' : (user.role === 'vendedor' ? '💼 Vendedor' : '🏷️ VIP')}
                   </span>
-                  <span className="text-[11px] font-bold text-neutral-800 block truncate max-w-[5rem] leading-none mt-0.5">
+                  <span className="text-[11px] font-bold text-neutral-800 dark:text-neutral-200 block truncate max-w-[5rem] leading-none mt-0.5">
                     {user.name}
                   </span>
                 </div>
                 <button
                   onClick={logout}
                   aria-label="Cerrar sesión"
-                  className="p-1.5 text-neutral-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                  className="p-1.5 text-neutral-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
                   title="Cerrar Sesión"
                 >
                   <LogOut className="h-4 w-4" />
@@ -154,9 +168,9 @@ export default function Navbar() {
             ) : (
               <button
                 onClick={() => handleNav('login')}
-                className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
+                className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
               >
-                <Sparkles className="h-3.5 w-3.5 text-amber-400 animate-pulse" />
+                <Sparkles className="h-3.5 w-3.5 text-amber-400 dark:text-neutral-950 animate-pulse" />
                 Ingresar
               </button>
             )}
@@ -164,7 +178,7 @@ export default function Navbar() {
             {/* Mobile Menu trigger */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 border border-neutral-200 text-neutral-500 hover:text-neutral-900 rounded-xl lg:hidden cursor-pointer active:scale-95 transition-transform"
+              className="p-2 border border-neutral-200 dark:border-neutral-800 text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 rounded-xl lg:hidden cursor-pointer active:scale-95 transition-transform"
               aria-label="Menú móvil"
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -176,7 +190,7 @@ export default function Navbar() {
 
       {/* Mobile drawer selection */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-neutral-200 bg-white p-4 space-y-3 shadow-lg max-h-[85vh] overflow-y-auto">
+        <div className="lg:hidden border-t border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 space-y-3 shadow-lg max-h-[85vh] overflow-y-auto">
           <nav className="flex flex-col gap-1">
             <button onClick={() => handleNav('home')} className={mobileNavItemClass('home')}>
               <Home className="h-4 w-4" /> Inicio
@@ -197,8 +211,8 @@ export default function Navbar() {
             )}
 
             {(isOwner || isVendedor) && (
-              <div className="border-t border-neutral-100 my-2 pt-2 space-y-1">
-                <span className="px-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest font-mono block mb-1">
+              <div className="border-t border-neutral-100 dark:border-neutral-800 my-2 pt-2 space-y-1">
+                <span className="px-4 text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest font-mono block mb-1">
                   Panel Administrativo
                 </span>
                 
@@ -229,15 +243,26 @@ export default function Navbar() {
             )}
           </nav>
 
-          {/* Mobile Login / User footer actions */}
-          <div className="border-t border-neutral-100 pt-3 flex flex-col gap-2">
+          {/* Mobile Login / Theme / User footer actions */}
+          <div className="border-t border-neutral-100 dark:border-neutral-800 pt-3 flex flex-col gap-2">
+            <button
+              onClick={toggleTheme}
+              className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-700 dark:text-neutral-300 text-xs font-bold"
+            >
+              <span className="flex items-center gap-2">
+                {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-neutral-600" />}
+                Modo {theme === 'dark' ? 'Oscuro Activado' : 'Claro Activado'}
+              </span>
+              <span className="text-[10px] font-mono text-neutral-400">Cambiar</span>
+            </button>
+
             {user ? (
-              <div className="flex items-center justify-between bg-neutral-50 rounded-xl p-3">
+              <div className="flex items-center justify-between bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-3 border border-neutral-200 dark:border-neutral-800">
                 <div className="text-left">
-                  <span className="text-[9px] font-bold text-neutral-400 block uppercase tracking-widest leading-none">
+                  <span className="text-[9px] font-bold text-neutral-400 dark:text-neutral-500 block uppercase tracking-widest leading-none">
                     {user.role === 'owner' ? '👑 Dueño' : (user.role === 'vendedor' ? '💼 Vendedor' : '🏷️ VIP')}
                   </span>
-                  <span className="text-sm font-bold text-neutral-800 block mt-0.5">
+                  <span className="text-sm font-bold text-neutral-800 dark:text-neutral-200 block mt-0.5">
                     {user.name}
                   </span>
                 </div>
@@ -246,7 +271,7 @@ export default function Navbar() {
                     logout();
                     setMobileMenuOpen(false);
                   }}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-50 border border-rose-100 text-rose-700 text-xs font-bold rounded-lg cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/50 text-rose-700 dark:text-rose-300 text-xs font-bold rounded-lg cursor-pointer"
                 >
                   <LogOut className="h-3.5 w-3.5" /> Salir
                 </button>
@@ -254,9 +279,9 @@ export default function Navbar() {
             ) : (
               <button
                 onClick={() => handleNav('login')}
-                className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-3 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl cursor-pointer"
+                className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-3 bg-neutral-900 dark:bg-amber-400 text-white dark:text-neutral-950 text-xs font-bold rounded-xl cursor-pointer shadow-sm"
               >
-                <Sparkles className="h-3.5 w-3.5 text-amber-400 animate-pulse" />
+                <Sparkles className="h-3.5 w-3.5 text-amber-400 dark:text-neutral-950 animate-pulse" />
                 Iniciar Sesión
               </button>
             )}
