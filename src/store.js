@@ -706,6 +706,15 @@ export const useStore = create((setOriginal, get) => {
           }))
         }));
 
+        const previousOrders = get().orders || [];
+        if (previousOrders.length > 0) {
+          const prevPendingIds = new Set(previousOrders.filter(o => o.status === 'pendiente').map(o => o.id));
+          const hasNewPending = mappedOrders.some(o => o.status === 'pendiente' && !prevPendingIds.has(o.id));
+          if (hasNewPending) {
+            set({ hasNewOrdersAlert: true });
+          }
+        }
+
         set({ orders: mappedOrders, loading: false });
       } catch (err) {
         set({ error: err.message, loading: false });
@@ -1323,6 +1332,16 @@ export const useStore = create((setOriginal, get) => {
 
           if (fallbackError) throw fallbackError;
           result = fallbackData || [];
+        }
+
+        const previousCustomers = get().customers || [];
+        if (previousCustomers.length > 0) {
+          const isPending = (c) => !c.role || c.role === 'pendiente' || c.role === 'usuario' || c.role === 'cliente';
+          const prevPendingIds = new Set(previousCustomers.filter(isPending).map(c => c.id));
+          const hasNewPending = result.some(c => isPending(c) && !prevPendingIds.has(c.id));
+          if (hasNewPending) {
+            set({ hasNewRegistrationsAlert: true });
+          }
         }
 
         set({ customers: result });

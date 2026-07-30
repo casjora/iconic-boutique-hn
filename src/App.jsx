@@ -17,7 +17,7 @@ import Orders from './pages/Orders';
 import Showroom from './pages/Showroom';
 import Customers from './pages/Customers';
 import AboutUs from './components/AboutUs';
-import { Loader2, ShieldAlert } from 'lucide-react';
+import { Loader2, ShieldAlert, ShoppingBag, Users, X, ExternalLink } from 'lucide-react';
 import ScrollToTop from './components/ScrollToTop';
 
 export default function App() {
@@ -26,7 +26,9 @@ export default function App() {
   const { 
     currentView, setView, restoreSession, fetchProducts, fetchOrders, 
     fetchTelegramConfig, checkingSession, user, initTheme, initRealtime,
-    fetchCustomers
+    fetchCustomers, hasNewOrdersAlert, hasNewRegistrationsAlert,
+    clearNewOrdersAlert, clearNewRegistrationsAlert,
+    orders, customers
   } = useStore();
 
   // Keep track of the last path we synchronized to prevent infinite routing loops
@@ -77,6 +79,9 @@ export default function App() {
 
     // Setup periodic polling of products and orders for real-time inventory updates
     const interval = setInterval(async () => {
+      // Only query if the document/tab is active to prevent unneeded database queries
+      if (document.hidden) return;
+
       await fetchProducts();
       await fetchOrders();
 
@@ -84,7 +89,7 @@ export default function App() {
       if (currentUser && (currentUser.role === 'owner' || currentUser.role === 'vendedor')) {
         await fetchCustomers();
       }
-    }, 45000); // Poll every 45s
+    }, 15000); // Poll every 15s (ultra responsive fallback to WebSockets)
 
     return () => clearInterval(interval);
   }, [restoreSession, fetchProducts, fetchOrders, fetchTelegramConfig, initRealtime, fetchCustomers]);
@@ -205,6 +210,10 @@ export default function App() {
     );
   }
 
+  const isStaff = user && (user.role === 'owner' || user.role === 'vendedor');
+  const pendingOrdersCount = (orders || []).filter(o => o.status === 'pendiente').length;
+  const pendingRegistrationsCount = (customers || []).filter(c => !c.role || c.role === 'pendiente' || c.role === 'usuario' || c.role === 'cliente').length;
+
   return (
     <div className="min-h-screen bg-neutral-50/50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 flex flex-col transition-colors duration-200">
       {/* Top sticky Navigation Header */}
@@ -217,6 +226,119 @@ export default function App() {
 
       {/* Floating Scroll To Top Button */}
       <ScrollToTop />
+
+      {/* Floating Notifications Toast Stack */}
+      {isStaff && (hasNewOrdersAlert || hasNewRegistrationsAlert) && (
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 max-w-sm w-[90vw] sm:w-full animate-bounce-short">
+          
+          {/* Order Toast */}
+          {hasNewOrdersAlert && pendingOrdersCount > 0 && (
+            <div className="bg-white dark:bg-neutral-900 border-l-4 border-rose-500 rounded-lg shadow-[0_10px_30px_rgba(244,63,94,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.5)] p-4 border border-neutral-100 dark:border-neutral-800 transition-all duration-300 relative overflow-hidden group">
+              {/* Glowing Background Glow */}
+              <div className="absolute inset-0 bg-gradient-to-r from-rose-500/5 to-transparent pointer-events-none" />
+              
+              <div className="flex gap-3">
+                <div className="flex-shrink-0">
+                  <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-20"></span>
+                    <ShoppingBag className="h-5 w-5 animate-pulse" />
+                  </span>
+                </div>
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                      <span className="inline-block w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                      Nuevo Pedido Recibido
+                    </h4>
+                    <button 
+                      onClick={clearNewOrdersAlert} 
+                      className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors"
+                      title="Cerrar notificación"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p className="text-xs font-bold text-neutral-800 dark:text-neutral-200 leading-snug">
+                    Se ha registrado una nueva orden. Hay <span className="text-rose-600 dark:text-rose-400 font-black font-mono text-sm">{pendingOrdersCount}</span> pedido(s) en espera de aprobación.
+                  </p>
+                  <div className="pt-2 flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setView('orders');
+                        clearNewOrdersAlert();
+                      }}
+                      className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-md transition-all flex items-center gap-1 shadow-sm"
+                    >
+                      Revisar Pedidos
+                      <ExternalLink className="h-3 w-3" />
+                    </button>
+                    <button
+                      onClick={clearNewOrdersAlert}
+                      className="text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200 font-bold text-[10px] uppercase tracking-wider px-2 py-1.5 rounded-md transition-all"
+                    >
+                      Ignorar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Registration Toast */}
+          {hasNewRegistrationsAlert && pendingRegistrationsCount > 0 && (
+            <div className="bg-white dark:bg-neutral-900 border-l-4 border-amber-500 rounded-lg shadow-[0_10px_30px_rgba(245,158,11,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.5)] p-4 border border-neutral-100 dark:border-neutral-800 transition-all duration-300 relative overflow-hidden group">
+              {/* Glowing Background Glow */}
+              <div className="absolute inset-0 bg-gradient-to-r from-amber-500/5 to-transparent pointer-events-none" />
+              
+              <div className="flex gap-3">
+                <div className="flex-shrink-0">
+                  <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-20"></span>
+                    <Users className="h-5 w-5 animate-pulse" />
+                  </span>
+                </div>
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                      <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+                      Nuevo Registro
+                    </h4>
+                    <button 
+                      onClick={clearNewRegistrationsAlert} 
+                      className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors"
+                      title="Cerrar notificación"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p className="text-xs font-bold text-neutral-800 dark:text-neutral-200 leading-snug">
+                    Un nuevo cliente se ha registrado. Hay <span className="text-amber-600 dark:text-amber-400 font-black font-mono text-sm">{pendingRegistrationsCount}</span> perfil(es) en espera de asignación de tarifa.
+                  </p>
+                  <div className="pt-2 flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setView('customers');
+                        clearNewRegistrationsAlert();
+                      }}
+                      className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-md transition-all flex items-center gap-1 shadow-sm"
+                    >
+                      Asignar Tarifas
+                      <ExternalLink className="h-3 w-3" />
+                    </button>
+                    <button
+                      onClick={clearNewRegistrationsAlert}
+                      className="text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200 font-bold text-[10px] uppercase tracking-wider px-2 py-1.5 rounded-md transition-all"
+                    >
+                      Ignorar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-800 py-8 print:hidden transition-colors duration-200">
