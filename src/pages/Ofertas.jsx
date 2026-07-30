@@ -96,7 +96,7 @@ export default function OfertasView() {
           Ofertas Especiales y Precios VIP
         </h2>
         <p className="text-xs text-neutral-500 mt-1">
-          Fragancias originales seleccionadas con tarifas promocionales exclusivas para nuestros socios y distribuidores en Honduras.
+          Fragancias originales seleccionadas con tarifas promocionales exclusivas para nuestros socios y clientes.
         </p>
       </div>
 
@@ -110,7 +110,7 @@ export default function OfertasView() {
             ¡Acceso Restringido a Tarifas VIP!
           </h3>
           <p className="text-xs text-neutral-600 leading-relaxed max-w-md mx-auto">
-            Actualmente puedes visualizar el catálogo de ofertas y comparar precios, pero debes registrarte o iniciar sesión para aplicar de forma automática estas tarifas VIP en tu cotización.
+            Actualmente puedes visualizar el catálogo de ofertas y comparar precios, pero debes registrarte o iniciar sesión para ver mas informacion.
           </p>
           <div className="flex justify-center gap-3">
             <Link
@@ -220,7 +220,7 @@ export default function OfertasView() {
               No se encontraron ofertas
             </h3>
             <p className="text-xs text-neutral-500 max-w-xs mx-auto leading-relaxed">
-              Prueba cambiando los criterios de búsqueda o limpiando los filtros activos para ver todo el catálogo VIP.
+              Prueba cambiando los criterios de búsqueda o limpiando los filtros activos para ver todo el catálogo.
             </p>
             <button
               onClick={handleResetFilters}

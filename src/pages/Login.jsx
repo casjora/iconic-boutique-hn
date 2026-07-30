@@ -107,12 +107,12 @@ export default function Login() {
                 <Key className="h-6 w-6 text-neutral-900 dark:text-amber-400" />
               </div>
               <h2 className="text-3xl font-black font-display text-neutral-900 dark:text-white tracking-tight">
-                {mode === 'signin' ? 'Acceso Privado' : 'Registro VIP'}
+                {mode === 'signin' ? 'Acceso Privado' : 'Registro'}
               </h2>
               <p className="text-sm text-neutral-500 dark:text-neutral-400 font-medium leading-relaxed max-w-xs mx-auto">
                 {mode === 'signin' 
-                  ? 'Ingresa tus credenciales autorizadas de Dueño, Vendedor o Cliente VIP.' 
-                  : 'Regístrate gratis para solicitar tu cuenta de cliente con precios de Detalle o Mayorista.'}
+                  ? 'Ingresa tus credenciales autorizadas de Dueño, Vendedor o Cliente.' 
+                  : 'Regístrate gratis para solicitar tu cuenta.'}
               </p>
             </div>
 
@@ -137,7 +137,7 @@ export default function Login() {
                     : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200'
                 }`}
               >
-                Crear Cuenta VIP
+                Crear Cuenta
               </button>
             </div>
 
@@ -299,7 +299,7 @@ export default function Login() {
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <span className="flex items-center gap-2">
-                    {mode === 'signin' ? 'Ingresar al Portal' : 'Completar Registro VIP'}
+                    {mode === 'signin' ? 'Ingresar al Portal' : 'Completar Registro'}
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </span>
                 )}

@@ -274,12 +274,7 @@ export default function Customers() {
       desc: 'Clientes minoristas estándar. Compran al detalle y ven precios sugeridos normales o con descuentos públicos de showroom.',
       color: 'bg-sky-100 dark:bg-sky-950/40 text-sky-800 dark:text-sky-400 border border-sky-200'
     },
-    {
-      name: 'Usuario / Cliente',
-      badge: '👤 Usuario / Cliente',
-      desc: 'Perfil VIP inicial para exploración rápida o autocreación. No asignado formalmente a tarifas especiales todavía.',
-      color: 'bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-300 border border-neutral-200'
-    }
+
   ];
 
   const filteredCustomers = customers.filter(c => {
@@ -428,7 +423,7 @@ export default function Customers() {
                 <option value="todos">Todos los Roles</option>
                 <option value="owner">Dueños / Owners</option>
                 <option value="vendedor">Vendedores</option>
-                <option value="mayorista">Mayoristas VIP</option>
+                <option value="mayorista">Mayoristas</option>
                 <option value="detalle">Ventas al Detalle</option>
                 <option value="usuario">Clientes / Usuarios</option>
               </select>

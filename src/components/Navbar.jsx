@@ -344,7 +344,7 @@ export default function Navbar() {
               <div className="flex items-center justify-between bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-3 border border-neutral-200 dark:border-neutral-800">
                 <div className="text-left">
                   <span className="text-[9px] font-bold text-neutral-400 dark:text-neutral-500 block uppercase tracking-widest leading-none">
-                    {user.role === 'owner' ? '👑 Dueño' : (user.role === 'vendedor' ? '💼 Vendedor' : '🏷️ VIP')}
+                    {user.role === 'owner' ? '👑 Dueño' : (user.role === 'vendedor' ? '💼 Vendedor' : (user.role === 'mayorista' ? '🏷️ Mayorista' :'🛒 Detalle'))}
                   </span>
                   <span className="text-sm font-bold text-neutral-800 dark:text-neutral-200 block mt-0.5">
                     {user.name}

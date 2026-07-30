@@ -655,7 +655,7 @@ export default function CatalogView({ favoritesOnly = false }) {
             <Award className="h-8 w-8 animate-bounce" />
           </div>
           <h3 className="font-display font-bold text-emerald-950 dark:text-emerald-300 text-lg">
-            ✓ Tarifa VIP de Distribuidor Activa
+            ✓ Tarifa Mayorista VIP Activa
           </h3>
           <p className="text-xs text-emerald-800 dark:text-emerald-200/80 max-w-md mx-auto">
             Estás autorizado para comprar al por mayor en Honduras. Se aplicará de forma automática el precio promocional en tu orden final.

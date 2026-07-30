@@ -82,7 +82,7 @@ export default async function handler(req, res) {
           `👤 *Cliente:* ${order.clientName}\n` +
           `📞 *Teléfono:* ${phoneLink}\n` +
           `🕒 *Fecha:* ${order.date}\n` +
-          `💼 *Precios:* ${hasVipPrice ? 'Promocional de Cliente VIP / Mayorista' : 'Público General'}\n` +
+          `💼 *Precios:* ${hasVipPrice ? 'Promocional de Cliente' : 'Público General'}\n` +
           `📍 *Orden ID:* \`${order.id}\`\n\n` +
           `📦 *Detalle de Perfumes:*\n${itemsText}\n\n` +
           `💵 *TOTAL COTIZADO:* *L. ${Number(order.total).toLocaleString()} HNL*\n\n` +
