@@ -142,7 +142,7 @@ export default function Home() {
         {categories.map((cat) => (
           <Link key={cat.name} to={cat.path} className="group relative aspect-square overflow-hidden rounded-3xl bg-neutral-100 border border-neutral-200 shadow-sm">
             <img src={cat.image} alt={cat.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-            <div className="absolute inset-0 flex items-end bg-gradient-to-t from-neutral-950/80 to-transparent p-6">
+            <div className="absolute inset-0 flex items-end gradient-to-t from-neutral-950/80 to-transparent p-6">
               <h3 className="font-display text-sm font-bold text-white uppercase tracking-wider">{cat.name}</h3>
             </div>
           </Link>
