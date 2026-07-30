@@ -1284,13 +1284,22 @@ export const useStore = create((setOriginal, get) => {
 
     fetchCustomers: async () => {
       try {
+        // Try fetching with email column in case it exists or was added
         const { data, error } = await supabase
+          .from('profiles')
+          .select('id, name, role, phone, address, created_at, email')
+          .order('created_at', { ascending: false });
+
+        if (!error) return data || [];
+
+        // Fallback without email column if it doesn't exist
+        const { data: fallbackData, error: fallbackError } = await supabase
           .from('profiles')
           .select('id, name, role, phone, address, created_at')
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
-        return data || [];
+        if (fallbackError) throw fallbackError;
+        return fallbackData || [];
       } catch (err) {
         console.error('Error fetching customers:', err);
         return [];
@@ -1312,25 +1321,93 @@ export const useStore = create((setOriginal, get) => {
       }
     },
 
-    createCustomerManually: async (name, role, phone, address) => {
+    createCustomerManually: async (name, role, phone, address, email) => {
       try {
         const uniqueId = 'manual-client-' + Math.random().toString(36).substring(2, 11);
+        
+        // Let's check if we can insert email, try first with email if email provided
+        const payload = {
+          id: uniqueId,
+          name,
+          role,
+          phone: phone || null,
+          address: address || null
+        };
+        
+        if (email) {
+          payload.email = email;
+        }
+
         const { data, error } = await supabase
           .from('profiles')
-          .insert({
-            id: uniqueId,
-            name,
-            role,
-            phone: phone || null,
-            address: address || null
-          })
+          .insert(payload)
           .select()
           .single();
 
-        if (error) throw error;
+        if (error) {
+          // If insert failed due to column "email", retry without email
+          if (error.message && error.message.includes('column "email"')) {
+            const { email: _, ...safePayload } = payload;
+            const { data: fallbackData, error: fallbackError } = await supabase
+              .from('profiles')
+              .insert(safePayload)
+              .select()
+              .single();
+            if (fallbackError) throw fallbackError;
+            return { success: true, data: fallbackData };
+          }
+          throw error;
+        }
         return { success: true, data };
       } catch (err) {
         console.error('Error creating customer manually:', err);
+        return { success: false, error: err.message };
+      }
+    },
+
+    deleteCustomer: async (profileId) => {
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', profileId);
+
+        if (error) throw error;
+        return { success: true };
+      } catch (err) {
+        console.error('Error deleting customer:', err);
+        return { success: false, error: err.message };
+      }
+    },
+
+    resendVerificationEmail: async (email) => {
+      try {
+        if (!email) throw new Error('El correo electrónico es requerido.');
+        const { error } = await supabase.auth.resend({
+          type: 'signup',
+          email: email,
+          options: {
+            emailRedirectTo: window.location.origin
+          }
+        });
+        if (error) throw error;
+        return { success: true };
+      } catch (err) {
+        console.error('Error resending verification email:', err);
+        return { success: false, error: err.message };
+      }
+    },
+
+    sendPasswordResetEmail: async (email) => {
+      try {
+        if (!email) throw new Error('El correo electrónico es requerido.');
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin + '/update-password'
+        });
+        if (error) throw error;
+        return { success: true };
+      } catch (err) {
+        console.error('Error sending password reset link:', err);
         return { success: false, error: err.message };
       }
     }

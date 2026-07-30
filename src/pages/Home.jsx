@@ -15,6 +15,8 @@ export default function Home() {
 
   // Dynamically compute category images from products curated in Showroom
   const categories = useMemo(() => {
+    const usedImages = new Set();
+
     const getCategoryImage = (catKey, defaultImage) => {
       const isSet = catKey.startsWith('estuches');
       const isMale = catKey.includes('caballero') || catKey === 'caballeros';
@@ -34,11 +36,18 @@ export default function Home() {
         if (isMale && !isProductMale) return false;
         if (isFemale && !isProductFemale) return false;
 
-        // Ensure the product has a valid image string
-        return p.image && p.image.startsWith('http');
+        // Ensure the product has a valid image string and has not been used already
+        if (!p.image_url || !p.image_url.startsWith('http')) return false;
+        if (usedImages.has(p.image_url)) return false;
+
+        return true;
       });
 
-      return match ? match.image : defaultImage;
+      if (match) {
+        usedImages.add(match.image_url);
+        return match.image_url;
+      }
+      return defaultImage;
     };
 
     return [

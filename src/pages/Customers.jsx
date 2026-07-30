@@ -3,12 +3,13 @@ import { useStore } from '../store';
 import { 
   User, UserPlus, Shield, Phone, MapPin, Search, Filter, 
   HelpCircle, Loader2, CheckCircle2, AlertTriangle, ShieldCheck,
-  ChevronRight, Sparkles
+  ChevronRight, Sparkles, Mail, Trash2, KeyRound, Send
 } from 'lucide-react';
 
 export default function Customers() {
   const { 
-    user: currentUser, fetchCustomers, updateCustomerRole, createCustomerManually 
+    user: currentUser, fetchCustomers, updateCustomerRole, createCustomerManually,
+    deleteCustomer, resendVerificationEmail, sendPasswordResetEmail
   } = useStore();
 
   const [customers, setCustomers] = useState([]);
@@ -22,12 +23,17 @@ export default function Customers() {
   const [newRole, setNewRole] = useState('detalle');
   const [newPhone, setNewPhone] = useState('');
   const [newAddress, setNewAddress] = useState('');
+  const [newEmail, setNewEmail] = useState('');
   const [creating, setCreating] = useState(false);
   const [createMsg, setCreateMsg] = useState({ type: '', text: '' });
 
   // Update states
   const [updatingId, setUpdatingId] = useState(null);
   const [statusMsg, setStatusMsg] = useState({ type: '', text: '' });
+  
+  // Async status states for deletions and emails
+  const [deletingId, setDeletingId] = useState(null);
+  const [sendingEmailId, setSendingEmailId] = useState(null);
 
   useEffect(() => {
     loadCustomers();
@@ -95,7 +101,7 @@ export default function Customers() {
       return;
     }
 
-    const result = await createCustomerManually(newName, newRole, newPhone, newAddress);
+    const result = await createCustomerManually(newName, newRole, newPhone, newAddress, newEmail);
     setCreating(false);
 
     if (result.success) {
@@ -103,6 +109,7 @@ export default function Customers() {
       setNewName('');
       setNewPhone('');
       setNewAddress('');
+      setNewEmail('');
       setNewRole('detalle');
       loadCustomers(); // Reload list
       setTimeout(() => {
@@ -111,6 +118,106 @@ export default function Customers() {
       }, 2000);
     } else {
       setCreateMsg({ type: 'error', text: result.error || 'Error al crear el cliente de forma manual.' });
+    }
+  };
+
+  const handleDeleteCustomer = async (customer) => {
+    const isSelf = customer.id === currentUser?.uid;
+    if (isSelf) {
+      setStatusMsg({ type: 'error', text: 'No puedes eliminar tu propio perfil.' });
+      setTimeout(() => setStatusMsg({ type: '', text: '' }), 5000);
+      return;
+    }
+
+    // Safety checks: Vendedores cannot delete administrative accounts
+    if (currentUser?.role === 'vendedor') {
+      const roleNormalized = String(customer.role || '').toLowerCase();
+      if (roleNormalized === 'owner' || roleNormalized === 'dueño' || roleNormalized === 'vendedor') {
+        setStatusMsg({ type: 'error', text: 'Los vendedores no pueden eliminar perfiles administrativos.' });
+        setTimeout(() => setStatusMsg({ type: '', text: '' }), 5000);
+        return;
+      }
+    }
+
+    const isConfirmed = window.confirm(`¿Estás seguro que deseas eliminar permanentemente al cliente "${customer.name || 'este cliente'}"?`);
+    if (!isConfirmed) return;
+
+    setDeletingId(customer.id);
+    setStatusMsg({ type: '', text: '' });
+
+    const result = await deleteCustomer(customer.id);
+    setDeletingId(null);
+
+    if (result.success) {
+      setStatusMsg({ type: 'success', text: `Cliente "${customer.name}" eliminado exitosamente de la base de datos.` });
+      setCustomers(prev => prev.filter(c => c.id !== customer.id));
+      setTimeout(() => setStatusMsg({ type: '', text: '' }), 4000);
+    } else {
+      setStatusMsg({ 
+        type: 'error', 
+        text: result.error || 'Error al eliminar de Supabase. Esto puede ocurrir si el cliente tiene pedidos activos o debido a políticas de RLS.' 
+      });
+      setTimeout(() => setStatusMsg({ type: '', text: '' }), 6000);
+    }
+  };
+
+  const handleResendVerification = async (customer) => {
+    let email = customer.email;
+    if (!email && customer.id && customer.id.includes('@')) {
+      email = customer.id;
+    }
+
+    if (!email) {
+      const inputEmail = window.prompt(`Ingresa el correo electrónico de "${customer.name}" para reenviar la confirmación de cuenta:`);
+      if (!inputEmail) return;
+      email = inputEmail.trim();
+    }
+
+    setSendingEmailId(customer.id);
+    setStatusMsg({ type: '', text: '' });
+
+    const result = await resendVerificationEmail(email);
+    setSendingEmailId(null);
+
+    if (result.success) {
+      setStatusMsg({ type: 'success', text: `Correo de verificación reenviado exitosamente a: ${email}` });
+      setTimeout(() => setStatusMsg({ type: '', text: '' }), 5000);
+    } else {
+      setStatusMsg({ 
+        type: 'error', 
+        text: result.error || `Error al enviar correo de verificación. Verifica que ${email} sea un correo válido.` 
+      });
+      setTimeout(() => setStatusMsg({ type: '', text: '' }), 6000);
+    }
+  };
+
+  const handleSendPasswordReset = async (customer) => {
+    let email = customer.email;
+    if (!email && customer.id && customer.id.includes('@')) {
+      email = customer.id;
+    }
+
+    if (!email) {
+      const inputEmail = window.prompt(`Ingresa el correo electrónico de "${customer.name}" para enviar el enlace de recuperación de contraseña:`);
+      if (!inputEmail) return;
+      email = inputEmail.trim();
+    }
+
+    setSendingEmailId(customer.id);
+    setStatusMsg({ type: '', text: '' });
+
+    const result = await sendPasswordResetEmail(email);
+    setSendingEmailId(null);
+
+    if (result.success) {
+      setStatusMsg({ type: 'success', text: `Enlace de restablecimiento de contraseña enviado exitosamente a: ${email}` });
+      setTimeout(() => setStatusMsg({ type: '', text: '' }), 5000);
+    } else {
+      setStatusMsg({ 
+        type: 'error', 
+        text: result.error || `Error al enviar correo de restablecimiento. Verifica que ${email} esté registrado.` 
+      });
+      setTimeout(() => setStatusMsg({ type: '', text: '' }), 6000);
     }
   };
 
@@ -324,7 +431,8 @@ export default function Customers() {
                       <th className="py-4.5 px-6">Cliente / Perfil</th>
                       <th className="py-4.5 px-6">Contacto (WhatsApp)</th>
                       <th className="py-4.5 px-6">Dirección de Envío</th>
-                      <th className="py-4.5 px-6 text-right">Acción / Tipo de Tarifa</th>
+                      <th className="py-4.5 px-6">Tipo de Tarifa / Rol</th>
+                      <th className="py-4.5 px-6 text-right">Gestión de Cuenta</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
@@ -359,6 +467,11 @@ export default function Customers() {
                             <div className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono font-medium tracking-tight">
                               ID: {customer.id}
                             </div>
+                            {customer.email && (
+                              <div className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">
+                                {customer.email}
+                              </div>
+                            )}
                           </td>
                           <td className="py-4 px-6">
                             {customer.phone ? (
@@ -385,7 +498,7 @@ export default function Customers() {
                               <span className="text-neutral-400 dark:text-neutral-500 italic">No registrada</span>
                             )}
                           </td>
-                          <td className="py-4 px-6 text-right">
+                          <td className="py-4 px-6">
                             {updatingId === customer.id ? (
                               <div className="inline-flex items-center gap-1.5 text-neutral-400 text-[11px] font-bold">
                                 <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500" />
@@ -414,6 +527,58 @@ export default function Customers() {
                                   (customer.role === 'mayorista' ? '🏷️ Mayorista VIP' : '🛒 Detalle'))}
                               </span>
                             )}
+                          </td>
+                          <td className="py-4 px-6 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {/* Send Verification / Reset buttons */}
+                              {((customer.email || (customer.id && customer.id.includes('@'))) && !isSelf) && (
+                                <>
+                                  <button
+                                    onClick={() => handleResendVerification(customer)}
+                                    disabled={sendingEmailId === customer.id}
+                                    title="Reenviar correo de verificación"
+                                    className="p-1.5 text-neutral-500 hover:text-amber-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer outline-none disabled:opacity-50"
+                                  >
+                                    <Mail className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleSendPasswordReset(customer)}
+                                    disabled={sendingEmailId === customer.id}
+                                    title="Enviar enlace de restablecimiento de contraseña"
+                                    className="p-1.5 text-neutral-500 hover:text-indigo-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer outline-none disabled:opacity-50"
+                                  >
+                                    <KeyRound className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              )}
+
+                              {/* Manual prompts if they don't have email but are not manual-client */}
+                              {(!customer.email && !(customer.id && customer.id.includes('@')) && !isSelf && !customer.id.startsWith('manual-client-')) && (
+                                <button
+                                  onClick={() => handleSendPasswordReset(customer)}
+                                  title="Enviar restablecimiento (solicitará correo)"
+                                  className="p-1.5 text-neutral-400 hover:text-indigo-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer outline-none"
+                                >
+                                  <KeyRound className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+
+                              {/* Delete button (cannot delete yourself, sellers cannot delete owners/sellers) */}
+                              {!isSelf && (
+                                <button
+                                  onClick={() => handleDeleteCustomer(customer)}
+                                  disabled={deletingId === customer.id}
+                                  title="Eliminar Cliente"
+                                  className="p-1.5 text-neutral-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-colors cursor-pointer outline-none disabled:opacity-50"
+                                >
+                                  {deletingId === customer.id ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin text-rose-500" />
+                                  ) : (
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  )}
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -505,6 +670,17 @@ export default function Customers() {
                     )}
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest block mb-2">Correo Electrónico (Opcional)</label>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-xs outline-none focus:ring-1 focus:ring-neutral-900 dark:focus:ring-amber-400 text-neutral-800 dark:text-neutral-100"
+                  placeholder="Ej. maria@correo.com"
+                />
               </div>
 
               <div>
