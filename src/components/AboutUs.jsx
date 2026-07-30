@@ -45,10 +45,10 @@ export default function AboutUs() {
             
             <div className="text-xs text-neutral-600 space-y-3 leading-relaxed">
               <p>
-                <strong>Iconic Boutique HN</strong> se fundó con la clara misión de brindar a los hondureños acceso directo a fragancias 100% originales de diseñador. Comenzamos como un emprendimiento digital apasionado por la perfumería de alta gama, motivados por la falta de transparencia en la autenticidad y los altos costos del mercado local.
+                <strong>Iconic Boutique HN</strong> comenzó operaciones en 2019 con el objetivo de proveer perfumería 100% original a los mejores precios en Honduras.
               </p>
               <p>
-                Con el tiempo, gracias a la lealtad y recomendación de nuestros distinguidos clientes, crecimos hasta consolidarnos como un referente nacional. Nos enfocamos en ofrecer una experiencia de compra confiable, transparente y profesional, destacando nuestra especialidad en precios competitivos para <strong>mayoristas y distribuidores</strong> en todo Honduras.
+                Gracias a la fidelidad de nuestros muy estimados clientes seguimos haciéndolo. Y deseamos ser siempre <strong>su mejor y primera opción.</strong>
               </p>
             </div>
           </div>

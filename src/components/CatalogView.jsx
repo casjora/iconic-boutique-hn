@@ -632,10 +632,10 @@ export default function CatalogView({ favoritesOnly = false }) {
             <Sparkles className="h-8 w-8 animate-pulse" />
           </div>
           <h3 className="font-display font-black text-neutral-900 dark:text-neutral-100 text-lg uppercase tracking-tight">
-            ¿Quieres Acceder a Tarifas de Distribuidor?
+            ¿Quieres ver mas?
           </h3>
           <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed max-w-md mx-auto font-medium">
-            Registra una cuenta de forma completamente gratuita en segundos para activar descuentos adicionales por volumen y precios especiales en todas tus órdenes.
+            Registra una cuenta de forma completamente gratuita en segundos para conocer nuestros productos.
           </p>
           <div className="flex justify-center">
             <Link

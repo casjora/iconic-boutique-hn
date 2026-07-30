@@ -917,7 +917,7 @@ export default function Dashboard() {
           {/* Top Wholesale buyers / loyalty list */}
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm space-y-4">
             <h3 className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-xs sm:text-sm border-b border-neutral-100 dark:border-neutral-800 pb-3 flex items-center gap-2">
-              <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" /> Top Distribuidores y Clientes del Período
+              <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" /> Top Clientes del Período
             </h3>
 
             {topCustomers.length === 0 ? (
