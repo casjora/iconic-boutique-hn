@@ -103,38 +103,46 @@ export default function Navbar() {
 
                   <button 
                     onClick={() => handleNav('orders')} 
-                    className={`${navItemClass('orders')} relative`}
+                    className={`${navItemClass('orders')} relative group/nav`}
                   >
-                    <ClipboardList className="h-3.5 w-3.5" /> 
+                    <ClipboardList className={`h-3.5 w-3.5 transition-transform group-hover/nav:scale-110 ${hasNewOrdersAlert ? 'text-rose-500 dark:text-rose-400 animate-bounce' : ''}`} /> 
                     <span>Pedidos</span>
                     {pendingOrdersCount > 0 && (
-                      <span className={`ml-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-black tracking-tight ${hasNewOrdersAlert ? 'bg-rose-600 text-white animate-bounce ring-4 ring-rose-500/20 dark:ring-rose-500/40 scale-110 shadow-md' : 'bg-neutral-200 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200'}`}>
+                      <span className={`ml-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black tracking-tight transition-all duration-300 ${
+                        hasNewOrdersAlert 
+                          ? 'bg-gradient-to-r from-red-500 via-rose-500 to-pink-600 text-white scale-110 shadow-[0_0_12px_rgba(244,63,94,0.8)] animate-pulse ring-2 ring-rose-400/50' 
+                          : 'bg-neutral-100 text-neutral-800 border border-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700'
+                      }`}>
                         {pendingOrdersCount}
                       </span>
                     )}
                     {hasNewOrdersAlert && (
-                      <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5">
+                      <span className="absolute -top-1 -right-1 flex h-3 w-3">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-rose-600"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500 shadow-sm"></span>
                       </span>
                     )}
                   </button>
 
                   <button 
                     onClick={() => handleNav('customers')} 
-                    className={`${navItemClass('customers')} relative`}
+                    className={`${navItemClass('customers')} relative group/nav`}
                   >
-                    <User className="h-3.5 w-3.5" /> 
+                    <User className={`h-3.5 w-3.5 transition-transform group-hover/nav:scale-110 ${hasNewRegistrationsAlert ? 'text-amber-500 dark:text-amber-400 animate-bounce' : ''}`} /> 
                     <span>Clientes</span>
                     {pendingRegistrationsCount > 0 && (
-                      <span className={`ml-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-black tracking-tight ${hasNewRegistrationsAlert ? 'bg-rose-600 text-white animate-bounce ring-4 ring-rose-500/20 dark:ring-rose-500/40 scale-110 shadow-md' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400'}`}>
+                      <span className={`ml-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black tracking-tight transition-all duration-300 ${
+                        hasNewRegistrationsAlert 
+                          ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white scale-110 shadow-[0_0_12px_rgba(245,158,11,0.8)] animate-pulse ring-2 ring-amber-400/50' 
+                          : 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/30 dark:border-amber-900/30'
+                      }`}>
                         {pendingRegistrationsCount}
                       </span>
                     )}
                     {hasNewRegistrationsAlert && (
-                      <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-rose-600"></span>
+                      <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500 shadow-sm"></span>
                       </span>
                     )}
                   </button>
@@ -283,10 +291,14 @@ export default function Navbar() {
                   className={`${mobileNavItemClass('orders')} relative w-full text-left flex items-center justify-between`}
                 >
                   <span className="flex items-center gap-2.5">
-                    <ClipboardList className="h-4 w-4" /> Pedidos y Ventas
+                    <ClipboardList className={`h-4 w-4 ${hasNewOrdersAlert ? 'text-rose-500 dark:text-rose-400 animate-pulse' : ''}`} /> Pedidos y Ventas
                   </span>
                   {pendingOrdersCount > 0 && (
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-black ${hasNewOrdersAlert ? 'bg-rose-600 text-white animate-bounce ring-4 ring-rose-500/20' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400'}`}>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black transition-all duration-300 ${
+                      hasNewOrdersAlert 
+                        ? 'bg-gradient-to-r from-red-500 via-rose-500 to-pink-600 text-white scale-110 shadow-[0_0_12px_rgba(244,63,94,0.8)] animate-pulse ring-2 ring-rose-400/50' 
+                        : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700'
+                    }`}>
                       {pendingOrdersCount}
                     </span>
                   )}
@@ -297,10 +309,14 @@ export default function Navbar() {
                   className={`${mobileNavItemClass('customers')} relative w-full text-left flex items-center justify-between`}
                 >
                   <span className="flex items-center gap-2.5">
-                    <User className="h-4 w-4" /> Gestión Clientes
+                    <User className={`h-4 w-4 ${hasNewRegistrationsAlert ? 'text-amber-500 dark:text-amber-400 animate-pulse' : ''}`} /> Gestión Clientes
                   </span>
                   {pendingRegistrationsCount > 0 && (
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-black ${hasNewRegistrationsAlert ? 'bg-rose-600 text-white animate-bounce ring-4 ring-rose-500/20' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400'}`}>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black transition-all duration-300 ${
+                      hasNewRegistrationsAlert 
+                        ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white scale-110 shadow-[0_0_12px_rgba(245,158,11,0.8)] animate-pulse ring-2 ring-amber-400/50' 
+                        : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700'
+                    }`}>
                       {pendingRegistrationsCount}
                     </span>
                   )}
@@ -344,7 +360,7 @@ export default function Navbar() {
               <div className="flex items-center justify-between bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-3 border border-neutral-200 dark:border-neutral-800">
                 <div className="text-left">
                   <span className="text-[9px] font-bold text-neutral-400 dark:text-neutral-500 block uppercase tracking-widest leading-none">
-                    {user.role === 'owner' ? '👑 Dueño' : (user.role === 'vendedor' ? '💼 Vendedor' : (user.role === 'mayorista' ? '🏷️ Mayorista' :'🛒 Detalle'))}
+                    {user.role === 'owner' ? '👑 Dueño' : (user.role === 'vendedor' ? '💼 Vendedor' : '🏷️ VIP')}
                   </span>
                   <span className="text-sm font-bold text-neutral-800 dark:text-neutral-200 block mt-0.5">
                     {user.name}
