@@ -322,7 +322,7 @@ export const useStore = create((setOriginal, get) => {
           email = `${email.toLowerCase()}@iconicboutique.hn`;
         }
 
-        const roleToWrite = 'pendiente';
+        const roleToWrite = 'usuario';
 
         const { data, error } = await supabase.auth.signUp({
           email,

@@ -479,7 +479,7 @@ export default function Customers() {
                         badgeStyle = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/40';
                       } else if (roleNormalized === 'detalle') {
                         badgeStyle = 'bg-sky-100 text-sky-800 dark:bg-sky-950/40 dark:text-sky-400 border border-sky-200/40';
-                      } else if (roleNormalized === 'pendiente') {
+                      } else if (roleNormalized === 'pendiente' || roleNormalized === 'usuario' || roleNormalized === 'cliente' || !roleNormalized) {
                         badgeStyle = 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200/40 animate-pulse';
                       }
 
@@ -549,11 +549,14 @@ export default function Customers() {
                               </div>
                             ) : editable ? (
                               <select
-                                value={(customer.role === 'dueño' || customer.role === 'owner') ? 'owner' : (customer.role || 'pendiente')}
+                                value={(customer.role === 'dueño' || customer.role === 'owner') ? 'owner' : 
+                                       (customer.role === 'vendedor' ? 'vendedor' : 
+                                        (customer.role === 'mayorista' ? 'mayorista' : 
+                                         (customer.role === 'detalle' ? 'detalle' : 'pendiente')))}
                                 onChange={(e) => handleRoleChange(customer.id, customer.role, e.target.value)}
                                 className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-1.5 text-xs font-bold text-neutral-800 dark:text-neutral-200 outline-none cursor-pointer focus:ring-1 focus:ring-neutral-900"
                               >
-                                {(customer.role === 'pendiente' || !customer.role) && (
+                                {(customer.role === 'pendiente' || customer.role === 'usuario' || customer.role === 'cliente' || !customer.role) && (
                                   <option value="pendiente" disabled>⏳ Pendiente</option>
                                 )}
                                 <option value="detalle">Tarifa Detalle</option>
@@ -570,7 +573,7 @@ export default function Customers() {
                                 {customer.role === 'owner' || customer.role === 'dueño' ? '👑 Dueño' : 
                                  (customer.role === 'vendedor' ? '💼 Vendedor' : 
                                   (customer.role === 'mayorista' ? '🏷️ Mayorista VIP' : 
-                                   (customer.role === 'pendiente' ? '⏳ Pendiente' : '🛒 Detalle')))}
+                                   (customer.role === 'pendiente' || customer.role === 'usuario' || customer.role === 'cliente' || !customer.role ? '⏳ Pendiente' : '🛒 Detalle')))}
                               </span>
                             )}
                           </td>
