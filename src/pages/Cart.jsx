@@ -106,7 +106,7 @@ export default function CartView() {
                 setSentOrder(null);
                 setName(user?.name || '');
                 setPhone('');
-                navigate('/catalog');
+                navigate('/home');
               }}
               className="w-full py-3 px-4 bg-white hover:bg-neutral-50 text-neutral-700 font-bold rounded-xl text-xs border border-neutral-200 transition-colors cursor-pointer active:scale-95"
             >
@@ -128,7 +128,7 @@ export default function CartView() {
         <div className="space-y-2">
           <h2 className="font-display text-2xl font-black text-neutral-900 tracking-tight">Tu Carrito de Cotización está vacío</h2>
           <p className="text-xs text-neutral-500 leading-relaxed">
-            Explora nuestro catálogo exclusivo de fragancias originales y añade perfumes para generar tu cotización o cotizar precios mayoristas VIP.
+            Explora nuestro catálogo exclusivo de fragancias originales y añade perfumes para generar tu cotización.
           </p>
         </div>
         <Link
@@ -248,7 +248,7 @@ export default function CartView() {
             <div className="flex justify-between text-neutral-500">
               <span>Tarifa Aplicada:</span>
               <span className="font-bold text-neutral-800">
-                {hasVipPrice ? 'VIP Mayorista' : 'Público General'}
+                {hasVipPrice ? 'Mayorista' : 'Público General'}
               </span>
             </div>
             <div className="flex justify-between border-t border-neutral-100 pt-3 text-sm">
@@ -259,7 +259,7 @@ export default function CartView() {
 
           {!hasVipPrice && (
             <div className="p-3.5 bg-indigo-50 border border-indigo-100 rounded-2xl text-[11px] text-indigo-800 leading-relaxed font-semibold text-left">
-              ✨ <strong className="text-indigo-950">¿Eres cliente mayorista?</strong> Inicia sesión o regístrate para activar de forma automática la tarifa <strong className="text-indigo-950">VIP Mayorista</strong> en todo el catálogo de perfumes en Honduras.
+              ✨ <strong className="text-indigo-950">¿Eres cliente mayorista?</strong> Inicia sesión para activar de forma automática la tarifa <strong className="text-indigo-950">Mayorista</strong> en todo el catálogo de perfumes en Honduras.
             </div>
           )}
 

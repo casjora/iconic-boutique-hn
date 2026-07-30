@@ -6,7 +6,6 @@ import PerfumeCard from './PerfumeCard';
 import { Percent, Award, Heart, Sparkles, Search, SlidersHorizontal, RefreshCw, Flame, Download, FileDown, FileSpreadsheet, FileText, X, Loader2 } from 'lucide-react';
 import { isProductSet, getProductPromoDiscount } from '../utils/productHelper';
 import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
 export default function CatalogView({ favoritesOnly = false }) {
@@ -102,170 +101,292 @@ export default function CatalogView({ favoritesOnly = false }) {
         const pageWidth = doc.internal.pageSize.getWidth();
         const pageHeight = doc.internal.pageSize.getHeight();
 
-        // Load images if requested
-        const itemsWithImages = [];
+        const drawHeader = (pageNum) => {
+          doc.setFillColor(17, 24, 39);
+          doc.rect(0, 0, pageWidth, 14, 'F');
+          
+          doc.setTextColor(255, 255, 255);
+          doc.setFont('Helvetica', 'bold');
+          doc.setFontSize(8);
+          doc.text('INVENTARIO DE PERFUMERÍA', 12, 9);
+          
+          const today = new Date().toLocaleDateString('es-HN', { year: 'numeric', month: 'long', day: 'numeric' });
+          doc.text(today.toUpperCase(), pageWidth - 12, 9, { align: 'right' });
+        };
+        
+        const drawFooter = (pageNum) => {
+          doc.setFontSize(7);
+          doc.setTextColor(150, 150, 150);
+          doc.setFont('Helvetica', 'normal');
+          doc.text(`Inventario de Perfumería  |  Pág. ${pageNum}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+        };
+
         if (includeImages) {
+          // Pre-load image URLs in parallel
+          const loadedImages = [];
           for (let i = 0; i < filteredProducts.length; i++) {
             const p = filteredProducts[i];
             setExportProgress(prev => ({ ...prev, current: i + 1 }));
-            
             let base64 = null;
             if (p.image_url) {
               base64 = await loadImageBase64(p.image_url);
             }
-            itemsWithImages.push({ ...p, imageBase64: base64 });
+            loadedImages.push(base64);
           }
+
+          let currentPage = 1;
+          drawHeader(currentPage);
+
+          filteredProducts.forEach((p, idx) => {
+            const posOnPage = idx % 9;
+            if (idx > 0 && posOnPage === 0) {
+              drawFooter(currentPage);
+              doc.addPage();
+              currentPage++;
+              drawHeader(currentPage);
+            }
+
+            const col = posOnPage % 3;
+            const row = Math.floor(posOnPage / 3);
+
+            const cardW = 58;
+            const cardH = 78;
+            const gapX = 6;
+            const gapY = 6;
+            const startX = 12 + col * (cardW + gapX);
+            const startY = 22 + row * (cardH + gapY);
+
+            // Outer card border
+            doc.setDrawColor(229, 231, 235);
+            doc.setFillColor(255, 255, 255);
+            doc.roundedRect(startX, startY, cardW, cardH, 2.5, 2.5, 'FD');
+
+            // Image box
+            const imgW = 46;
+            const imgH = 34;
+            const imgX = startX + (cardW - imgW) / 2;
+            const imgY = startY + 3;
+
+            const base64Img = loadedImages[idx];
+            if (base64Img) {
+              try {
+                doc.addImage(base64Img, 'JPEG', imgX, imgY, imgW, imgH);
+              } catch (e) {
+                doc.setFillColor(243, 244, 246);
+                doc.rect(imgX, imgY, imgW, imgH, 'F');
+                doc.setTextColor(156, 163, 175);
+                doc.setFontSize(7);
+                doc.text('Perfumería', imgX + imgW / 2, imgY + imgH / 2, { align: 'center' });
+              }
+            } else {
+              doc.setFillColor(243, 244, 246);
+              doc.rect(imgX, imgY, imgW, imgH, 'F');
+              doc.setTextColor(156, 163, 175);
+              doc.setFontSize(7);
+              doc.text('Perfumería', imgX + imgW / 2, imgY + imgH / 2, { align: 'center' });
+            }
+
+            // Brand
+            doc.setTextColor(156, 163, 175);
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(6.5);
+            const brandTxt = (p.brand || 'GENÉRICO').toUpperCase();
+            doc.text(brandTxt.substring(0, 26), startX + 4, startY + 41);
+
+            // Name & Presentation combined
+            doc.setTextColor(17, 24, 39);
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(7.5);
+            const fullName = `${p.name || ''}${p.size ? ' (' + p.size + ')' : ''}`;
+            const splitName = doc.splitTextToSize(fullName, cardW - 8);
+            const nameLines = splitName.slice(0, 2);
+            doc.text(nameLines, startX + 4, startY + 45.5);
+
+            // Pricing block
+            const priceY = startY + 56;
+            doc.setFontSize(7);
+
+            const origPublicPrice = p.pricePublic || 0;
+
+            if (isMayorista) {
+              const vipPrice = p.pricePromotional || 0;
+              doc.setTextColor(107, 114, 128);
+              doc.setFont('Helvetica', 'normal');
+              doc.text(`P. Sugerido: L. ${origPublicPrice.toLocaleString()}`, startX + 4, priceY);
+
+              doc.setTextColor(16, 185, 129); // Emerald
+              doc.setFont('Helvetica', 'bold');
+              doc.text(`P. Mayoreo: L. ${vipPrice.toLocaleString()}`, startX + 4, priceY + 4.5);
+            } else {
+              const publicDiscountPct = p.publicDiscount || 0;
+              const promoDiscountPct = getProductPromoDiscount(p) || 0;
+              const effectiveDiscountPct = Math.max(publicDiscountPct, promoDiscountPct);
+              const hasDiscount = effectiveDiscountPct > 0;
+              const rawDiscountedPrice = hasDiscount ? Math.round(origPublicPrice * (1 - effectiveDiscountPct / 100)) : origPublicPrice;
+              const finalPublicPrice = Math.max(rawDiscountedPrice, p.pricePromotional || 0);
+
+              if (hasDiscount) {
+                doc.setTextColor(156, 163, 175);
+                doc.setFont('Helvetica', 'normal');
+                doc.text(`Reg: L. ${origPublicPrice.toLocaleString()}`, startX + 4, priceY);
+
+                doc.setTextColor(220, 38, 38);
+                doc.setFont('Helvetica', 'bold');
+                doc.text(`Oferta: L. ${finalPublicPrice.toLocaleString()} (-${effectiveDiscountPct}%)`, startX + 4, priceY + 4.5);
+              } else {
+                doc.setTextColor(31, 41, 55);
+                doc.setFont('Helvetica', 'bold');
+                doc.text(`Precio: L. ${origPublicPrice.toLocaleString()}`, startX + 4, priceY);
+              }
+            }
+
+            // Category & Stock Label
+            doc.setTextColor(107, 114, 128);
+            doc.setFont('Helvetica', 'normal');
+            doc.setFontSize(6);
+            const catLabel = p.category === 'Masculino' ? 'Caballeros' : p.category === 'Unisex' ? 'Unisex' : 'Damas';
+            doc.text(`Categoría: ${catLabel}`, startX + 4, startY + 74);
+
+            const stockTxt = p.stock > 0 ? `Stock: ${p.stock} u.` : 'Agotado';
+            doc.setFont('Helvetica', 'bold');
+            if (p.stock > 0) {
+              doc.setTextColor(31, 41, 55);
+            } else {
+              doc.setTextColor(220, 38, 38);
+            }
+            doc.text(stockTxt, startX + cardW - 4, startY + 74, { align: 'right' });
+          });
+
+          drawFooter(currentPage);
         } else {
-          itemsWithImages.push(...filteredProducts);
-        }
+          // Table View without autoTable
+          let y = 25;
+          let pageNum = 1;
+          drawHeader(pageNum);
 
-        // Build headers
-        const headers = isMayorista 
-          ? (includeImages ? ['Imagen', 'Fragancia', 'Categoría', 'Stock', 'Precio Sugerido', 'Precio Mayoreo'] : ['Fragancia', 'Categoría', 'Stock', 'Precio Sugerido', 'Precio Mayoreo'])
-          : (includeImages ? ['Imagen', 'Fragancia', 'Categoría', 'Stock', 'Precio Detalle', 'Precio Oferta'] : ['Fragancia', 'Categoría', 'Stock', 'Precio Detalle', 'Precio Oferta']);
-
-        // Build rows
-        const rows = itemsWithImages.map((p) => {
-          const fraganciaText = `${p.brand.toUpperCase()}\n${p.name} - ${p.size}`;
-          const stockText = p.stock > 0 ? `${p.stock} uds` : 'Agotado';
-          
-          if (isMayorista) {
-            const rowData = [];
-            if (includeImages) {
-              rowData.push(""); // Image column placeholder
-            }
-            rowData.push(fraganciaText);
-            rowData.push(p.category || '');
-            rowData.push(stockText);
-            rowData.push(`L. ${p.pricePublic.toLocaleString()}`);
-            rowData.push(`L. ${p.pricePromotional.toLocaleString()}`);
-            return rowData;
-          } else {
-            const publicDiscountPct = p.publicDiscount || 0;
-            const promoDiscountPct = getProductPromoDiscount(p);
-            const effectiveDiscountPct = Math.max(publicDiscountPct, promoDiscountPct);
-            const hasDiscount = effectiveDiscountPct > 0;
-            const rawDiscountedPrice = hasDiscount ? Math.round(p.pricePublic * (1 - effectiveDiscountPct / 100)) : p.pricePublic;
-            const finalPublicPrice = Math.max(rawDiscountedPrice, p.pricePromotional || 0);
-
-            const priceDetalleText = `L. ${p.pricePublic.toLocaleString()}`;
-            const pricePromoText = hasDiscount ? `L. ${finalPublicPrice.toLocaleString()} (-${effectiveDiscountPct}%)` : 'Sin Oferta';
-
-            const rowData = [];
-            if (includeImages) {
-              rowData.push(""); // Image column placeholder
-            }
-            rowData.push(fraganciaText);
-            rowData.push(p.category || '');
-            rowData.push(stockText);
-            rowData.push(priceDetalleText);
-            rowData.push(pricePromoText);
-            return rowData;
-          }
-        });
-
-        // Generate Table
-        autoTable(doc, {
-  head: [headers],
-  body: rows,
-  startY: 32,
-  theme: 'striped',
-  headStyles: {
-    fillColor: [17, 24, 39], // Slate 900
-    textColor: [255, 255, 255],
-    fontStyle: 'bold',
-    fontSize: 9,
-    halign: 'left',
-    valign: 'middle'
-  },
-  columnStyles: includeImages ? {
-    0: { cellWidth: 18, minCellHeight: 20 }, // Image
-    1: { cellWidth: 79, fontSize: 8 },       // Fragancia
-    2: { cellWidth: 20, fontSize: 8 },       // Categoría
-    3: { cellWidth: 18, fontSize: 8 },       // Stock
-    4: { cellWidth: 25, fontStyle: 'bold', fontSize: 8.5 }, // Precio Sugerido / Detalle
-    5: { cellWidth: 30, fontStyle: 'bold', fontSize: 8.5, textColor: isMayorista ? [16, 185, 129] : [220, 38, 38] } // Precio Mayoreo / Oferta
-  } : {
-    0: { cellWidth: 91, fontSize: 8 },       // Fragancia
-    1: { cellWidth: 22, fontSize: 8 },       // Categoría
-    2: { cellWidth: 20, fontSize: 8 },       // Stock
-    3: { cellWidth: 25, fontStyle: 'bold', fontSize: 8.5 }, // Precio Sugerido / Detalle
-    4: { cellWidth: 32, fontStyle: 'bold', fontSize: 8.5, textColor: isMayorista ? [16, 185, 129] : [220, 38, 38] } // Precio Mayoreo / Oferta
-  },
-  didDrawCell: (data) => {
-    if (includeImages && data.section === 'body' && data.column.index === 0) {
-      const base64 = itemsWithImages[data.row.index]?.imageBase64;
-      if (base64) {
-        try {
-          const imgWidth = 14;
-          const imgHeight = 14;
-          const xOffset = data.cell.x + (data.cell.width - imgWidth) / 2;
-          const yOffset = data.cell.y + (data.cell.height - imgHeight) / 2;
-          doc.addImage(base64, 'JPEG', xOffset, yOffset, imgWidth, imgHeight);
-        } catch (e) {
-          console.error('Error drawing image in PDF:', e);
-        }
-      } else {
-        // Gray placeholder
-        doc.setFillColor(243, 244, 246);
-        const w = 14;
-        const h = 14;
-        const x = data.cell.x + (data.cell.width - w) / 2;
-        const y = data.cell.y + (data.cell.height - h) / 2;
-        doc.rect(x, y, w, h, 'F');
-        doc.setFontSize(6);
-        doc.setTextColor(156, 163, 175);
-        doc.text('Sin Foto', x + w / 2, y + h / 2 + 1, { align: 'center' });
-      }
-    }
-  },
-  styles: {
-    valign: 'middle',
-    fontSize: 8,
-    cellPadding: 3
-  },
-  margin: { top: 32, bottom: 20, left: 10, right: 10 }
-});
-
-        // Add header and footer on all pages
-        const pageCount = doc.internal.getNumberOfPages();
-        for (let i = 1; i <= pageCount; i++) {
-          doc.setPage(i);
-          
-          // Header banner
-          doc.setFillColor(17, 24, 39);
-          doc.rect(0, 0, pageWidth, 24, 'F');
-          
-          // Title
-          doc.setTextColor(255, 255, 255);
-          doc.setFont('Helvetica', 'bold');
+          doc.setTextColor(17, 24, 39);
           doc.setFontSize(13);
-          doc.text('INVENTARIO DE PERFUMERÍA', 12, 10);
-          
-          doc.setFont('Helvetica', 'normal');
-          doc.setFontSize(8);
-          doc.setTextColor(180, 180, 180);
-          doc.text(`INVENTARIO DE PERFUMES • TARIFA: ${isMayorista ? 'MAYORISTA' : 'AL DETALLE'}`, 12, 16);
-          
-          const categoryText = selectedCategory === 'Todas' ? 'Todas las Fragancias' : selectedCategory;
-          doc.text(`Filtros: Categoría: ${categoryText} | Marca: ${selectedBrand}`, 12, 20);
+          doc.setFont('Helvetica', 'bold');
+          doc.text('INVENTARIO DE PERFUMERÍA', 12, y);
+          y += 5;
 
-          // Date & User
-          const today = new Date().toLocaleDateString('es-HN', { year: 'numeric', month: 'long', day: 'numeric' });
-          doc.setTextColor(255, 255, 255);
-          doc.text(today.toUpperCase(), pageWidth - 12, 10, { align: 'right' });
-          doc.setTextColor(180, 180, 180);
-          doc.text(`Usuario: ${user?.name || user?.email || 'Cliente'}`, pageWidth - 12, 16, { align: 'right' });
-          doc.text(`Total: ${filteredProducts.length} perfumes`, pageWidth - 12, 20, { align: 'right' });
-          
-          // Footer
-          doc.setFontSize(7);
-          doc.setTextColor(156, 163, 175);
-          doc.text(`Inventario de Perfumes • Honduras • Pág. ${i} de ${pageCount}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+          doc.setTextColor(107, 114, 128);
+          doc.setFontSize(8);
+          doc.setFont('Helvetica', 'normal');
+          doc.text(`Inventario de perfumes. Tarifa: ${isMayorista ? 'Mayoreo' : 'Detalle'}`, 12, y);
+          y += 10;
+
+          const colX = {
+            brand: 12,
+            name: 42,
+            category: 110,
+            stock: 132,
+            price1: 148,
+            price2: 178
+          };
+
+          const drawTableHeaders = () => {
+            doc.setFillColor(243, 244, 246);
+            doc.rect(12, y - 4, pageWidth - 24, 6, 'F');
+            doc.setDrawColor(229, 231, 235);
+            doc.line(12, y + 2, pageWidth - 12, y + 2);
+
+            doc.setTextColor(107, 114, 128);
+            doc.setFontSize(7);
+            doc.setFont('Helvetica', 'bold');
+
+            doc.text('MARCA', colX.brand, y);
+            doc.text('FRAGANCIA', colX.name, y);
+            doc.text('CATEGORÍA', colX.category, y);
+            doc.text('STOCK', colX.stock, y);
+            if (isMayorista) {
+              doc.text('P. SUGERIDO', colX.price1, y);
+              doc.text('P. MAYOREO', colX.price2, y);
+            } else {
+              doc.text('DETALLE', colX.price1, y);
+              doc.text('OFERTA', colX.price2, y);
+            }
+            y += 7;
+          };
+
+          drawTableHeaders();
+
+          filteredProducts.forEach((p) => {
+            if (y > pageHeight - 22) {
+              drawFooter(pageNum);
+              doc.addPage();
+              pageNum++;
+              drawHeader(pageNum);
+              drawTableHeaders();
+            }
+
+            doc.setTextColor(55, 65, 81);
+            doc.setFont('Helvetica', 'normal');
+            doc.setFontSize(8);
+
+            // Brand
+            doc.text((p.brand || '').substring(0, 15).toUpperCase(), colX.brand, y);
+
+            // Fragancia (Name + Size)
+            const fullProdName = `${p.name || ''}${p.size ? ' (' + p.size + ')' : ''}`;
+            doc.setFont('Helvetica', 'bold');
+            const maxNameWidth = 62;
+            const splitName = doc.splitTextToSize(fullProdName, maxNameWidth);
+            doc.text(splitName[0], colX.name, y);
+
+            // Category
+            doc.setFont('Helvetica', 'normal');
+            const catLabel = p.category === 'Masculino' ? 'Caballeros' : p.category === 'Unisex' ? 'Unisex' : 'Damas';
+            doc.text(catLabel, colX.category, y);
+
+            // Stock
+            const stockStr = p.stock > 0 ? `${p.stock} u` : 'Agotado';
+            if (p.stock <= 0) {
+              doc.setTextColor(220, 38, 38);
+            }
+            doc.text(stockStr, colX.stock, y);
+            doc.setTextColor(55, 65, 81);
+
+            // Pricing
+            const origPublicPrice = p.pricePublic || 0;
+            doc.text(`L. ${origPublicPrice.toLocaleString()}`, colX.price1, y);
+
+            if (isMayorista) {
+              const vipPrice = p.pricePromotional || 0;
+              doc.setFont('Helvetica', 'bold');
+              doc.setTextColor(16, 185, 129); // Emerald-500
+              doc.text(`L. ${vipPrice.toLocaleString()}`, colX.price2, y);
+            } else {
+              const publicDiscountPct = p.publicDiscount || 0;
+              const promoDiscountPct = getProductPromoDiscount(p) || 0;
+              const effectiveDiscountPct = Math.max(publicDiscountPct, promoDiscountPct);
+              const hasDiscount = effectiveDiscountPct > 0;
+              const rawDiscountedPrice = hasDiscount ? Math.round(origPublicPrice * (1 - effectiveDiscountPct / 100)) : origPublicPrice;
+              const finalPublicPrice = Math.max(rawDiscountedPrice, p.pricePromotional || 0);
+
+              if (hasDiscount) {
+                doc.setFont('Helvetica', 'bold');
+                doc.setTextColor(220, 38, 38);
+                doc.text(`L. ${finalPublicPrice.toLocaleString()} (-${effectiveDiscountPct}%)`, colX.price2, y);
+              } else {
+                doc.text('-', colX.price2, y);
+              }
+            }
+
+            doc.setTextColor(55, 65, 81);
+            doc.setFont('Helvetica', 'normal');
+
+            doc.setDrawColor(243, 244, 246);
+            doc.line(12, y + 1.2, pageWidth - 12, y + 1.2);
+
+            y += (splitName.length > 1 ? 7 : 5);
+          });
+
+          drawFooter(pageNum);
         }
 
         const timestamp = new Date().toISOString().slice(0, 10);
-        doc.save(`Inventario_Perfumes_${selectedCategory.replace(/\s+/g, '_')}_${timestamp}.pdf`);
+        doc.save(`Inventario_Perfumer_${selectedCategory.replace(/\s+/g, '_')}_${timestamp}.pdf`);
       } else {
         // Excel format
         const exportData = filteredProducts.map(p => {
@@ -511,10 +632,10 @@ export default function CatalogView({ favoritesOnly = false }) {
             <Sparkles className="h-8 w-8 animate-pulse" />
           </div>
           <h3 className="font-display font-black text-neutral-900 dark:text-neutral-100 text-lg uppercase tracking-tight">
-            ¿Quieres Acceder a Tarifas Especiales?
+            ¿Quieres Acceder a Tarifas de Distribuidor?
           </h3>
           <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed max-w-md mx-auto font-medium">
-            Registra una cuenta de forma completamente gratuita en segundos.
+            Registra una cuenta de forma completamente gratuita en segundos para activar descuentos adicionales por volumen y precios especiales en todas tus órdenes.
           </p>
           <div className="flex justify-center">
             <Link
@@ -534,10 +655,10 @@ export default function CatalogView({ favoritesOnly = false }) {
             <Award className="h-8 w-8 animate-bounce" />
           </div>
           <h3 className="font-display font-bold text-emerald-950 dark:text-emerald-300 text-lg">
-            ✓ Tarifa Mayorista Activa
+            ✓ Tarifa VIP de Distribuidor Activa
           </h3>
           <p className="text-xs text-emerald-800 dark:text-emerald-200/80 max-w-md mx-auto">
-            Estás autorizado para comprar al por mayor. Se aplicará de forma automática el precio promocional en tu orden final.
+            Estás autorizado para comprar al por mayor en Honduras. Se aplicará de forma automática el precio promocional en tu orden final.
           </p>
         </div>
       )}

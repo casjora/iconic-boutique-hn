@@ -40,13 +40,13 @@ export default function Login() {
         } else if (currentUser?.role === 'vendedor') {
           navigate('/orders');
         } else {
-          navigate('/catalog');
+          navigate('/home');
         }
       }
     } else {
       const ok = await register(username, name, password, phone, address);
       if (ok) {
-        navigate('/catalog');
+        navigate('/home');
       }
     }
   };
@@ -65,8 +65,8 @@ export default function Login() {
           </h2>
           <p className="text-sm text-neutral-500 font-medium leading-relaxed max-w-xs mx-auto">
             {mode === 'signin' 
-              ? 'Ingresa tus credenciales autorizadas de Dueño, Vendedor o Cliente VIP.' 
-              : 'Regístrate gratis para desbloquear las ofertas mayoristas exclusivas para Honduras.'}
+              ? 'Ingresa tus credenciales.' 
+              : 'Regístrate gratis para desbloquear nuestras ofertas exclusivas.'}
           </p>
         </div>
 
@@ -91,7 +91,7 @@ export default function Login() {
                 : 'text-neutral-500 hover:text-neutral-900'
             }`}
           >
-            Crear Cuenta VIP
+            Crear Cuenta
           </button>
         </div>
 
@@ -253,7 +253,7 @@ export default function Login() {
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
               <span className="flex items-center gap-2">
-                {mode === 'signin' ? 'Ingresar al Portal' : 'Completar Registro VIP'}
+                {mode === 'signin' ? 'Ingresar al Portal' : 'Completar Registro'}
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </span>
             )}

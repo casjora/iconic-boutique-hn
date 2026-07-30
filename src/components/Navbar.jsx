@@ -237,7 +237,9 @@ export default function Navbar() {
                       ? "👑 Dueño"
                       : user.role === "vendedor"
                         ? "💼 Vendedor"
-                        : "🏷️ VIP"}
+                        : user.role=== "mayorista"
+                        ?"🏷️ Mayorista"
+                        :"Detalle"}
                   </span>
                   <span className="text-[11px] font-bold text-neutral-800 dark:text-neutral-200 block truncate max-w-[5rem] leading-none mt-0.5">
                     {user.name}

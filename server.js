@@ -335,7 +335,7 @@ Por favor, extrae de forma estructurada los productos del documento. Retorna un 
 - size: Tamaño con unidad de medida (ej. "100 ml", "3.4 oz", "50 ml").
 - cost: Costo unitario de compra (número entero en HNL calculated con la fórmula: ((Precio_USD * 1.05) + 5.5) * 27 aproximado al 5 más cercano). Si no se detalla en el documento, estima un costo razonable de importación en HNL (ej. entre L. 400 y L. 1,500).
 - pricePublic: Precio de venta sugerido al detalle / público en general en HNL (calcula aplicando un margen de ganancia sobre el costo, ej. sumando L. 400 a L. 800 sobre el costo, aproximado al 5 o 10 más cercano).
-- pricePromotional: Precio de venta de mayoreo / VIP para distribuidores en HNL (debe ser mayor que el costo pero menor que el precio de detalle, sumando alrededor de un 20% a 30% de margen sobre el costo, aproximado al 5 o 10 más cercano).
+- pricePromotional: Precio de venta de mayoreo para distribuidores en HNL (debe ser mayor que el costo pero menor que el precio de detalle, sumando alrededor de un 20% a 30% de margen sobre el costo, aproximado al 5 o 10 más cercano).
 - stock: Cantidad de unidades de este producto según la factura (QTY). Si no se especifica, usa 1 por defecto.
 - category: Género del perfume. Debe ser estrictamente uno de los siguientes valores: "Masculino", "Femenino" o "Unisex".
 - barcode: Código de barra (UPC / código numérico de 12 o 13 dígitos provisto en la factura para el artículo). Es muy importante extraer el UPC real que viene en la columna UPC del documento si está disponible para evitar generar códigos genéricos. Si no está disponible en absoluto, genera un código único de 13 dígitos que comience con "740" (ej. "740283748293").
@@ -460,7 +460,7 @@ async function sendTelegramNotification(order, config) {
     `👤 *Cliente:* ${order.clientName}\n` +
     `📞 *Teléfono:* ${order.clientPhone}\n` +
     `🕒 *Fecha:* ${order.date}\n` +
-    `💼 *Precios:* ${order.roleUsed === 'client' ? 'Promocional de Cliente VIP' : 'Público General'}\n` +
+    `💼 *Precios:* ${order.roleUsed === 'client' ? 'Cliente Registrado' : 'Público General'}\n` +
     `📍 *Orden ID:* \`${order.id}\`\n\n` +
     `📦 *Detalle de Perfumes:*\n${itemsText}\n\n` +
     `💵 *TOTAL COTIZADO:* *L. ${order.total.toLocaleString()} HNL*\n\n` +
