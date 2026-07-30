@@ -511,10 +511,10 @@ export default function CatalogView({ favoritesOnly = false }) {
             <Sparkles className="h-8 w-8 animate-pulse" />
           </div>
           <h3 className="font-display font-black text-neutral-900 dark:text-neutral-100 text-lg uppercase tracking-tight">
-            ¿Quieres Acceder a Tarifas de Distribuidor?
+            ¿Quieres Acceder a Tarifas Especiales?
           </h3>
           <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed max-w-md mx-auto font-medium">
-            Registra una cuenta de forma completamente gratuita en segundos para activar descuentos adicionales por volumen y precios especiales en todas tus órdenes.
+            Registra una cuenta de forma completamente gratuita en segundos.
           </p>
           <div className="flex justify-center">
             <Link
@@ -534,10 +534,10 @@ export default function CatalogView({ favoritesOnly = false }) {
             <Award className="h-8 w-8 animate-bounce" />
           </div>
           <h3 className="font-display font-bold text-emerald-950 dark:text-emerald-300 text-lg">
-            ✓ Tarifa VIP de Distribuidor Activa
+            ✓ Tarifa Mayorista Activa
           </h3>
           <p className="text-xs text-emerald-800 dark:text-emerald-200/80 max-w-md mx-auto">
-            Estás autorizado para comprar al por mayor en Honduras. Se aplicará de forma automática el precio promocional en tu orden final.
+            Estás autorizado para comprar al por mayor. Se aplicará de forma automática el precio promocional en tu orden final.
           </p>
         </div>
       )}
