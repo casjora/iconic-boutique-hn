@@ -1,9 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo,useEffect } from 'react';
 import { useStore } from '../store';
 import { ClipboardList, Search, Edit2, Loader2, CheckCircle2, AlertCircle, ShoppingBag, Eye, X, Plus, Trash2 } from 'lucide-react';
 
 export default function Orders() {
-  const { orders, products, updateOrderStatus, updateOrder, loading, error } = useStore();
+  const { 
+    orders, products, updateOrderStatus, updateOrder, reportPhysicalSale, 
+    loading: storeLoading, error: storeError, fetchCustomers, customers 
+  } = useStore();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('Todos');
@@ -12,10 +15,114 @@ export default function Orders() {
   const [viewingOrder, setViewingOrder] = useState(null);
   const [editingOrder, setEditingOrder] = useState(null);
 
+  // Physical Sale modal states
+  const [showPhysicalSaleModal, setShowPhysicalSaleModal] = useState(false);
+  const [physicalProductId, setPhysicalProductId] = useState('');
+  const [physicalQuantity, setPhysicalQuantity] = useState(1);
+  const [physicalClientName, setPhysicalClientName] = useState('Venta Física (Mostrador)');
+  const [physicalClientPhone, setPhysicalClientPhone] = useState('');
+  const [physicalPricePaid, setPhysicalPricePaid] = useState('');
+  const [physicalBuyerId, setPhysicalBuyerId] = useState('');
+  const [physicalRoleUsed, setPhysicalRoleUsed] = useState('detalle');
+  const [reportingPhysicalSale, setReportingPhysicalSale] = useState(false);
+  const [physicalSaleMsg, setPhysicalSaleMsg] = useState({ type: '', text: '' });
+
   // Edit fields inside modal
   const [editClientName, setEditClientName] = useState('');
   const [editClientPhone, setEditClientPhone] = useState('');
   const [editItems, setEditItems] = useState([]);
+
+  // Memoized calculations for selected physical product
+  const selectedProductObj = useMemo(() => {
+    return products.find(p => p.id === physicalProductId) || null;
+  }, [products, physicalProductId]);
+
+  // Sync default price when product selection or role category changes
+  useEffect(() => {
+    if (selectedProductObj) {
+      const price = physicalRoleUsed === 'mayorista' ? selectedProductObj.pricePromotional : selectedProductObj.pricePublic;
+      setPhysicalPricePaid(price);
+    } else {
+      setPhysicalPricePaid('');
+    }
+  }, [selectedProductObj, physicalRoleUsed]);
+
+  // Handle buyer account attachment (automatically pre-fills contact details)
+  useEffect(() => {
+    if (physicalBuyerId && customers) {
+      const cust = customers.find(c => c.id === physicalBuyerId);
+      if (cust) {
+        setPhysicalClientName(cust.name || 'Cliente');
+        setPhysicalClientPhone(cust.phone || '');
+        const roleNorm = String(cust.role || '').toLowerCase();
+        if (roleNorm === 'mayorista') {
+          setPhysicalRoleUsed('mayorista');
+        } else {
+          setPhysicalRoleUsed('detalle');
+        }
+      }
+    }
+  }, [physicalBuyerId, customers]);
+
+  const handleReportPhysicalSaleSubmit = async (e) => {
+    e.preventDefault();
+    if (!physicalProductId) {
+      setPhysicalSaleMsg({ type: 'error', text: 'Por favor selecciona un perfume.' });
+      return;
+    }
+    if (!physicalQuantity || Number(physicalQuantity) <= 0) {
+      setPhysicalSaleMsg({ type: 'error', text: 'La cantidad debe ser mayor a 0.' });
+      return;
+    }
+    if (!physicalPricePaid || Number(physicalPricePaid) < 0) {
+      setPhysicalSaleMsg({ type: 'error', text: 'El precio pagado es requerido.' });
+      return;
+    }
+
+    setReportingPhysicalSale(true);
+    setPhysicalSaleMsg({ type: '', text: '' });
+
+    const qty = Number(physicalQuantity);
+    const price = Number(physicalPricePaid);
+
+    const result = await reportPhysicalSale(
+      physicalProductId,
+      qty,
+      physicalClientName.trim() || 'Venta Física (Mostrador)',
+      physicalClientPhone.trim() || '',
+      price,
+      physicalBuyerId || null,
+      physicalRoleUsed
+    );
+
+    setReportingPhysicalSale(false);
+
+    if (result.success) {
+      setPhysicalSaleMsg({ type: 'success', text: '¡Venta registrada exitosamente! El inventario ha sido actualizado.' });
+      setTimeout(() => {
+        setShowPhysicalSaleModal(false);
+      }, 2000);
+    } else {
+      setPhysicalSaleMsg({ type: 'error', text: result.error || 'Error al procesar la venta.' });
+    }
+  };
+
+  // Fetch customers if we open physical sale modal to let them attach user account if wanted
+  const handleOpenPhysicalSale = async () => {
+    // Ensure customers are fetched
+    if (!customers || customers.length === 0) {
+      await fetchCustomers();
+    }
+    setPhysicalProductId('');
+    setPhysicalQuantity(1);
+    setPhysicalClientName('Venta Física (Mostrador)');
+    setPhysicalClientPhone('');
+    setPhysicalPricePaid('');
+    setPhysicalBuyerId('');
+    setPhysicalRoleUsed('detalle');
+    setPhysicalSaleMsg({ type: '', text: '' });
+    setShowPhysicalSaleModal(true);
+  };
 
   // Search filter list
   const filteredOrders = useMemo(() => {
@@ -99,12 +206,18 @@ export default function Orders() {
             Revisa, edita o actualiza el estado de las órdenes. Las ventas marcadas como <strong className="text-emerald-600 dark:text-emerald-400">entregado</strong> descuentan de forma automática el stock real de perfumes.
           </p>
         </div>
+        <button
+          onClick={handleOpenPhysicalSale}
+          className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-neutral-950 dark:bg-amber-400 hover:bg-neutral-850 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-black rounded-xl shadow-xs transition-all active:scale-95 uppercase tracking-wider shrink-0 cursor-pointer"
+        >
+          <Plus className="w-4 h-4" /> Registrar Venta Física
+        </button>
       </div>
 
-      {error && (
+      {storeError && (
         <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-xs font-semibold text-rose-800 dark:text-rose-200 flex items-center gap-2 relative">
           <AlertCircle className="h-4 w-4 text-rose-500 dark:text-rose-400" />
-          <span>{error}</span>
+          <span>{storeError}</span>
         </div>
       )}
 
@@ -441,10 +554,10 @@ export default function Orders() {
                 <button
                   type="button"
                   onClick={handleSaveEdit}
-                  disabled={loading || editItems.length === 0}
+                  disabled={storeLoading || editItems.length === 0}
                   className="px-5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl cursor-pointer active:scale-95 disabled:opacity-50"
                 >
-                  {loading ? (
+                  {storeLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     'Guardar Cambios'
@@ -452,6 +565,215 @@ export default function Orders() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manual / Physical Counter Sale Modal */}
+      {showPhysicalSaleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl w-full max-w-lg shadow-xl overflow-hidden flex flex-col my-8 max-h-[85vh]">
+            {/* Header */}
+            <div className="p-5 sm:p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between flex-shrink-0">
+              <h3 className="text-sm font-extrabold text-neutral-900 dark:text-neutral-50 uppercase tracking-wider flex items-center gap-2">
+                <Plus className="w-4 h-4 text-amber-500" />
+                Registrar Venta de Mostrador (Física)
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowPhysicalSaleModal(false)}
+                className="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 rounded-lg cursor-pointer transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Content / Form */}
+            <form onSubmit={handleReportPhysicalSaleSubmit} className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+              
+              {physicalSaleMsg.text && (
+                <div className={`p-4 rounded-xl border flex items-center gap-2 font-semibold ${
+                  physicalSaleMsg.type === 'success' 
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-200' 
+                    : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/50 text-rose-800 dark:text-rose-200'
+                }`}>
+                  {physicalSaleMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                  <span>{physicalSaleMsg.text}</span>
+                </div>
+              )}
+
+              {/* Attach Buyer (Optional) */}
+              <div className="space-y-1.5">
+                <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">
+                  Vincular Perfil de Cliente Registrado (Opcional)
+                </label>
+                <select
+                  value={physicalBuyerId}
+                  onChange={(e) => setPhysicalBuyerId(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-semibold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100 cursor-pointer"
+                >
+                  <option value="">-- Cliente de paso sin perfil --</option>
+                  {(customers || []).map(cust => (
+                    <option key={cust.id} value={cust.id}>
+                      {cust.name} ({cust.phone || 'Sin número'}) - {cust.role || 'detalle'}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-neutral-400">Vincular un perfil autocompleta el nombre, WhatsApp y aplica su tipo de tarifa.</p>
+              </div>
+
+              {/* Client Info Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">
+                    Nombre del Cliente
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={physicalClientName}
+                    onChange={(e) => setPhysicalClientName(e.target.value)}
+                    placeholder="Ej. Juan Pérez"
+                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-semibold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">
+                    WhatsApp del Cliente
+                  </label>
+                  <input
+                    type="text"
+                    value={physicalClientPhone}
+                    onChange={(e) => setPhysicalClientPhone(e.target.value)}
+                    placeholder="Ej. +504 9999-9999"
+                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-semibold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100"
+                  />
+                </div>
+              </div>
+
+              {/* Product Select */}
+              <div className="space-y-1.5">
+                <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">
+                  Perfume Vendido <span className="text-red-500">*</span>
+                </label>
+                <select
+                  required
+                  value={physicalProductId}
+                  onChange={(e) => setPhysicalProductId(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-semibold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100 cursor-pointer"
+                >
+                  <option value="">-- Selecciona un Perfume --</option>
+                  {products.map(prod => {
+                    const stock = prod.availableStock !== undefined ? prod.availableStock : prod.stock;
+                    return (
+                      <option key={prod.id} value={prod.id} disabled={stock <= 0}>
+                        [{prod.brand}] {prod.name} ({prod.size}) - Stock: {stock} pzs - L. {prod.pricePublic} (Púb) / L. {prod.pricePromotional} (May)
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              {/* Pricing, Quantity & Category Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">
+                    Tarifa Aplicada
+                  </label>
+                  <select
+                    value={physicalRoleUsed}
+                    onChange={(e) => setPhysicalRoleUsed(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-semibold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100 cursor-pointer"
+                  >
+                    <option value="detalle">Precio al Detalle</option>
+                    <option value="mayorista">Precio Mayorista VIP</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">
+                    Precio Cobrado (Unidad)
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    value={physicalPricePaid}
+                    onChange={(e) => setPhysicalPricePaid(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-mono font-bold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">
+                    Cantidad Vendida
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    max={selectedProductObj ? (selectedProductObj.availableStock !== undefined ? selectedProductObj.availableStock : selectedProductObj.stock) : undefined}
+                    value={physicalQuantity}
+                    onChange={(e) => setPhysicalQuantity(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-mono font-bold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100"
+                  />
+                </div>
+              </div>
+
+              {selectedProductObj && (
+                <div className="p-3 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-850 rounded-xl space-y-1">
+                  <div className="flex justify-between font-bold text-neutral-500">
+                    <span>Stock Actual:</span>
+                    <span className="font-mono text-neutral-800 dark:text-neutral-200">
+                      {selectedProductObj.availableStock !== undefined ? selectedProductObj.availableStock : selectedProductObj.stock} unidades
+                    </span>
+                  </div>
+                  {Number(physicalQuantity) > (selectedProductObj.availableStock !== undefined ? selectedProductObj.availableStock : selectedProductObj.stock) && (
+                    <p className="text-rose-500 font-bold text-[10px]">⚠️ Error: La cantidad elegida excede el inventario físico disponible.</p>
+                  )}
+                </div>
+              )}
+
+              {/* Total Calculation Display */}
+              <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/40 dark:border-amber-900/40 rounded-2xl flex items-center justify-between">
+                <div>
+                  <span className="block text-[10px] text-amber-800 dark:text-amber-500 font-extrabold uppercase tracking-widest font-mono">Total de la Venta</span>
+                  <span className="block text-xs text-neutral-500">
+                    L. {Number(physicalPricePaid || 0).toLocaleString()} x {Number(physicalQuantity || 0)} pzs
+                  </span>
+                </div>
+                <span className="font-mono font-black text-amber-950 dark:text-amber-200 text-lg">
+                  L. {(Number(physicalPricePaid || 0) * Number(physicalQuantity || 0)).toLocaleString()} HNL
+                </span>
+              </div>
+
+              {/* Form Footer Actions */}
+              <div className="border-t border-neutral-100 dark:border-neutral-800 pt-4 flex gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowPhysicalSaleModal(false)}
+                  className="px-4 py-2 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 font-bold rounded-xl cursor-pointer active:scale-95 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={reportingPhysicalSale || !physicalProductId || Number(physicalQuantity) > (selectedProductObj ? (selectedProductObj.availableStock !== undefined ? selectedProductObj.availableStock : selectedProductObj.stock) : 0)}
+                  className="px-5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-850 dark:hover:bg-amber-300 text-white dark:text-neutral-950 font-black rounded-xl cursor-pointer active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {reportingPhysicalSale ? (
+                    <div className="flex items-center gap-1.5">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Procesando...
+                    </div>
+                  ) : (
+                    'Confirmar y Descontar'
+                  )}
+                </button>
+              </div>
+
+            </form>
           </div>
         </div>
       )}

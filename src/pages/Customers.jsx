@@ -398,11 +398,11 @@ export default function Customers() {
                 className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs font-bold text-neutral-700 dark:text-neutral-300 outline-none cursor-pointer focus:ring-1 focus:ring-neutral-900"
               >
                 <option value="todos">Todos los Roles</option>
-                <option value="owner">Dueños</option>
+                <option value="owner">Dueños / Owners</option>
                 <option value="vendedor">Vendedores</option>
                 <option value="mayorista">Mayoristas VIP</option>
                 <option value="detalle">Ventas al Detalle</option>
-                <option value="usuario">Clientes</option>
+                <option value="usuario">Clientes / Usuarios</option>
               </select>
             </div>
           </div>
@@ -506,7 +506,7 @@ export default function Customers() {
                               </div>
                             ) : editable ? (
                               <select
-                                value={customer.role || 'detalle'}
+                                value={(customer.role === 'dueño' || customer.role === 'owner') ? 'owner' : (customer.role || 'detalle')}
                                 onChange={(e) => handleRoleChange(customer.id, customer.role, e.target.value)}
                                 className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-1.5 text-xs font-bold text-neutral-800 dark:text-neutral-200 outline-none cursor-pointer focus:ring-1 focus:ring-neutral-900"
                               >
@@ -524,7 +524,7 @@ export default function Customers() {
                               <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${badgeStyle}`}>
                                 {customer.role === 'owner' || customer.role === 'dueño' ? '👑 Dueño' : 
                                  (customer.role === 'vendedor' ? '💼 Vendedor' : 
-                                  (customer.role === 'mayorista' ? '🏷️ Mayorista' : '🛒 Detalle'))}
+                                  (customer.role === 'mayorista' ? '🏷️ Mayorista VIP' : '🛒 Detalle'))}
                               </span>
                             )}
                           </td>
@@ -663,7 +663,7 @@ export default function Customers() {
                     className="w-full px-3 py-3 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-xs outline-none font-bold text-neutral-700 dark:text-neutral-300 cursor-pointer focus:ring-1 focus:ring-neutral-900"
                   >
                     <option value="detalle">Detalle (Minorista)</option>
-                    <option value="mayorista">Mayorista</option>
+                    <option value="mayorista">Mayorista VIP</option>
                     <option value="usuario">Usuario Inicial</option>
                     {currentUser?.role === 'owner' && (
                       <option value="vendedor">Vendedor Staff</option>

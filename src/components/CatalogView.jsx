@@ -386,7 +386,7 @@ export default function CatalogView({ favoritesOnly = false }) {
         }
 
         const timestamp = new Date().toISOString().slice(0, 10);
-        doc.save(`Inventario_Perfumer_${selectedCategory.replace(/\s+/g, '_')}_${timestamp}.pdf`);
+        doc.save(`Inventario_de_Perfumer_${timestamp}.pdf`);
       } else {
         // Excel format
         const exportData = filteredProducts.map(p => {

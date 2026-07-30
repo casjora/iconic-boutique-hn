@@ -781,7 +781,7 @@ export default function Inventory() {
         doc.setTextColor(255, 255, 255);
         doc.setFont('Helvetica', 'bold');
         doc.setFontSize(8);
-        doc.text('CATÁLOGO DE PERFUMES', 12, 9);
+        doc.text('INVENTARIO DE PERFUMERÍA', 12, 9);
         
         const today = new Date().toLocaleDateString('es-HN', { year: 'numeric', month: 'long', day: 'numeric' });
         doc.text(today.toUpperCase(), pageWidth - 12, 9, { align: 'right' });
@@ -842,14 +842,14 @@ export default function Inventory() {
               doc.rect(imgX, imgY, imgW, imgH, 'F');
               doc.setTextColor(156, 163, 175);
               doc.setFontSize(7);
-              doc.text('Iconic Boutique', imgX + imgW / 2, imgY + imgH / 2, { align: 'center' });
+              doc.text('Perfumería', imgX + imgW / 2, imgY + imgH / 2, { align: 'center' });
             }
           } else {
             doc.setFillColor(243, 244, 246);
             doc.rect(imgX, imgY, imgW, imgH, 'F');
             doc.setTextColor(156, 163, 175);
             doc.setFontSize(7);
-            doc.text('Iconic Boutique', imgX + imgW / 2, imgY + imgH / 2, { align: 'center' });
+            doc.text('Perfumería', imgX + imgW / 2, imgY + imgH / 2, { align: 'center' });
           }
 
           // Brand
@@ -1052,7 +1052,7 @@ export default function Inventory() {
       }
 
       const timestamp = new Date().toISOString().slice(0, 10);
-      doc.save(`Catalogo_Perfumes_Clientes_${timestamp}.pdf`);
+      doc.save(`Inventario_de_Perfumer_${timestamp}.pdf`);
       setIsExportModalOpen(false);
     } catch (err) {
       console.error('Error generating PDF:', err);

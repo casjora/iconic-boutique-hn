@@ -25,7 +25,8 @@ export default function App() {
   const navigate = useNavigate();
   const { 
     currentView, setView, restoreSession, fetchProducts, fetchOrders, 
-    fetchTelegramConfig, checkingSession, user, initTheme 
+    fetchTelegramConfig, checkingSession, user, initTheme, initRealtime,
+    fetchCustomers
   } = useStore();
 
   // Keep track of the last path we synchronized to prevent infinite routing loops
@@ -60,11 +61,17 @@ export default function App() {
 
   useEffect(() => {
     initTheme();
+    initRealtime();
     const initApp = async () => {
       await restoreSession();
       await fetchProducts();
       await fetchOrders();
       await fetchTelegramConfig();
+
+      const currentUser = useStore.getState().user;
+      if (currentUser && (currentUser.role === 'owner' || currentUser.role === 'vendedor')) {
+        await fetchCustomers();
+      }
     };
     initApp();
 
@@ -72,10 +79,15 @@ export default function App() {
     const interval = setInterval(async () => {
       await fetchProducts();
       await fetchOrders();
+
+      const currentUser = useStore.getState().user;
+      if (currentUser && (currentUser.role === 'owner' || currentUser.role === 'vendedor')) {
+        await fetchCustomers();
+      }
     }, 45000); // Poll every 45s
 
     return () => clearInterval(interval);
-  }, [restoreSession, fetchProducts, fetchOrders, fetchTelegramConfig]);
+  }, [restoreSession, fetchProducts, fetchOrders, fetchTelegramConfig, initRealtime, fetchCustomers]);
 
   // Handle page component routing
   const renderView = () => {
@@ -261,7 +273,3 @@ export default function App() {
     </div>
   );
 }
-
-
-
-      

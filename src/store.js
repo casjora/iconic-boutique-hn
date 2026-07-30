@@ -93,9 +93,13 @@ export const useStore = create((setOriginal, get) => {
     checkingSession: true,
     products: [],
     orders: [],
+    customers: [],
     cart: [],
     favorites: [],
     telegramConfig: { token: '', chatId: '', active: false },
+    hasNewRegistrationsAlert: false,
+    hasNewOrdersAlert: false,
+    realtimeInitialized: false,
     currentView: (() => {
       if (typeof window !== 'undefined' && window.location) {
         const path = window.location.pathname.substring(1) || 'home';
@@ -369,6 +373,25 @@ export const useStore = create((setOriginal, get) => {
 
         set({ user: registeredUser, currentView: 'catalog', loading: false });
         await get().fetchFavorites();
+
+        // Send telegram notification for new registration
+        try {
+          await fetch('/api/send-telegram', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              registration: {
+                name,
+                phone: phone || '',
+                email: userEmail || '',
+                address: address || ''
+              }
+            })
+          });
+        } catch (tgErr) {
+          console.error('Error sending TG registration notification:', tgErr);
+        }
+
         return true;
       } catch (err) {
         set({ error: err.message, loading: false });
@@ -1290,16 +1313,22 @@ export const useStore = create((setOriginal, get) => {
           .select('id, name, role, phone, address, created_at, email')
           .order('created_at', { ascending: false });
 
-        if (!error) return data || [];
+        let result = [];
+        if (!error) {
+          result = data || [];
+        } else {
+          // Fallback without email column if it doesn't exist
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('profiles')
+            .select('id, name, role, phone, address, created_at')
+            .order('created_at', { ascending: false });
 
-        // Fallback without email column if it doesn't exist
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('profiles')
-          .select('id, name, role, phone, address, created_at')
-          .order('created_at', { ascending: false });
+          if (fallbackError) throw fallbackError;
+          result = fallbackData || [];
+        }
 
-        if (fallbackError) throw fallbackError;
-        return fallbackData || [];
+        set({ customers: result });
+        return result;
       } catch (err) {
         console.error('Error fetching customers:', err);
         return [];
@@ -1367,12 +1396,28 @@ export const useStore = create((setOriginal, get) => {
 
     deleteCustomer: async (profileId) => {
       try {
-        const { error } = await supabase
-          .from('profiles')
-          .delete()
-          .eq('id', profileId);
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
 
-        if (error) throw error;
+        const res = await fetch('/api/delete-customer', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ targetId: profileId })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Error al eliminar el cliente');
+        }
+
+        // Update local store customers list
+        set((state) => ({
+          customers: (state.customers || []).filter(c => c.id !== profileId)
+        }));
+
         return { success: true };
       } catch (err) {
         console.error('Error deleting customer:', err);
@@ -1408,6 +1453,134 @@ export const useStore = create((setOriginal, get) => {
         return { success: true };
       } catch (err) {
         console.error('Error sending password reset link:', err);
+        return { success: false, error: err.message };
+      }
+    },
+
+    clearNewRegistrationsAlert: () => set({ hasNewRegistrationsAlert: false }),
+    clearNewOrdersAlert: () => set({ hasNewOrdersAlert: false }),
+
+    initRealtime: () => {
+      if (get().realtimeInitialized) return;
+      set({ realtimeInitialized: true });
+
+      // Subscribe to inserts in profiles
+      const profilesChannel = supabase
+        .channel('realtime-profiles')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'profiles' },
+          async (payload) => {
+            console.log('Realtime profile insert received:', payload.new);
+            // Fetch customers again
+            await get().fetchCustomers();
+            // Set alert
+            set({ hasNewRegistrationsAlert: true });
+          }
+        )
+        .subscribe();
+
+      // Subscribe to updates in profiles (so if we change roles, lists update instantly)
+      const profilesUpdatesChannel = supabase
+        .channel('realtime-profiles-updates')
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'profiles' },
+          async (payload) => {
+            console.log('Realtime profile update received:', payload.new);
+            await get().fetchCustomers();
+          }
+        )
+        .subscribe();
+
+      // Subscribe to inserts/updates in orders
+      const ordersChannel = supabase
+        .channel('realtime-orders')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'orders' },
+          async (payload) => {
+            console.log('Realtime order change received:', payload.eventType, payload.new);
+            await get().fetchOrders();
+            if (payload.eventType === 'INSERT') {
+              set({ hasNewOrdersAlert: true });
+            }
+          }
+        )
+        .subscribe();
+    },
+
+    reportPhysicalSale: async (productId, quantity, clientName, clientPhone, pricePaid, buyerId, roleUsed) => {
+      set({ loading: true, error: null });
+      try {
+        const orderId = 'physical_' + Date.now() + '_' + Math.floor(Math.random() * 100);
+        const orderDate = new Date().toLocaleDateString('es-HN', {
+          year: 'numeric', month: 'long', day: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        });
+
+        // 1. Get current stock
+        const { data: prod, error: prodErr } = await supabase
+          .from('products')
+          .select('stock')
+          .eq('id', productId)
+          .maybeSingle();
+
+        if (prodErr) throw prodErr;
+        if (!prod) throw new Error('Producto no encontrado');
+
+        const currentStock = Number(prod.stock || 0);
+        if (currentStock < quantity) {
+          throw new Error(`Stock insuficiente. Stock actual en inventario: ${currentStock}`);
+        }
+
+        const newStock = currentStock - quantity;
+
+        // 2. Insert completed order with status 'entregado'
+        const { error: orderErr } = await supabase
+          .from('orders')
+          .insert({
+            id: orderId,
+            client_name: clientName || 'Venta Física (Mostrador)',
+            client_phone: clientPhone || '',
+            total: pricePaid * quantity,
+            status: 'entregado',
+            role_used: roleUsed || 'detalle',
+            buyer_id: buyerId || null,
+            date: orderDate
+          });
+
+        if (orderErr) throw orderErr;
+
+        // 3. Insert order item
+        const { error: itemsErr } = await supabase
+          .from('order_items')
+          .insert({
+            order_id: orderId,
+            product_id: productId,
+            quantity: quantity,
+            price_paid: pricePaid
+          });
+
+        if (itemsErr) throw itemsErr;
+
+        // 4. Update product stock directly in DB
+        const { error: stockErr } = await supabase
+          .from('products')
+          .update({ stock: newStock })
+          .eq('id', productId);
+
+        if (stockErr) throw stockErr;
+
+        // 5. Refresh products and orders to keep UI updated
+        await get().fetchProducts();
+        await get().fetchOrders();
+
+        set({ loading: false });
+        return { success: true };
+      } catch (err) {
+        console.error('Error reporting physical sale:', err);
+        set({ error: err.message, loading: false });
         return { success: false, error: err.message };
       }
     }
