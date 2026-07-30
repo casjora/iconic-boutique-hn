@@ -22,7 +22,7 @@ export default function Navbar() {
   const isOwner = user?.role === 'owner';
   const isVendedor = user?.role === 'vendedor';
 
-  const pendingRegistrationsCount = (customers || []).filter(c => !c.role || c.role === 'usuario' || c.role === 'cliente').length;
+  const pendingRegistrationsCount = (customers || []).filter(c => !c.role || c.role === 'pendiente' || c.role === 'usuario' || c.role === 'cliente').length;
   const pendingOrdersCount = (orders || []).filter(o => o.status === 'pendiente').length;
 
   const handleNav = (view) => {
@@ -108,14 +108,14 @@ export default function Navbar() {
                     <ClipboardList className="h-3.5 w-3.5" /> 
                     <span>Pedidos</span>
                     {pendingOrdersCount > 0 && (
-                      <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-mono font-black ${hasNewOrdersAlert ? 'bg-rose-500 text-white animate-bounce' : 'bg-neutral-200 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200'}`}>
+                      <span className={`ml-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-black tracking-tight ${hasNewOrdersAlert ? 'bg-rose-600 text-white animate-bounce ring-4 ring-rose-500/20 dark:ring-rose-500/40 scale-110 shadow-md' : 'bg-neutral-200 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200'}`}>
                         {pendingOrdersCount}
                       </span>
                     )}
                     {hasNewOrdersAlert && (
-                      <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                      <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-rose-600"></span>
                       </span>
                     )}
                   </button>
@@ -127,14 +127,14 @@ export default function Navbar() {
                     <User className="h-3.5 w-3.5" /> 
                     <span>Clientes</span>
                     {pendingRegistrationsCount > 0 && (
-                      <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-mono font-black ${hasNewRegistrationsAlert ? 'bg-amber-500 text-neutral-950 animate-pulse' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400'}`}>
+                      <span className={`ml-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-black tracking-tight ${hasNewRegistrationsAlert ? 'bg-rose-600 text-white animate-bounce ring-4 ring-rose-500/20 dark:ring-rose-500/40 scale-110 shadow-md' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400'}`}>
                         {pendingRegistrationsCount}
                       </span>
                     )}
                     {hasNewRegistrationsAlert && (
-                      <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                      <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-rose-600"></span>
                       </span>
                     )}
                   </button>
@@ -286,7 +286,7 @@ export default function Navbar() {
                     <ClipboardList className="h-4 w-4" /> Pedidos y Ventas
                   </span>
                   {pendingOrdersCount > 0 && (
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-black ${hasNewOrdersAlert ? 'bg-rose-500 text-white animate-pulse' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400'}`}>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-black ${hasNewOrdersAlert ? 'bg-rose-600 text-white animate-bounce ring-4 ring-rose-500/20' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400'}`}>
                       {pendingOrdersCount}
                     </span>
                   )}
@@ -300,7 +300,7 @@ export default function Navbar() {
                     <User className="h-4 w-4" /> Gestión Clientes
                   </span>
                   {pendingRegistrationsCount > 0 && (
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-black ${hasNewRegistrationsAlert ? 'bg-amber-500 text-neutral-950 animate-pulse' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400'}`}>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-black ${hasNewRegistrationsAlert ? 'bg-rose-600 text-white animate-bounce ring-4 ring-rose-500/20' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400'}`}>
                       {pendingRegistrationsCount}
                     </span>
                   )}

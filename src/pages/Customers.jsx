@@ -3,13 +3,13 @@ import { useStore } from '../store';
 import { 
   User, UserPlus, Shield, Phone, MapPin, Search, Filter, 
   HelpCircle, Loader2, CheckCircle2, AlertTriangle, ShieldCheck,
-  ChevronRight, Sparkles, Mail, Trash2, KeyRound, Send
+  ChevronRight, Sparkles, Mail, Trash2, KeyRound, Send, Pencil, Check, X
 } from 'lucide-react';
 
 export default function Customers() {
   const { 
     user: currentUser, fetchCustomers, updateCustomerRole, createCustomerManually,
-    deleteCustomer, resendVerificationEmail, sendPasswordResetEmail
+    deleteCustomer, resendVerificationEmail, sendPasswordResetEmail, updateCustomerFields
   } = useStore();
 
   const [customers, setCustomers] = useState([]);
@@ -35,6 +35,12 @@ export default function Customers() {
   const [deletingId, setDeletingId] = useState(null);
   const [sendingEmailId, setSendingEmailId] = useState(null);
 
+  // Inline editing states for phone and address
+  const [editingFieldsId, setEditingFieldsId] = useState(null);
+  const [editPhone, setEditPhone] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [savingFields, setSavingFields] = useState(false);
+
   useEffect(() => {
     loadCustomers();
   }, []);
@@ -44,6 +50,28 @@ export default function Customers() {
     const data = await fetchCustomers();
     setCustomers(data || []);
     setLoading(false);
+  };
+
+  const handleSaveFields = async (customerId) => {
+    setSavingFields(true);
+    setStatusMsg({ type: '', text: '' });
+    
+    const result = await updateCustomerFields(customerId, {
+      phone: editPhone || null,
+      address: editAddress || null
+    });
+    
+    setSavingFields(false);
+    
+    if (result.success) {
+      setStatusMsg({ type: 'success', text: 'Información de contacto actualizada exitosamente.' });
+      setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, phone: editPhone, address: editAddress } : c));
+      setEditingFieldsId(null);
+      setTimeout(() => setStatusMsg({ type: '', text: '' }), 4000);
+    } else {
+      setStatusMsg({ type: 'error', text: result.error || 'Error al actualizar la información.' });
+      setTimeout(() => setStatusMsg({ type: '', text: '' }), 5000);
+    }
   };
 
   const handleRoleChange = async (targetId, oldRole, targetNewRole) => {
@@ -451,6 +479,8 @@ export default function Customers() {
                         badgeStyle = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/40';
                       } else if (roleNormalized === 'detalle') {
                         badgeStyle = 'bg-sky-100 text-sky-800 dark:bg-sky-950/40 dark:text-sky-400 border border-sky-200/40';
+                      } else if (roleNormalized === 'pendiente') {
+                        badgeStyle = 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200/40 animate-pulse';
                       }
 
                       return (
@@ -464,17 +494,22 @@ export default function Customers() {
                                 </span>
                               )}
                             </div>
-                            <div className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono font-medium tracking-tight">
-                              ID: {customer.id}
-                            </div>
                             {customer.email && (
-                              <div className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">
+                              <div className="text-[11px] text-neutral-500 dark:text-neutral-400 font-medium">
                                 {customer.email}
                               </div>
                             )}
                           </td>
                           <td className="py-4 px-6">
-                            {customer.phone ? (
+                            {editingFieldsId === customer.id ? (
+                              <input
+                                type="tel"
+                                value={editPhone}
+                                onChange={(e) => setEditPhone(e.target.value)}
+                                className="w-32 px-2.5 py-1.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg text-xs outline-none focus:ring-1 focus:ring-amber-400 text-neutral-800 dark:text-neutral-100 font-semibold"
+                                placeholder="WhatsApp"
+                              />
+                            ) : customer.phone ? (
                               <a 
                                 href={`https://wa.me/${customer.phone.replace(/[^0-9]/g, '')}`}
                                 target="_blank"
@@ -489,7 +524,15 @@ export default function Customers() {
                             )}
                           </td>
                           <td className="py-4 px-6 max-w-xs">
-                            {customer.address ? (
+                            {editingFieldsId === customer.id ? (
+                              <textarea
+                                value={editAddress}
+                                onChange={(e) => setEditAddress(e.target.value)}
+                                className="w-full min-w-[150px] px-2.5 py-1.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg text-xs outline-none focus:ring-1 focus:ring-amber-400 text-neutral-800 dark:text-neutral-100"
+                                placeholder="Dirección de envío"
+                                rows={2}
+                              />
+                            ) : customer.address ? (
                               <div className="flex items-start gap-1 text-neutral-600 dark:text-neutral-400 line-clamp-2" title={customer.address}>
                                 <MapPin className="w-3.5 h-3.5 text-neutral-400 mt-0.5 shrink-0" />
                                 <span>{customer.address}</span>
@@ -506,13 +549,15 @@ export default function Customers() {
                               </div>
                             ) : editable ? (
                               <select
-                                value={(customer.role === 'dueño' || customer.role === 'owner') ? 'owner' : (customer.role || 'detalle')}
+                                value={(customer.role === 'dueño' || customer.role === 'owner') ? 'owner' : (customer.role || 'pendiente')}
                                 onChange={(e) => handleRoleChange(customer.id, customer.role, e.target.value)}
                                 className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-1.5 text-xs font-bold text-neutral-800 dark:text-neutral-200 outline-none cursor-pointer focus:ring-1 focus:ring-neutral-900"
                               >
+                                {(customer.role === 'pendiente' || !customer.role) && (
+                                  <option value="pendiente" disabled>⏳ Pendiente</option>
+                                )}
                                 <option value="detalle">Tarifa Detalle</option>
                                 <option value="mayorista">Tarifa Mayorista</option>
-                                <option value="usuario">Usuario / Inicial</option>
                                 {currentUser?.role === 'owner' && (
                                   <>
                                     <option value="vendedor">Vendedor Staff</option>
@@ -524,59 +569,96 @@ export default function Customers() {
                               <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${badgeStyle}`}>
                                 {customer.role === 'owner' || customer.role === 'dueño' ? '👑 Dueño' : 
                                  (customer.role === 'vendedor' ? '💼 Vendedor' : 
-                                  (customer.role === 'mayorista' ? '🏷️ Mayorista VIP' : '🛒 Detalle'))}
+                                  (customer.role === 'mayorista' ? '🏷️ Mayorista VIP' : 
+                                   (customer.role === 'pendiente' ? '⏳ Pendiente' : '🛒 Detalle')))}
                               </span>
                             )}
                           </td>
                           <td className="py-4 px-6 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              {/* Send Verification / Reset buttons */}
-                              {((customer.email || (customer.id && customer.id.includes('@'))) && !isSelf) && (
+                              {editingFieldsId === customer.id ? (
                                 <>
                                   <button
-                                    onClick={() => handleResendVerification(customer)}
-                                    disabled={sendingEmailId === customer.id}
-                                    title="Reenviar correo de verificación"
-                                    className="p-1.5 text-neutral-500 hover:text-amber-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer outline-none disabled:opacity-50"
+                                    onClick={() => handleSaveFields(customer.id)}
+                                    disabled={savingFields}
+                                    title="Guardar Cambios"
+                                    className="p-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 rounded-lg transition-colors cursor-pointer outline-none"
                                   >
-                                    <Mail className="w-3.5 h-3.5" />
+                                    {savingFields ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                                   </button>
                                   <button
-                                    onClick={() => handleSendPasswordReset(customer)}
-                                    disabled={sendingEmailId === customer.id}
-                                    title="Enviar enlace de restablecimiento de contraseña"
-                                    className="p-1.5 text-neutral-500 hover:text-indigo-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer outline-none disabled:opacity-50"
+                                    onClick={() => setEditingFieldsId(null)}
+                                    disabled={savingFields}
+                                    title="Cancelar"
+                                    className="p-1.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-colors cursor-pointer outline-none"
                                   >
-                                    <KeyRound className="w-3.5 h-3.5" />
+                                    <X className="w-3.5 h-3.5" />
                                   </button>
                                 </>
-                              )}
+                              ) : (
+                                <>
+                                  {/* Edit details button */}
+                                  <button
+                                    onClick={() => {
+                                      setEditingFieldsId(customer.id);
+                                      setEditPhone(customer.phone || '');
+                                      setEditAddress(customer.address || '');
+                                    }}
+                                    title="Editar Teléfono y Dirección"
+                                    className="p-1.5 text-neutral-500 hover:text-amber-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer outline-none"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
 
-                              {/* Manual prompts if they don't have email but are not manual-client */}
-                              {(!customer.email && !(customer.id && customer.id.includes('@')) && !isSelf && !customer.id.startsWith('manual-client-')) && (
-                                <button
-                                  onClick={() => handleSendPasswordReset(customer)}
-                                  title="Enviar restablecimiento (solicitará correo)"
-                                  className="p-1.5 text-neutral-400 hover:text-indigo-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer outline-none"
-                                >
-                                  <KeyRound className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-
-                              {/* Delete button (cannot delete yourself, sellers cannot delete owners/sellers) */}
-                              {!isSelf && (
-                                <button
-                                  onClick={() => handleDeleteCustomer(customer)}
-                                  disabled={deletingId === customer.id}
-                                  title="Eliminar Cliente"
-                                  className="p-1.5 text-neutral-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-colors cursor-pointer outline-none disabled:opacity-50"
-                                >
-                                  {deletingId === customer.id ? (
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin text-rose-500" />
-                                  ) : (
-                                    <Trash2 className="w-3.5 h-3.5" />
+                                  {/* Send Verification / Reset buttons */}
+                                  {((customer.email || (customer.id && customer.id.includes('@'))) && !isSelf) && (
+                                    <>
+                                      <button
+                                        onClick={() => handleResendVerification(customer)}
+                                        disabled={sendingEmailId === customer.id}
+                                        title="Reenviar correo de verificación"
+                                        className="p-1.5 text-neutral-500 hover:text-amber-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer outline-none disabled:opacity-50"
+                                      >
+                                        <Mail className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleSendPasswordReset(customer)}
+                                        disabled={sendingEmailId === customer.id}
+                                        title="Enviar enlace de restablecimiento de contraseña"
+                                        className="p-1.5 text-neutral-500 hover:text-indigo-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer outline-none disabled:opacity-50"
+                                      >
+                                        <KeyRound className="w-3.5 h-3.5" />
+                                      </button>
+                                    </>
                                   )}
-                                </button>
+
+                                  {/* Manual prompts if they don't have email but are not manual-client */}
+                                  {(!customer.email && !(customer.id && customer.id.includes('@')) && !isSelf && !customer.id.startsWith('manual-client-')) && (
+                                    <button
+                                      onClick={() => handleSendPasswordReset(customer)}
+                                      title="Enviar restablecimiento (solicitará correo)"
+                                      className="p-1.5 text-neutral-400 hover:text-indigo-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer outline-none"
+                                    >
+                                      <KeyRound className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+
+                                  {/* Delete button (cannot delete yourself, sellers cannot delete owners/sellers) */}
+                                  {!isSelf && (
+                                    <button
+                                      onClick={() => handleDeleteCustomer(customer)}
+                                      disabled={deletingId === customer.id}
+                                      title="Eliminar Cliente"
+                                      className="p-1.5 text-neutral-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-colors cursor-pointer outline-none disabled:opacity-50"
+                                    >
+                                      {deletingId === customer.id ? (
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin text-rose-500" />
+                                      ) : (
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      )}
+                                    </button>
+                                  )}
+                                </>
                               )}
                             </div>
                           </td>

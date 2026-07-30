@@ -179,13 +179,24 @@ export const useStore = create((setOriginal, get) => {
 
         if (profileErr) throw profileErr;
 
-        let mappedRole = 'detalle';
+        let mappedRole = 'pendiente';
         if (profile) {
           const r = String(profile.role || '').toLowerCase();
           if (r === 'dueño' || r === 'owner') mappedRole = 'owner';
           else if (r === 'vendedor') mappedRole = 'vendedor';
           else if (r === 'mayorista') mappedRole = 'mayorista';
-          else mappedRole = 'detalle';
+          else if (r === 'detalle') mappedRole = 'detalle';
+        }
+
+        const email = session.user.email || '';
+        const id = email.includes('@iconicboutique.hn') ? email.split('@')[0] : email;
+        const emailConfirmed = !!(session.user.email_confirmed_at || session.user.confirmed_at || email.endsWith('@iconicboutique.hn'));
+
+        if (!emailConfirmed || mappedRole === 'pendiente') {
+          await supabase.auth.signOut();
+          set({ user: null, checkingSession: false });
+          await get().fetchFavorites();
+          return false;
         }
 
         if (session.user.user_metadata?.role !== profile.role) {
@@ -201,10 +212,6 @@ export const useStore = create((setOriginal, get) => {
             console.warn('Metadata sync warning:', e);
           }
         }
-
-        const email = session.user.email || '';
-        const id = email.includes('@iconicboutique.hn') ? email.split('@')[0] : email;
-        const emailConfirmed = !!(session.user.email_confirmed_at || session.user.confirmed_at || email.endsWith('@iconicboutique.hn'));
 
         const loggedUser = {
           id: id.toLowerCase().trim(),
@@ -251,13 +258,26 @@ export const useStore = create((setOriginal, get) => {
 
         if (profileErr) throw profileErr;
 
-        let mappedRole = 'detalle';
+        let mappedRole = 'pendiente';
         if (profile) {
           const r = String(profile.role || '').toLowerCase();
           if (r === 'dueño' || r === 'owner') mappedRole = 'owner';
           else if (r === 'vendedor') mappedRole = 'vendedor';
           else if (r === 'mayorista') mappedRole = 'mayorista';
-          else mappedRole = 'detalle';
+          else if (r === 'detalle') mappedRole = 'detalle';
+        }
+
+        const userEmail = data.user.email || '';
+        const emailConfirmed = !!(data.user.email_confirmed_at || data.user.confirmed_at || userEmail.endsWith('@iconicboutique.hn'));
+
+        if (!emailConfirmed) {
+          await supabase.auth.signOut();
+          throw new Error('Debes confirmar tu correo electrónico antes de iniciar sesión. Por favor, revisa tu bandeja de entrada o spam.');
+        }
+
+        if (mappedRole === 'pendiente') {
+          await supabase.auth.signOut();
+          throw new Error('Tu cuenta está pendiente de aprobación por un administrador. Deben asignarte un rol (Detalle o Mayorista) para poder ingresar.');
         }
 
         if (data.user.user_metadata?.role !== profile.role) {
@@ -273,9 +293,6 @@ export const useStore = create((setOriginal, get) => {
             console.warn('Metadata sync warning:', e);
           }
         }
-
-        const userEmail = data.user.email || '';
-        const emailConfirmed = !!(data.user.email_confirmed_at || data.user.confirmed_at || userEmail.endsWith('@iconicboutique.hn'));
 
         const loggedUser = {
           id: id.toLowerCase().trim(),
@@ -305,7 +322,7 @@ export const useStore = create((setOriginal, get) => {
           email = `${email.toLowerCase()}@iconicboutique.hn`;
         }
 
-        const roleToWrite = 'usuario';
+        const roleToWrite = 'pendiente';
 
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -348,31 +365,12 @@ export const useStore = create((setOriginal, get) => {
           }
         }
 
-        let mappedRole = 'detalle';
-        if (profile) {
-          const r = String(profile.role || '').toLowerCase();
-          if (r === 'dueño' || r === 'owner') mappedRole = 'owner';
-          else if (r === 'vendedor') mappedRole = 'vendedor';
-          else if (r === 'mayorista') mappedRole = 'mayorista';
-          else mappedRole = 'detalle';
-        }
+        // Force sign out immediately because we need email verification and admin approval.
+        await supabase.auth.signOut();
 
         const userEmail = data.user.email || '';
-        const emailConfirmed = !!(data.user.email_confirmed_at || data.user.confirmed_at || userEmail.endsWith('@iconicboutique.hn'));
 
-        const registeredUser = {
-          id: id.toLowerCase().trim(),
-          name,
-          role: mappedRole,
-          uid: data.user.id,
-          email: userEmail,
-          emailConfirmed,
-          phone: phone || '',
-          address: address || ''
-        };
-
-        set({ user: registeredUser, currentView: 'catalog', loading: false });
-        await get().fetchFavorites();
+        set({ user: null, loading: false });
 
         // Send telegram notification for new registration
         try {
@@ -1346,6 +1344,21 @@ export const useStore = create((setOriginal, get) => {
         return { success: true };
       } catch (err) {
         console.error('Error updating customer role:', err);
+        return { success: false, error: err.message };
+      }
+    },
+
+    updateCustomerFields: async (profileId, fields) => {
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update(fields)
+          .eq('id', profileId);
+
+        if (error) throw error;
+        return { success: true };
+      } catch (err) {
+        console.error('Error updating customer fields:', err);
         return { success: false, error: err.message };
       }
     },
