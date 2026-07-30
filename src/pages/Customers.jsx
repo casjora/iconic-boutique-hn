@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import { 
   User, UserPlus, Shield, Phone, MapPin, Search, Filter, 
   HelpCircle, Loader2, CheckCircle2, AlertTriangle, ShieldCheck,
-  ChevronRight, Sparkles, Mail, Trash2, KeyRound, Send, Pencil, Check, X
+   Sparkles, Mail, Trash2, KeyRound, Pencil, Check, X
 } from 'lucide-react';
 
 export default function Customers() {
