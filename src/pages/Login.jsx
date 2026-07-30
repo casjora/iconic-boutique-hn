@@ -86,7 +86,7 @@ export default function Login() {
                 <div>
                   <p className="font-bold text-neutral-800 dark:text-neutral-200">Aprobación del Administrador</p>
                   <p className="text-neutral-500 mt-0.5 font-medium leading-relaxed">
-                    Para seguridad de precios mayoristas, un administrador de Iconic Boutique revisará tu perfil y te asignará el rol correspondiente (Detalle o Mayorista) desde el panel de clientes.
+                    Para mayor seguridad, un administrador de Iconic Boutique revisará tu perfil y te asignará el rol correspondiente.
                   </p>
                 </div>
               </div>
