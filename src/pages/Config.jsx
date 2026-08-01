@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useStore } from '../store';
-import { Settings, Save, Bell, Loader2, PlayCircle, HelpCircle } from 'lucide-react';
+import { useStore, playCustomerAlertSound, playOrderAlertSound } from '../store';
+import { Settings, Save, Bell, Loader2, PlayCircle, HelpCircle, Volume2 } from 'lucide-react';
 
 export default function Config() {
   const { telegramConfig, saveTelegramConfig, testTelegram, loading } = useStore();
@@ -191,6 +191,47 @@ export default function Config() {
           </form>
         </div>
 
+      </div>
+
+      {/* Sound Testing Card */}
+      <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-sm">
+        <div className="flex items-center gap-2 border-b border-neutral-100 pb-3">
+          <Volume2 className="h-5 w-5 text-indigo-500" />
+          <div>
+            <h3 className="font-display font-bold text-neutral-900 text-base">
+              Pruebas de Sonido y Autoplay
+            </h3>
+            <p className="text-[11px] text-neutral-500">
+              Verifica y activa la reproducción de audio en tu navegador.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-4">
+          <div className="bg-amber-50/50 dark:bg-amber-950/10 border border-amber-100 dark:border-amber-900/30 rounded-xl p-3 text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+            <strong>⚠️ Nota sobre las políticas del navegador:</strong> Por seguridad, los navegadores modernos (Chrome, Safari, Firefox) bloquean los sonidos automáticos si el usuario no ha interactuado primero con la página. Al presionar los botones a continuación, estarás <strong>autorizando permanentemente</strong> a la pestaña a reproducir alertas de sonido de forma audible.
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={playOrderAlertSound}
+              className="inline-flex items-center justify-center gap-2 px-4 py-3 bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 text-neutral-800 dark:text-neutral-200 text-xs font-bold rounded-xl cursor-pointer active:scale-95 transition-all"
+            >
+              <Volume2 className="h-4 w-4 text-rose-500 animate-pulse" />
+              Probar Alerta de Pedidos (🔔)
+            </button>
+
+            <button
+              type="button"
+              onClick={playCustomerAlertSound}
+              className="inline-flex items-center justify-center gap-2 px-4 py-3 bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 text-neutral-800 dark:text-neutral-200 text-xs font-bold rounded-xl cursor-pointer active:scale-95 transition-all"
+            >
+              <Volume2 className="h-4 w-4 text-indigo-500 animate-pulse" />
+              Probar Alerta de Clientes (👥)
+            </button>
+          </div>
+        </div>
       </div>
 
     </div>

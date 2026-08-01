@@ -71,31 +71,37 @@ export default function App() {
       await fetchTelegramConfig();
 
       const currentUser = useStore.getState().user;
-      if (currentUser && (currentUser.role === 'owner' || currentUser.role === 'vendedor')) {
+      if (currentUser && (currentUser.role === 'owner' || currentUser.role === 'dueño' || currentUser.role === 'vendedor')) {
         await fetchCustomers();
       }
     };
     initApp();
 
-    // Setup periodic polling of products and orders for real-time inventory updates
+    // Backup periodic polling (60s) as fallback for WebSockets
     const interval = setInterval(async () => {
       // Only query if the document/tab is active to prevent unneeded database queries
       if (document.hidden) return;
 
+      const currentUser = useStore.getState().user;
+      const isStaff = currentUser && (currentUser.role === 'owner' || currentUser.role === 'dueño' || currentUser.role === 'vendedor');
+
+      // Standard clients and guests don't need active polling on a minute interval.
+      // They rely on WebSockets, and can manually refresh or rely on initial load.
+      if (!isStaff) return;
+
       await fetchProducts();
       await fetchOrders();
-
-      const currentUser = useStore.getState().user;
-      if (currentUser && (currentUser.role === 'owner' || currentUser.role === 'vendedor')) {
-        await fetchCustomers();
-      }
-    }, 15000); // Poll every 15s (ultra responsive fallback to WebSockets)
+      await fetchCustomers();
+    }, 60000); // Poll every 60s as background sync fallback for managing staff
 
     return () => clearInterval(interval);
   }, [restoreSession, fetchProducts, fetchOrders, fetchTelegramConfig, initRealtime, fetchCustomers]);
 
   // Handle page component routing
   const renderView = () => {
+    const isOwnerOrVendedor = user && (user.role === 'owner' || user.role === 'dueño' || user.role === 'vendedor');
+    const isOwner = user && (user.role === 'owner' || user.role === 'dueño');
+
     switch (currentView) {
       case 'home':
         return <Home />;
@@ -114,8 +120,7 @@ export default function App() {
       case 'update-password':
         return <UpdatePassword />;
       case 'dashboard':
-        // Check permission: Owner or Seller (vendedor doesn't see cost metrics)
-        if (!user || (user.role !== 'owner' && user.role !== 'vendedor')) {
+        if (!isOwnerOrVendedor) {
           return (
             <div className="max-w-md mx-auto text-center py-16 space-y-4">
               <ShieldAlert className="h-12 w-12 text-rose-500 mx-auto" />
@@ -126,8 +131,7 @@ export default function App() {
         }
         return <Dashboard />;
       case 'inventory':
-        // Check permission: Owner or Seller
-        if (!user || (user.role !== 'owner' && user.role !== 'vendedor')) {
+        if (!isOwnerOrVendedor) {
           return (
             <div className="max-w-md mx-auto text-center py-16 space-y-4">
               <ShieldAlert className="h-12 w-12 text-rose-500 mx-auto" />
@@ -138,7 +142,7 @@ export default function App() {
         }
         return <Inventory />;
       case 'showroom':
-        if (!user || (user.role !== 'owner' && user.role !== 'vendedor')) {
+        if (!isOwnerOrVendedor) {
           return (
             <div className="max-w-md mx-auto text-center py-16 space-y-4">
               <ShieldAlert className="h-12 w-12 text-rose-500 mx-auto" />
@@ -149,8 +153,7 @@ export default function App() {
         }
         return <Showroom />;
       case 'orders':
-        // Check permission: Owner or Seller
-        if (!user || (user.role !== 'owner' && user.role !== 'vendedor')) {
+        if (!isOwnerOrVendedor) {
           return (
             <div className="max-w-md mx-auto text-center py-16 space-y-4">
               <ShieldAlert className="h-12 w-12 text-rose-500 mx-auto" />
@@ -161,7 +164,7 @@ export default function App() {
         }
         return <Orders />;
       case 'barcodes':
-        if (!user || (user.role !== 'owner' && user.role !== 'vendedor')) {
+        if (!isOwnerOrVendedor) {
           return (
             <div className="max-w-md mx-auto text-center py-16 space-y-4">
               <ShieldAlert className="h-12 w-12 text-rose-500 mx-auto" />
@@ -172,7 +175,7 @@ export default function App() {
         }
         return <Barcodes />;
       case 'config':
-        if (!user || user.role !== 'owner') {
+        if (!isOwner) {
           return (
             <div className="max-w-md mx-auto text-center py-16 space-y-4">
               <ShieldAlert className="h-12 w-12 text-rose-500 mx-auto" />
@@ -183,7 +186,7 @@ export default function App() {
         }
         return <Config />;
       case 'customers':
-        if (!user || (user.role !== 'owner' && user.role !== 'vendedor')) {
+        if (!isOwnerOrVendedor) {
           return (
             <div className="max-w-md mx-auto text-center py-16 space-y-4">
               <ShieldAlert className="h-12 w-12 text-rose-500 mx-auto" />

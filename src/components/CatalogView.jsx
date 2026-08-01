@@ -4,7 +4,7 @@ import { useStore } from '../store';
 import { Link, useLocation } from 'react-router-dom';
 import PerfumeCard from './PerfumeCard';
 import { Percent, Award, Heart, Sparkles, Search, SlidersHorizontal, RefreshCw, Flame, Download, FileDown, FileSpreadsheet, FileText, X, Loader2 } from 'lucide-react';
-import { isProductSet, getProductPromoDiscount } from '../utils/productHelper';
+import { isProductSet, getProductPromoDiscount, getProductPrices } from '../utils/productHelper';
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
 
@@ -84,13 +84,21 @@ export default function CatalogView({ favoritesOnly = false }) {
   };
 
   const handleExport = async () => {
+    // Filter out items with stock 0 (Requirement 3)
+    const exportProductsList = filteredProducts.filter(p => p.stock > 0);
     const isMayorista = exportPriceTier === 'mayorista';
     const includeImages = exportFormat === 'pdf' && exportIncludeImages;
     
     setIsExporting(true);
-    setExportProgress({ current: 0, total: filteredProducts.length });
+    setExportProgress({ current: 0, total: exportProductsList.length });
 
     try {
+      if (exportProductsList.length === 0) {
+        alert('No hay perfumes disponibles con stock mayor a 0 para exportar.');
+        setIsExporting(false);
+        return;
+      }
+
       if (exportFormat === 'pdf') {
         const doc = new jsPDF({
           orientation: 'portrait',
@@ -124,8 +132,8 @@ export default function CatalogView({ favoritesOnly = false }) {
         if (includeImages) {
           // Pre-load image URLs in parallel
           const loadedImages = [];
-          for (let i = 0; i < filteredProducts.length; i++) {
-            const p = filteredProducts[i];
+          for (let i = 0; i < exportProductsList.length; i++) {
+            const p = exportProductsList[i];
             setExportProgress(prev => ({ ...prev, current: i + 1 }));
             let base64 = null;
             if (p.image_url) {
@@ -137,7 +145,7 @@ export default function CatalogView({ favoritesOnly = false }) {
           let currentPage = 1;
           drawHeader(currentPage);
 
-          filteredProducts.forEach((p, idx) => {
+          exportProductsList.forEach((p, idx) => {
             const posOnPage = idx % 9;
             if (idx > 0 && posOnPage === 0) {
               drawFooter(currentPage);
@@ -206,37 +214,29 @@ export default function CatalogView({ favoritesOnly = false }) {
             const priceY = startY + 56;
             doc.setFontSize(7);
 
-            const origPublicPrice = p.pricePublic || 0;
-
+            const prices = getProductPrices(p);
             if (isMayorista) {
-              const vipPrice = p.pricePromotional || 0;
               doc.setTextColor(107, 114, 128);
               doc.setFont('Helvetica', 'normal');
-              doc.text(`P. Sugerido: L. ${origPublicPrice.toLocaleString()}`, startX + 4, priceY);
+              doc.text(`P. Sugerido: L. ${prices.pricePublic.toLocaleString()}`, startX + 4, priceY);
 
               doc.setTextColor(16, 185, 129); // Emerald
               doc.setFont('Helvetica', 'bold');
-              doc.text(`P. Mayoreo: L. ${vipPrice.toLocaleString()}`, startX + 4, priceY + 4.5);
+              doc.text(`P. Mayoreo: L. ${prices.finalWholesale.toLocaleString()}`, startX + 4, priceY + 4.5);
             } else {
-              const publicDiscountPct = p.publicDiscount || 0;
-              const promoDiscountPct = getProductPromoDiscount(p) || 0;
-              const effectiveDiscountPct = Math.max(publicDiscountPct, promoDiscountPct);
-              const hasDiscount = effectiveDiscountPct > 0;
-              const rawDiscountedPrice = hasDiscount ? Math.round(origPublicPrice * (1 - effectiveDiscountPct / 100)) : origPublicPrice;
-              const finalPublicPrice = Math.max(rawDiscountedPrice, p.pricePromotional || 0);
-
+              const hasDiscount = prices.hasDetallePromo;
               if (hasDiscount) {
                 doc.setTextColor(156, 163, 175);
                 doc.setFont('Helvetica', 'normal');
-                doc.text(`Reg: L. ${origPublicPrice.toLocaleString()}`, startX + 4, priceY);
+                doc.text(`Reg: L. ${prices.pricePublic.toLocaleString()}`, startX + 4, priceY);
 
                 doc.setTextColor(220, 38, 38);
                 doc.setFont('Helvetica', 'bold');
-                doc.text(`Oferta: L. ${finalPublicPrice.toLocaleString()} (-${effectiveDiscountPct}%)`, startX + 4, priceY + 4.5);
+                doc.text(`Oferta: L. ${prices.finalDetalle.toLocaleString()}`, startX + 4, priceY + 4.5);
               } else {
                 doc.setTextColor(31, 41, 55);
                 doc.setFont('Helvetica', 'bold');
-                doc.text(`Precio: L. ${origPublicPrice.toLocaleString()}`, startX + 4, priceY);
+                doc.text(`Precio: L. ${prices.pricePublic.toLocaleString()}`, startX + 4, priceY);
               }
             }
 
@@ -311,7 +311,7 @@ export default function CatalogView({ favoritesOnly = false }) {
 
           drawTableHeaders();
 
-          filteredProducts.forEach((p) => {
+          exportProductsList.forEach((p) => {
             if (y > pageHeight - 22) {
               drawFooter(pageNum);
               doc.addPage();
@@ -348,26 +348,19 @@ export default function CatalogView({ favoritesOnly = false }) {
             doc.setTextColor(55, 65, 81);
 
             // Pricing
-            const origPublicPrice = p.pricePublic || 0;
-            doc.text(`L. ${origPublicPrice.toLocaleString()}`, colX.price1, y);
+            const prices = getProductPrices(p);
+            doc.text(`L. ${prices.pricePublic.toLocaleString()}`, colX.price1, y);
 
             if (isMayorista) {
-              const vipPrice = p.pricePromotional || 0;
               doc.setFont('Helvetica', 'bold');
               doc.setTextColor(16, 185, 129); // Emerald-500
-              doc.text(`L. ${vipPrice.toLocaleString()}`, colX.price2, y);
+              doc.text(`L. ${prices.finalWholesale.toLocaleString()}`, colX.price2, y);
             } else {
-              const publicDiscountPct = p.publicDiscount || 0;
-              const promoDiscountPct = getProductPromoDiscount(p) || 0;
-              const effectiveDiscountPct = Math.max(publicDiscountPct, promoDiscountPct);
-              const hasDiscount = effectiveDiscountPct > 0;
-              const rawDiscountedPrice = hasDiscount ? Math.round(origPublicPrice * (1 - effectiveDiscountPct / 100)) : origPublicPrice;
-              const finalPublicPrice = Math.max(rawDiscountedPrice, p.pricePromotional || 0);
-
+              const hasDiscount = prices.hasDetallePromo;
               if (hasDiscount) {
                 doc.setFont('Helvetica', 'bold');
                 doc.setTextColor(220, 38, 38);
-                doc.text(`L. ${finalPublicPrice.toLocaleString()} (-${effectiveDiscountPct}%)`, colX.price2, y);
+                doc.text(`L. ${prices.finalDetalle.toLocaleString()}`, colX.price2, y);
               } else {
                 doc.text('-', colX.price2, y);
               }
@@ -389,7 +382,8 @@ export default function CatalogView({ favoritesOnly = false }) {
         doc.save(`Inventario_de_Perfumer_${timestamp}.pdf`);
       } else {
         // Excel format
-        const exportData = filteredProducts.map(p => {
+        const exportData = exportProductsList.map(p => {
+          const prices = getProductPrices(p);
           if (isMayorista) {
             return {
               'Código/ID': p.id,
@@ -398,18 +392,11 @@ export default function CatalogView({ favoritesOnly = false }) {
               'Tamaño': p.size,
               'Categoría': p.category,
               'Stock': p.stock > 0 ? `${p.stock} uds` : 'Agotado',
-              'Precio Sugerido / Detalle (L.)': p.pricePublic,
-              'Precio Mayorista (L.)': p.pricePromotional,
+              'Precio Sugerido / Detalle (L.)': prices.pricePublic,
+              'Precio Mayorista (L.)': prices.finalWholesale,
               'Enlace de Imagen': p.image_url || ''
             };
           } else {
-            const publicDiscountPct = p.publicDiscount || 0;
-            const promoDiscountPct = getProductPromoDiscount(p);
-            const effectiveDiscountPct = Math.max(publicDiscountPct, promoDiscountPct);
-            const hasDiscount = effectiveDiscountPct > 0;
-            const rawDiscountedPrice = hasDiscount ? Math.round(p.pricePublic * (1 - effectiveDiscountPct / 100)) : p.pricePublic;
-            const finalPublicPrice = Math.max(rawDiscountedPrice, p.pricePromotional || 0);
-
             return {
               'Código/ID': p.id,
               'Marca': p.brand,
@@ -417,8 +404,8 @@ export default function CatalogView({ favoritesOnly = false }) {
               'Tamaño': p.size,
               'Categoría': p.category,
               'Stock': p.stock > 0 ? `${p.stock} uds` : 'Agotado',
-              'Precio Detalle (L.)': p.pricePublic,
-              'Precio Promocional (L.)': hasDiscount ? finalPublicPrice : 'Sin Oferta',
+              'Precio Detalle (L.)': prices.pricePublic,
+              'Precio Promocional (L.)': prices.hasDetallePromo ? prices.finalDetalle : 'Sin Oferta',
               'Enlace de Imagen': p.image_url || ''
             };
           }
@@ -510,6 +497,7 @@ export default function CatalogView({ favoritesOnly = false }) {
         p.name.toLowerCase().includes(term) ||
         p.brand.toLowerCase().includes(term) ||
         (p.size || '').toLowerCase().includes(term) ||
+        (p.barcode || '').toLowerCase().includes(term) ||
         (isSearchForSet && isProductSet(p));
       
       const matchesBrand = selectedBrand === 'Todas' || p.brand?.trim() === selectedBrand;
@@ -888,45 +876,52 @@ export default function CatalogView({ favoritesOnly = false }) {
                   </div>
                 </div>
 
-                {/* Optional pricing tier selector for privileged users */}
-                {(user?.role === 'vendedor' || user?.role === 'owner') && (
+                {/* Pricing tier selector for staff and wholesale customers */}
+                {(user?.role === 'vendedor' || user?.role === 'owner' || user?.role === 'dueño' || user?.role === 'mayorista') && (
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
-                      Tarifa Seleccionada (Staff)
+                    <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 block">
+                      Tarifa a Incluir en el Archivo Exportado
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
+                        type="button"
                         onClick={() => setExportPriceTier('mayorista')}
                         className={`px-3 py-2 border rounded-xl text-xs font-bold cursor-pointer transition-all ${
                           exportPriceTier === 'mayorista'
-                            ? 'bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 border-transparent'
+                            ? 'bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 border-transparent shadow-sm'
                             : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800'
                         }`}
                       >
-                        Precio Mayoreo
+                        🏷️ Incluir Precio Mayoreo
                       </button>
                       <button
+                        type="button"
                         onClick={() => setExportPriceTier('detalle')}
                         className={`px-3 py-2 border rounded-xl text-xs font-bold cursor-pointer transition-all ${
                           exportPriceTier === 'detalle'
-                            ? 'bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 border-transparent'
+                            ? 'bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 border-transparent shadow-sm'
                             : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800'
                         }`}
                       >
-                        Precio Detalle
+                        🛒 Solo Precio al Detalle
                       </button>
                     </div>
+                    {user?.role === 'mayorista' && (
+                      <p className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">
+                        💡 Si deseas compartir este catálogo con tus clientes finales, selecciona "Solo Precio al Detalle" para ocultar tu margen de mayoreo.
+                      </p>
+                    )}
                   </div>
                 )}
 
-                {/* Fixed Pricing Label for Customers */}
-                {user?.role !== 'vendedor' && user?.role !== 'owner' && (
+                {/* Fixed Pricing Label for Retail Customers */}
+                {user?.role !== 'vendedor' && user?.role !== 'owner' && user?.role !== 'dueño' && user?.role !== 'mayorista' && (
                   <div className="space-y-1">
                     <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 block">
                       Tarifa Aplicada por tu Rol
                     </span>
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900/60 rounded-lg text-[11px] font-bold text-amber-800 dark:text-amber-300">
-                      {user?.role === 'mayorista' ? '✓ Precios de Mayoreo (Mayor descuento)' : '✓ Precios al Detalle (y Promocionales)'}
+                      ✓ Precios al Detalle (y Promocionales)
                     </span>
                   </div>
                 )}

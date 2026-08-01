@@ -10,7 +10,7 @@ import {
   AlertCircle, Check, Percent, Download, Share2,
   FileDown, FileSpreadsheet, FileText, X
 } from 'lucide-react';
-import { isProductSet, getProductPromoDiscount, cleanProductDescription, setProductPromoDiscount } from '../utils/productHelper';
+import { isProductSet, getProductPromoDiscount, cleanProductDescription, getProductPromoDetalle, getProductPromoMayorista, setProductPromotions, getProductPrices } from '../utils/productHelper';
 import { generateBarcodeSVG } from '../utils/barcode';
 
 export default function Inventory() {
@@ -19,6 +19,9 @@ export default function Inventory() {
     uploadPdf, saveProductsBulk, applyBulkDiscount, loading, error, setError,
     user
   } = useStore();
+
+  const isOwner = user?.role === 'owner' || user?.role === 'dueño';
+  const isVendedor = user?.role === 'vendedor';
 
   // Search & filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,42 +39,42 @@ export default function Inventory() {
   const [formSize, setFormSize] = useState('100 ml');
   const [formCost, setFormCost] = useState('');
   const [formPricePublic, setFormPricePublic] = useState('');
-  const [formPricePromotional, setFormPricePromotional] = useState('');
   const [formStock, setFormStock] = useState('');
   const [formCategory, setFormCategory] = useState('Damas');
   const [formBarcode, setFormBarcode] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formImageUrl, setFormImageUrl] = useState('');
-  const [formPromoDiscount, setFormPromoDiscount] = useState(0);
+  const [formPromoDetalle, setFormPromoDetalle] = useState('');
+  const [formPromoMayorista, setFormPromoMayorista] = useState('');
 
   // AI PDF upload flow states
   const [pdfFile, setPdfFile] = useState(null);
   const [pdfBase64, setPdfBase64] = useState('');
   const [fileName, setFileName] = useState('');
-  const [aiModel, setAiModel] = useState('gemini-3.6-flash'); // Default model choice
+  const [aiModel, setAiModel] = useState('gemini-3.6-flash');
   
   // Progress & State trackers for AI uploading
   const [isParsing, setIsParsing] = useState(false);
   const [parsingProgress, setParsingProgress] = useState('');
-  const [parsedProducts, setParsedProducts] = useState([]); // Draft table of successfully parsed items
-  const [isDrafting, setIsDrafting] = useState(false); // Mode viewing draft products
+  const [parsedProducts, setParsedProducts] = useState([]);
+  const [isDrafting, setIsDrafting] = useState(false);
   
   // Retry / Fail states for fallback mechanics
   const [parsingFailed, setParsingFailed] = useState(false);
   const [failedPageIdx, setFailedPageIdx] = useState(0);
-  const [pagesText, setPagesText] = useState(null); // Extracted PDF texts kept across retries
-  const [accumulatedProducts, setAccumulatedProducts] = useState([]); // Products parsed prior to page failure
+  const [pagesText, setPagesText] = useState(null);
+  const [accumulatedProducts, setAccumulatedProducts] = useState([]);
   const [failedError, setFailedError] = useState('');
 
   const abortControllerRef = useRef(null);
 
   // Client Catalog Export States
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [exportFormat, setExportFormat] = useState('pdf'); // 'pdf' | 'xlsx' | 'csv'
-  const [exportRange, setExportRange] = useState('filtered'); // 'filtered' | 'all'
+  const [exportFormat, setExportFormat] = useState('pdf');
+  const [exportRange, setExportRange] = useState('filtered');
   const [includeVIP, setIncludeVIP] = useState(true);
   const [includeDiscount, setIncludeDiscount] = useState(true);
-  const [additionalDiscount, setAdditionalDiscount] = useState(0); // Optional extra % discount
+  const [additionalDiscount, setAdditionalDiscount] = useState(0);
   const [groupByBrand, setGroupByBrand] = useState(true);
   const [onlyInStock, setOnlyInStock] = useState(true);
   const [includeImages, setIncludeImages] = useState(true);
@@ -87,8 +90,6 @@ export default function Inventory() {
       const dBrand = (item.brand || '').toLowerCase().trim();
       const dSize = (item.size || '').toLowerCase().trim();
 
-      // Find best match in our current inventory
-      // 1. Exact match (brand + name + size)
       let matched = products.find(p => 
         (p.brand || '').toLowerCase().trim() === dBrand &&
         (p.name || '').toLowerCase().trim() === dName &&
@@ -99,7 +100,6 @@ export default function Inventory() {
       if (matched) {
         matchType = 'exact';
       } else {
-        // 2. Brand + Name match (different size)
         matched = products.find(p => 
           (p.brand || '').toLowerCase().trim() === dBrand &&
           (p.name || '').toLowerCase().trim() === dName
@@ -107,7 +107,6 @@ export default function Inventory() {
         if (matched) {
           matchType = 'name-only';
         } else {
-          // 3. Fuzzy match (brand + name contains or is contained in)
           matched = products.find(p => {
             const pName = (p.name || '').toLowerCase().trim();
             const pBrand = (p.brand || '').toLowerCase().trim();
@@ -120,7 +119,6 @@ export default function Inventory() {
         }
       }
 
-      // Convert category from DB format ('Femenino', 'Masculino') to local UI format ('Damas', 'Caballeros', 'Unisex')
       let localCategory = item.category || 'Damas';
       if (matched) {
         if (matched.category === 'Masculino') localCategory = 'Caballeros';
@@ -132,7 +130,6 @@ export default function Inventory() {
         ...item,
         matchedProductId: matched ? matched.id : 'new',
         matchType: matchType,
-        // Keep the raw item's cost if present; otherwise fallback to matched product's cost
         cost: item.cost || (matched ? matched.cost : 0),
         pricePublic: item.pricePublic || (matched ? matched.pricePublic : 0),
         pricePromotional: item.pricePromotional || (matched ? matched.pricePromotional : 0),
@@ -152,7 +149,6 @@ export default function Inventory() {
     }
   };
 
-  // Filtering products in inventory list
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
       const term = searchTerm.toLowerCase();
@@ -179,17 +175,6 @@ export default function Inventory() {
     const brands = products.map(p => p.brand?.trim()).filter(Boolean);
     return ['Todas', ...new Set(brands)].sort((a, b) => a.localeCompare(b));
   }, [products]);
-
-  const normalizeString = (str) => {
-    if (!str) return '';
-    return str.toLowerCase().trim().replace(/\s+/g, ' ');
-  };
-
-  const isTester = (str) => {
-    if (!str) return false;
-    const s = str.toLowerCase();
-    return s.includes('tester') || s.includes('tstr');
-  };
 
   const convertOzToMl = (sizeStr) => {
     if (!sizeStr) return '';
@@ -260,11 +245,8 @@ export default function Inventory() {
 
     try {
       const parsed = [];
-      
-      // Check if the first row looks like headers
       const firstRowStr = data[0].join(' ').toLowerCase();
       const hasHeaders = firstRowStr.includes('marca') || firstRowStr.includes('precio') || firstRowStr.includes('costo') || firstRowStr.includes('perfume');
-      
       const startIndex = hasHeaders ? 1 : 0;
 
       for (let i = startIndex; i < data.length; i++) {
@@ -275,7 +257,6 @@ export default function Inventory() {
         if (!nameStr) continue;
 
         let pStock = 1, pVip = 0, pRetail = 0, pCost = 0;
-        
         let fullText = "";
         const numbers = [];
         
@@ -356,7 +337,6 @@ export default function Inventory() {
     }
   };
 
-  // Handle Drag & Drop / manual selection for both PDF, CSV, and Excel
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -416,13 +396,11 @@ export default function Inventory() {
     }
   };
 
-  // Trigger PDF AI processing
   const handleUploadPdf = async (resume = false, selectedModelOverride = null) => {
     setError(null);
     setIsParsing(true);
     setParsingProgress('Iniciando procesamiento con Inteligencia Artificial...');
     
-    // Create new abort controller
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
@@ -430,7 +408,7 @@ export default function Inventory() {
     const startPageNum = resume ? failedPageIdx : 0;
     const existingList = resume ? accumulatedProducts : [];
     const sourceTexts = resume ? pagesText : null;
-    const base64ToSend = resume ? null : pdfBase64; // API doesn't need base64 if we pass extracted pagesText
+    const base64ToSend = resume ? null : pdfBase64;
 
     setParsingProgress(`Analizando página ${startPageNum + 1}... Modelo: ${activeModel === 'deepseek-v4-pro' ? 'DeepSeek v4' : 'Gemini'}`);
 
@@ -442,20 +420,17 @@ export default function Inventory() {
         startPageNum, 
         existingList, 
         sourceTexts,
-        controller.signal // Pass signal to store
+        controller.signal
       );
 
       if (res && res.success) {
-        // Success
         enrichAndSetParsedProducts(res.products || []);
         setIsDrafting(true);
         setParsingFailed(false);
         setFailedError('');
       } else if (res && res.cancelled) {
-        // Request was cancelled by user
         console.log('AI parsing cancelled by user.');
       } else {
-        // Parsing page failure (with resume capabilities)
         setParsingFailed(true);
         const failedIdx = res?.failedPageIndex ?? startPageNum;
         setFailedPageIdx(failedIdx);
@@ -475,11 +450,9 @@ export default function Inventory() {
     }
   };
 
-  // Save parsed draft products to the database
   const handleSaveDraft = async () => {
     setError(null);
     
-    // Sort into new products (inserts) and existing products to update stock/cost (updates)
     const inserts = [];
     const updates = [];
 
@@ -492,8 +465,8 @@ export default function Inventory() {
             name: draft.name,
             brand: draft.brand,
             size: draft.size,
-            stock: existing.stock + draft.stock, // Cumulative stock addition
-            cost: draft.cost, // Update with latest cost
+            stock: existing.stock + draft.stock,
+            cost: draft.cost,
             pricePublic: draft.pricePublic,
             pricePromotional: draft.pricePromotional,
             category: draft.category
@@ -518,7 +491,6 @@ export default function Inventory() {
     }
   };
 
-  // Edit fields on parsed products draft list
   const handleUpdateDraftField = (index, field, value) => {
     setParsedProducts(prev => prev.map((item, idx) => {
       if (idx === index) {
@@ -536,7 +508,6 @@ export default function Inventory() {
     setParsedProducts(prev => prev.filter((_, idx) => idx !== index));
   };
 
-  // Product CRUD functions
   const handleOpenAdd = () => {
     setError(null);
     setIsEditing(false);
@@ -546,13 +517,13 @@ export default function Inventory() {
     setFormSize('100 ml');
     setFormCost('');
     setFormPricePublic('');
-    setFormPricePromotional('');
     setFormStock('');
     setFormCategory('Damas');
     setFormBarcode('');
     setFormDescription('');
     setFormImageUrl('');
-    setFormPromoDiscount(0);
+    setFormPromoDetalle('');
+    setFormPromoMayorista('');
     setIsFormModalOpen(true);
   };
 
@@ -572,13 +543,14 @@ export default function Inventory() {
     setFormSize(product.size);
     setFormCost(product.cost);
     setFormPricePublic(product.pricePublic);
-    setFormPricePromotional(product.pricePromotional);
     setFormStock(product.stock);
     setFormCategory(product.category);
     setFormBarcode(product.barcode || '');
     
-    const discount = getProductPromoDiscount(product);
-    setFormPromoDiscount(discount);
+    const promoDetalle = getProductPromoDetalle(product) || '';
+    const promoMayorista = getProductPromoMayorista(product) || '';
+    setFormPromoDetalle(promoDetalle);
+    setFormPromoMayorista(promoMayorista);
     setFormDescription(cleanProductDescription(product.description || ''));
     setFormImageUrl(product.image_url || '');
     setIsFormModalOpen(true);
@@ -588,7 +560,7 @@ export default function Inventory() {
     e.preventDefault();
     setError(null);
 
-    const finalDescription = setProductPromoDiscount(formDescription, formPromoDiscount);
+    const finalDescription = setProductPromotions(formDescription, formPromoDetalle, formPromoMayorista);
 
     const data = {
       name: formName.trim(),
@@ -596,7 +568,7 @@ export default function Inventory() {
       size: formSize.trim(),
       cost: Number(formCost) || 0,
       pricePublic: Number(formPricePublic) || 0,
-      pricePromotional: Number(formPricePromotional) || 0,
+      pricePromotional: Math.round((Number(formPricePublic) || 0) * 0.75),
       stock: Number(formStock) || 0,
       category: formCategory,
       barcode: formBarcode.trim(),
@@ -617,13 +589,13 @@ export default function Inventory() {
       setFormSize('100 ml');
       setFormCost('');
       setFormPricePublic('');
-      setFormPricePromotional('');
       setFormStock('');
       setFormCategory('Damas');
       setFormBarcode('');
       setFormDescription('');
       setFormImageUrl('');
-      setFormPromoDiscount(0);
+      setFormPromoDetalle('');
+      setFormPromoMayorista('');
     }
   };
 
@@ -774,7 +746,7 @@ export default function Inventory() {
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
 
-      const drawHeader = (pageNum) => {
+      const drawHeader = () => {
         doc.setFillColor(17, 24, 39);
         doc.rect(0, 0, pageWidth, 14, 'F');
         
@@ -795,7 +767,6 @@ export default function Inventory() {
       };
 
       if (includeImages) {
-        // Pre-load image URLs in parallel
         const loadedImages = await Promise.all(
           items.map(p => p.image_url ? loadImageBase64(p.image_url) : Promise.resolve(null))
         );
@@ -822,12 +793,10 @@ export default function Inventory() {
           const startX = 12 + col * (cardW + gapX);
           const startY = 22 + row * (cardH + gapY);
 
-          // Outer card border
           doc.setDrawColor(229, 231, 235);
           doc.setFillColor(255, 255, 255);
           doc.roundedRect(startX, startY, cardW, cardH, 2.5, 2.5, 'FD');
 
-          // Image box
           const imgW = 46;
           const imgH = 34;
           const imgX = startX + (cardW - imgW) / 2;
@@ -852,14 +821,12 @@ export default function Inventory() {
             doc.text('Perfumería', imgX + imgW / 2, imgY + imgH / 2, { align: 'center' });
           }
 
-          // Brand
           doc.setTextColor(156, 163, 175);
           doc.setFont('Helvetica', 'bold');
           doc.setFontSize(6.5);
           const brandTxt = (p.brand || 'GENÉRICO').toUpperCase();
           doc.text(brandTxt.substring(0, 26), startX + 4, startY + 41);
 
-          // Name & Presentation combined
           doc.setTextColor(17, 24, 39);
           doc.setFont('Helvetica', 'bold');
           doc.setFontSize(7.5);
@@ -868,7 +835,6 @@ export default function Inventory() {
           const nameLines = splitName.slice(0, 2);
           doc.text(nameLines, startX + 4, startY + 45.5);
 
-          // Pricing block
           const priceY = startY + 56;
           doc.setFontSize(7);
 
@@ -899,7 +865,6 @@ export default function Inventory() {
             doc.text(`Precio Mayorista: L. ${vipPrice.toLocaleString()}`, startX + 4, priceY + (includeDiscount && finalDiscountPercent > 0 ? 8 : 4));
           }
 
-          // Category & Stock Label
           doc.setTextColor(107, 114, 128);
           doc.setFont('Helvetica', 'normal');
           doc.setFontSize(6);
@@ -918,7 +883,6 @@ export default function Inventory() {
 
         drawFooter(currentPage);
       } else {
-        // Table View without Presentación column
         let y = 20;
         let pageNum = 1;
         drawHeader(pageNum);
@@ -1464,8 +1428,6 @@ export default function Inventory() {
           )}
         </div>
 
-
-
       {/* Interactive Inventory List table */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1512,8 +1474,8 @@ export default function Inventory() {
           </div>
         </div>
 
-        {/* Bulk Promotions Panel (Only for Owner and Seller) */}
-        {(user?.role === 'owner' || user?.role === 'vendedor') && (
+        {/* Bulk Promotions Panel */}
+        {(user?.role === 'owner' || user?.role === 'vendedor' || user?.role === 'dueño') && (
           <div className="bg-amber-50/40 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-3xl p-4 sm:p-5 shadow-sm space-y-3">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="space-y-0.5 text-left">
@@ -1542,7 +1504,6 @@ export default function Inventory() {
                   ))}
                 </div>
 
-                {/* Custom input discount */}
                 <div className="flex items-center gap-1.5">
                   <input
                     type="number"
@@ -1581,9 +1542,9 @@ export default function Inventory() {
                 <tr>
                   <th className="px-3 sm:px-6 py-3.5">Fragancia</th>
                   <th className="px-3 sm:px-6 py-3.5">Presentación</th>
-                  <th className="px-3 sm:px-6 py-3.5">Costo (HNL)</th>
+                  {isOwner && <th className="px-3 sm:px-6 py-3.5">Costo (HNL)</th>}
                   <th className="px-3 sm:px-6 py-3.5">Precio Público (HNL)</th>
-                  <th className="px-3 sm:px-6 py-3.5">Precio VIP (HNL)</th>
+                  <th className="px-3 sm:px-6 py-3.5">Precio Mayorista (HNL)</th>
                   <th className="px-3 sm:px-6 py-3.5">Stock</th>
                   <th className="px-3 sm:px-6 py-3.5">Código / Barcode</th>
                   <th className="px-3 sm:px-6 py-3.5 text-right">Acciones</th>
@@ -1592,7 +1553,7 @@ export default function Inventory() {
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
                 {filteredProducts.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="px-6 py-12 text-center text-neutral-400 dark:text-neutral-500">
+                    <td colSpan={isOwner ? "8" : "7"} className="px-6 py-12 text-center text-neutral-400 dark:text-neutral-500">
                       <span>No se encontraron perfumes registrados.</span>
                     </td>
                   </tr>
@@ -1613,17 +1574,34 @@ export default function Inventory() {
                                 Set
                               </span>
                             )}
-                            {getProductPromoDiscount(p) > 0 && (
+                            {getProductPromoDetalle(p) && (
                               <span className="inline-flex items-center rounded-full bg-rose-50 dark:bg-rose-950/80 px-1.5 py-0.5 text-[8px] font-black text-rose-700 dark:text-rose-300 uppercase tracking-wider border border-rose-100 dark:border-rose-800">
-                                -{getProductPromoDiscount(p)}% Off
+                                Detalle: {getProductPromoDetalle(p)}
+                              </span>
+                            )}
+                            {getProductPromoMayorista(p) && (
+                              <span className="inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-950/80 px-1.5 py-0.5 text-[8px] font-black text-amber-700 dark:text-amber-600 uppercase tracking-wider border border-amber-100 dark:border-amber-800">
+                                Mayoreo: {getProductPromoMayorista(p)}
                               </span>
                             )}
                           </div>
                         </td>
                         <td className="px-3 sm:px-6 py-3.5 text-neutral-500 dark:text-neutral-400 font-semibold whitespace-nowrap">{p.size}</td>
-                        <td className="px-3 sm:px-6 py-3.5 font-mono text-neutral-950 dark:text-neutral-100 font-bold whitespace-nowrap">L. {p.cost.toLocaleString()}</td>
-                        <td className="px-3 sm:px-6 py-3.5 font-mono text-neutral-950 dark:text-neutral-100 font-bold whitespace-nowrap">L. {p.pricePublic.toLocaleString()}</td>
-                        <td className="px-3 sm:px-6 py-3.5 font-mono text-neutral-950 dark:text-neutral-100 font-bold whitespace-nowrap">L. {p.pricePromotional.toLocaleString()}</td>
+                        {isOwner && <td className="px-3 sm:px-6 py-3.5 font-mono text-neutral-950 dark:text-neutral-100 font-bold whitespace-nowrap">L. {p.cost.toLocaleString()}</td>}
+                        <td className="px-3 sm:px-6 py-3.5 font-mono text-neutral-950 dark:text-neutral-100 font-bold whitespace-nowrap">
+                          <div>L. {getProductPrices(p).finalDetalle.toLocaleString()}</div>
+                          {getProductPrices(p).hasDetallePromo && (
+                            <div className="text-[10px] text-red-500 line-through font-normal">
+                              L. {getProductPrices(p).pricePublic.toLocaleString()}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 sm:px-6 py-3.5 font-mono text-neutral-950 dark:text-neutral-100 font-bold whitespace-nowrap">
+                          <div>L. {getProductPrices(p).finalWholesale.toLocaleString()}</div>
+                          <div className="text-[10px] text-neutral-400 font-normal">
+                            Base: L. {getProductPrices(p).baseWholesale.toLocaleString()}
+                          </div>
+                        </td>
                         <td className="px-3 sm:px-6 py-3.5 whitespace-nowrap">
                           <span className={`inline-block px-2 py-1 rounded text-xs font-mono font-black ${
                             p.stock <= 0
@@ -1637,7 +1615,6 @@ export default function Inventory() {
                         </td>
                         <td className="px-3 sm:px-6 py-3.5 space-y-1 min-w-[100px]">
                           <span className="font-mono text-neutral-500 dark:text-neutral-400 text-[10px] block truncate">{p.barcode}</span>
-                          {/* Mini visual representation of Code 128 */}
                           <div 
                             className="w-16 h-4 opacity-50 dark:invert overflow-hidden"
                             dangerouslySetInnerHTML={{ __html: generateBarcodeSVG(p.barcode || p.id).replace('height="70"', 'height="10"').replace('style="background:white; padding:10px; border-radius:4px;"', 'style="background:transparent; padding:0;"') }}
@@ -1674,7 +1651,6 @@ export default function Inventory() {
         <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto space-y-6">
             
-            {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-neutral-100 dark:border-neutral-800 pb-4">
               <div className="space-y-1">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
@@ -1696,10 +1672,7 @@ export default function Inventory() {
               </button>
             </div>
 
-            {/* Modal Body / Settings Form */}
             <div className="space-y-4">
-              
-              {/* Formato de descarga */}
               <div>
                 <label className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-2">
                   Formato de Descarga
@@ -1746,7 +1719,6 @@ export default function Inventory() {
                 </div>
               </div>
 
-              {/* Rango de exportación */}
               <div>
                 <label className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-2">
                   Rango de Productos
@@ -1775,7 +1747,6 @@ export default function Inventory() {
                 </div>
               </div>
 
-              {/* Opciones de columnas */}
               <div className="space-y-3 bg-neutral-50 dark:bg-neutral-800/60 rounded-2xl p-4 border border-neutral-100 dark:border-neutral-800">
                 <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block mb-1">
                   Configuración de Columnas y Precios
@@ -1834,7 +1805,6 @@ export default function Inventory() {
                 </div>
               </div>
 
-              {/* Descuento Adicional para Clientes */}
               <div>
                 <label htmlFor="export-add-discount" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
                   Descuento Adicional para Cliente (%)
@@ -1858,7 +1828,6 @@ export default function Inventory() {
 
             </div>
 
-            {/* Modal Footer */}
             <div className="flex items-center justify-end gap-3 border-t border-neutral-100 dark:border-neutral-800 pt-4">
               <button
                 type="button"
@@ -1898,7 +1867,6 @@ export default function Inventory() {
         <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto space-y-6">
             
-            {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-neutral-100 dark:border-neutral-800 pb-4">
               <div className="space-y-1">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
@@ -1920,7 +1888,6 @@ export default function Inventory() {
               </button>
             </div>
 
-            {/* Modal Body / Form */}
             <form onSubmit={handleSaveProduct} className="space-y-4">
               
               <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
@@ -1986,48 +1953,51 @@ export default function Inventory() {
                 </div>
               </div>
 
-              <div className="grid gap-3 grid-cols-3">
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+                {isOwner && (
+                  <div>
+                    <label htmlFor="prod-cost" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
+                      Costo (HNL)
+                    </label>
+                    <input
+                      id="prod-cost"
+                      type="number"
+                      required={isOwner}
+                      value={formCost}
+                      onChange={(e) => setFormCost(e.target.value)}
+                      className="block w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent transition-all outline-none font-mono"
+                      placeholder="0"
+                    />
+                  </div>
+                )}
                 <div>
-                  <label htmlFor="prod-cost" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
-                    Costo (HNL)
-                  </label>
-                  <input
-                    id="prod-cost"
-                    type="number"
-                    required
-                    value={formCost}
-                    onChange={(e) => setFormCost(e.target.value)}
-                    className="block w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent transition-all outline-none font-mono"
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="prod-public" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
-                    Púb (HNL)
+                  <label htmlFor="prod-public" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5 flex items-center justify-between">
+                    <span>Precio Detalle (HNL)</span>
+                    {isVendedor && <span className="text-[9px] text-neutral-400 font-normal">(Solo lectura)</span>}
                   </label>
                   <input
                     id="prod-public"
                     type="number"
                     required
+                    disabled={isVendedor}
+                    readOnly={isVendedor}
                     value={formPricePublic}
                     onChange={(e) => setFormPricePublic(e.target.value)}
-                    className="block w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent transition-all outline-none font-mono"
+                    className={`block w-full px-3 py-2 border rounded-xl text-xs font-semibold font-mono transition-all outline-none ${
+                      isVendedor
+                        ? 'bg-neutral-100 dark:bg-neutral-900 text-neutral-400 dark:text-neutral-500 border-neutral-200 dark:border-neutral-800 cursor-not-allowed select-none'
+                        : 'bg-neutral-50 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400'
+                    }`}
                     placeholder="0"
                   />
                 </div>
                 <div>
-                  <label htmlFor="prod-vip" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
-                    Mayorista (HNL)
+                  <label className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
+                    <span>Precio Mayorista Base (-25%)</span>
                   </label>
-                  <input
-                    id="prod-vip"
-                    type="number"
-                    required
-                    value={formPricePromotional}
-                    onChange={(e) => setFormPricePromotional(e.target.value)}
-                    className="block w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent transition-all outline-none font-mono"
-                    placeholder="0"
-                  />
+                  <div className="block w-full px-3 py-2 bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl text-xs font-bold font-mono text-neutral-500 dark:text-neutral-400 select-none">
+                    L. {Math.round((Number(formPricePublic) || 0) * 0.75).toLocaleString()}
+                  </div>
                 </div>
               </div>
 
@@ -2061,22 +2031,35 @@ export default function Inventory() {
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="prod-promo-pct" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
-                  Descuento de Oferta / Promoción (%)
-                </label>
-                <div className="flex items-center gap-2">
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 bg-neutral-50 dark:bg-neutral-905 p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800">
+                <div>
+                  <label htmlFor="prod-promo-detalle" className="text-[10px] font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider block mb-1">
+                    🏷️ Oferta Clientes Detalle
+                  </label>
                   <input
-                    id="prod-promo-pct"
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={formPromoDiscount}
-                    onChange={(e) => setFormPromoDiscount(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
-                    className="block w-20 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent transition-all outline-none font-mono"
-                    placeholder="0"
+                    id="prod-promo-detalle"
+                    type="text"
+                    value={formPromoDetalle}
+                    onChange={(e) => setFormPromoDetalle(e.target.value)}
+                    className="block w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 transition-all outline-none font-mono"
+                    placeholder="Eje: 20% o 100"
                   />
-                  <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-bold">% de oferta sobre precio Público</span>
+                  <span className="text-[9px] text-neutral-400 block mt-1">Escribe un porcentaje (ej: <b>20%</b>) o un monto fijo (ej: <b>150</b>).</span>
+                </div>
+
+                <div>
+                  <label htmlFor="prod-promo-mayorista" className="text-[10px] font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider block mb-1">
+                    📦 Oferta Clientes Mayoristas
+                  </label>
+                  <input
+                    id="prod-promo-mayorista"
+                    type="text"
+                    value={formPromoMayorista}
+                    onChange={(e) => setFormPromoMayorista(e.target.value)}
+                    className="block w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 transition-all outline-none font-mono"
+                    placeholder="Eje: 10% o 50"
+                  />
+                  <span className="text-[9px] text-neutral-400 block mt-1">Escribe un porcentaje (ej: <b>10%</b>) o un monto fijo (ej: <b>50</b>).</span>
                 </div>
               </div>
 
@@ -2094,7 +2077,6 @@ export default function Inventory() {
                 />
               </div>
 
-              {/* Modal Footer */}
               <div className="flex items-center justify-end gap-3 border-t border-neutral-100 dark:border-neutral-800 pt-4">
                 <button
                   type="button"
@@ -2105,7 +2087,7 @@ export default function Inventory() {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading || !formName || !formBrand || !formCost || !formPricePublic || !formPricePromotional || formStock === ''}
+                  disabled={loading || !formName || !formBrand || (isOwner && !formCost) || !formPricePublic || formStock === ''}
                   className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer disabled:opacity-50"
                 >
                   {loading ? (

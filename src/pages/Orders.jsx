@@ -1,6 +1,7 @@
 import { useState, useMemo,useEffect } from 'react';
 import { useStore } from '../store';
 import { ClipboardList, Search, Edit2, Loader2, CheckCircle2, AlertCircle, ShoppingBag, Eye, X, Plus, Trash2 } from 'lucide-react';
+import { getProductPrices } from '../utils/productHelper';
 
 export default function Orders() {
   const { 
@@ -15,37 +16,101 @@ export default function Orders() {
   const [viewingOrder, setViewingOrder] = useState(null);
   const [editingOrder, setEditingOrder] = useState(null);
 
+  // Edit order modal states
+  const [editClientName, setEditClientName] = useState('');
+  const [editClientPhone, setEditClientPhone] = useState('');
+  const [editItems, setEditItems] = useState([]);
+  const [editBarcodeInput, setEditBarcodeInput] = useState('');
+
   // Physical Sale modal states
   const [showPhysicalSaleModal, setShowPhysicalSaleModal] = useState(false);
-  const [physicalProductId, setPhysicalProductId] = useState('');
-  const [physicalQuantity, setPhysicalQuantity] = useState(1);
+  const [physicalSaleItems, setPhysicalSaleItems] = useState([]);
+  const [barcodeInput, setBarcodeInput] = useState('');
   const [physicalClientName, setPhysicalClientName] = useState('Venta Física (Mostrador)');
   const [physicalClientPhone, setPhysicalClientPhone] = useState('');
-  const [physicalPricePaid, setPhysicalPricePaid] = useState('');
   const [physicalBuyerId, setPhysicalBuyerId] = useState('');
   const [physicalRoleUsed, setPhysicalRoleUsed] = useState('detalle');
   const [reportingPhysicalSale, setReportingPhysicalSale] = useState(false);
   const [physicalSaleMsg, setPhysicalSaleMsg] = useState({ type: '', text: '' });
 
-  // Edit fields inside modal
-  const [editClientName, setEditClientName] = useState('');
-  const [editClientPhone, setEditClientPhone] = useState('');
-  const [editItems, setEditItems] = useState([]);
+  // Add perfume to physical sale items list
+  const handleAddProductToPhysicalSale = (prod) => {
+    if (!prod) return;
+    const existingIndex = physicalSaleItems.findIndex(item => item.productId === prod.id);
+    const prices = getProductPrices(prod);
+    const defaultPrice = physicalRoleUsed === 'mayorista' ? prices.finalWholesale : prices.finalDetalle;
 
-  // Memoized calculations for selected physical product
-  const selectedProductObj = useMemo(() => {
-    return products.find(p => p.id === physicalProductId) || null;
-  }, [products, physicalProductId]);
-
-  // Sync default price when product selection or role category changes
-  useEffect(() => {
-    if (selectedProductObj) {
-      const price = physicalRoleUsed === 'mayorista' ? selectedProductObj.pricePromotional : selectedProductObj.pricePublic;
-      setPhysicalPricePaid(price);
+    if (existingIndex >= 0) {
+      const updated = [...physicalSaleItems];
+      updated[existingIndex].quantity += 1;
+      setPhysicalSaleItems(updated);
     } else {
-      setPhysicalPricePaid('');
+      setPhysicalSaleItems(prev => [
+        ...prev,
+        {
+          productId: prod.id,
+          name: prod.name,
+          brand: prod.brand,
+          size: prod.size,
+          barcode: prod.barcode || '',
+          quantity: 1,
+          pricePaid: defaultPrice,
+          cost: prod.cost || 0,
+          pricePromotional: prices.finalWholesale,
+          pricePublic: prices.finalDetalle,
+          availableStock: prod.availableStock !== undefined ? prod.availableStock : prod.stock
+        }
+      ]);
     }
-  }, [selectedProductObj, physicalRoleUsed]);
+  };
+
+  const handleScanBarcodeOrSearch = (inputVal) => {
+    const term = inputVal.trim().toLowerCase();
+    if (!term) return;
+    const matched = products.find(p => (p.barcode || '').trim().toLowerCase() === term) ||
+                    products.find(p => (p.name || '').trim().toLowerCase().includes(term)) ||
+                    products.find(p => (p.brand || '').trim().toLowerCase().includes(term));
+
+    if (matched) {
+      handleAddProductToPhysicalSale(matched);
+      setBarcodeInput('');
+    } else {
+      alert(`No se encontró ningún perfume con el código o nombre: "${inputVal}"`);
+    }
+  };
+
+  // Price rule validation helper (Requirement 6)
+  // Retail price MUST be >= Wholesale price (pricePromotional)
+  // Wholesale price MUST be >= Cost
+  const validateItemPrice = (pricePaid, roleUsed, item) => {
+    const pPaid = Number(pricePaid || 0);
+    const cost = Number(item.cost || 0);
+    const wholesalePrice = Number(item.pricePromotional || 0);
+
+    if (roleUsed === 'detalle' && pPaid < wholesalePrice) {
+      return `El precio al detalle (L. ${pPaid}) debe ser >= al precio de mayoreo (L. ${wholesalePrice}).`;
+    }
+    if (roleUsed === 'mayorista' && pPaid < cost) {
+      return `El precio de mayoreo (L. ${pPaid}) debe ser >= al costo (L. ${cost}).`;
+    }
+    return null;
+  };
+
+  const handleUpdatePhysicalItemQty = (productId, newQty) => {
+    if (newQty <= 0) {
+      setPhysicalSaleItems(prev => prev.filter(i => i.productId !== productId));
+    } else {
+      setPhysicalSaleItems(prev => prev.map(i => i.productId === productId ? { ...i, quantity: newQty } : i));
+    }
+  };
+
+  const handleUpdatePhysicalItemPrice = (productId, newPrice) => {
+    setPhysicalSaleItems(prev => prev.map(i => i.productId === productId ? { ...i, pricePaid: newPrice } : i));
+  };
+
+  const handleRemovePhysicalItem = (productId) => {
+    setPhysicalSaleItems(prev => prev.filter(i => i.productId !== productId));
+  };
 
   // Handle buyer account attachment (automatically pre-fills contact details)
   useEffect(() => {
@@ -66,31 +131,31 @@ export default function Orders() {
 
   const handleReportPhysicalSaleSubmit = async (e) => {
     e.preventDefault();
-    if (!physicalProductId) {
-      setPhysicalSaleMsg({ type: 'error', text: 'Por favor selecciona un perfume.' });
+    if (physicalSaleItems.length === 0) {
+      setPhysicalSaleMsg({ type: 'error', text: 'Por favor añade al menos un perfume a la venta.' });
       return;
     }
-    if (!physicalQuantity || Number(physicalQuantity) <= 0) {
-      setPhysicalSaleMsg({ type: 'error', text: 'La cantidad debe ser mayor a 0.' });
-      return;
-    }
-    if (!physicalPricePaid || Number(physicalPricePaid) < 0) {
-      setPhysicalSaleMsg({ type: 'error', text: 'El precio pagado es requerido.' });
-      return;
+
+    // Validate price boundaries for all items (Requirement 6)
+    for (const item of physicalSaleItems) {
+      const err = validateItemPrice(item.pricePaid, physicalRoleUsed, item);
+      if (err) {
+        setPhysicalSaleMsg({ type: 'error', text: `Error en "${item.name}": ${err}` });
+        return;
+      }
+      if (item.quantity > item.availableStock) {
+        setPhysicalSaleMsg({ type: 'error', text: `La cantidad de "${item.name}" excede el stock disponible (${item.availableStock} u).` });
+        return;
+      }
     }
 
     setReportingPhysicalSale(true);
     setPhysicalSaleMsg({ type: '', text: '' });
 
-    const qty = Number(physicalQuantity);
-    const price = Number(physicalPricePaid);
-
     const result = await reportPhysicalSale(
-      physicalProductId,
-      qty,
+      physicalSaleItems,
       physicalClientName.trim() || 'Venta Física (Mostrador)',
       physicalClientPhone.trim() || '',
-      price,
       physicalBuyerId || null,
       physicalRoleUsed
     );
@@ -98,10 +163,11 @@ export default function Orders() {
     setReportingPhysicalSale(false);
 
     if (result.success) {
-      setPhysicalSaleMsg({ type: 'success', text: '¡Venta registrada exitosamente! El inventario ha sido actualizado.' });
+      setPhysicalSaleMsg({ type: 'success', text: '¡Venta registrada exitosamente! Se descontó el inventario.' });
+      setPhysicalSaleItems([]);
       setTimeout(() => {
         setShowPhysicalSaleModal(false);
-      }, 2000);
+      }, 1800);
     } else {
       setPhysicalSaleMsg({ type: 'error', text: result.error || 'Error al procesar la venta.' });
     }
@@ -113,11 +179,10 @@ export default function Orders() {
     if (!customers || customers.length === 0) {
       await fetchCustomers();
     }
-    setPhysicalProductId('');
-    setPhysicalQuantity(1);
+    setPhysicalSaleItems([]);
+    setBarcodeInput('');
     setPhysicalClientName('Venta Física (Mostrador)');
     setPhysicalClientPhone('');
-    setPhysicalPricePaid('');
     setPhysicalBuyerId('');
     setPhysicalRoleUsed('detalle');
     setPhysicalSaleMsg({ type: '', text: '' });
@@ -143,11 +208,38 @@ export default function Orders() {
     await updateOrderStatus(orderId, newStatus);
   };
 
-  const handleOpenEdit = (order) => {
+  const getEditingOrderRole = () => {
+    if (!editingOrder || !customers) return 'detalle';
+    const cust = customers.find(c => c.id === editingOrder.buyerId);
+    if (!cust) return 'detalle';
+    const roleNorm = String(cust.role || '').toLowerCase();
+    return roleNorm === 'mayorista' ? 'mayorista' : 'detalle';
+  };
+
+  const handleOpenEdit = async (order) => {
+    if (!customers || customers.length === 0) {
+      await fetchCustomers();
+    }
     setEditingOrder(order);
     setEditClientName(order.clientName);
     setEditClientPhone(order.clientPhone);
     setEditItems(order.items.map(i => ({ ...i })));
+    setEditBarcodeInput('');
+  };
+
+  const handleScanEditBarcodeOrSearch = (inputVal) => {
+    const term = inputVal.trim().toLowerCase();
+    if (!term) return;
+    const matched = products.find(p => (p.barcode || '').trim().toLowerCase() === term) ||
+                    products.find(p => (p.name || '').trim().toLowerCase().includes(term)) ||
+                    products.find(p => (p.brand || '').trim().toLowerCase().includes(term));
+
+    if (matched) {
+      handleAddItemToEdit(matched);
+      setEditBarcodeInput('');
+    } else {
+      alert(`No se encontró ningún perfume con el código o nombre: "${inputVal}"`);
+    }
   };
 
   const handleUpdateItemQty = (productId, newQty) => {
@@ -171,7 +263,9 @@ export default function Orders() {
       return;
     }
 
-    const price = useStore.getState().user ? product.pricePromotional : product.pricePublic;
+    const orderRole = getEditingOrderRole();
+    const prices = getProductPrices(product);
+    const defaultPrice = orderRole === 'mayorista' ? prices.finalWholesale : prices.finalDetalle;
 
     setEditItems(prev => [...prev, {
       productId: product.id,
@@ -179,13 +273,26 @@ export default function Orders() {
       brand: product.brand,
       size: product.size,
       quantity: 1,
-      pricePaid: price
+      pricePaid: defaultPrice,
+      cost: product.cost || 0,
+      pricePromotional: prices.finalWholesale,
+      pricePublic: prices.finalDetalle,
+      description: product.description || ''
     }]);
   };
 
   const handleSaveEdit = async (e) => {
     e.preventDefault();
     if (!editClientName || !editClientPhone || editItems.length === 0) return;
+
+    const orderRole = getEditingOrderRole();
+    for (const item of editItems) {
+      const err = validateItemPrice(item.pricePaid, orderRole, item);
+      if (err) {
+        alert(`Error en "${item.name}": ${err}`);
+        return;
+      }
+    }
 
     const ok = await updateOrder(editingOrder.id, editClientName.trim(), editClientPhone.trim(), editItems);
     if (ok) {
@@ -460,8 +567,30 @@ export default function Orders() {
               {/* Add Perfume block */}
               <div className="bg-neutral-50 dark:bg-neutral-800/50 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 space-y-3">
                 <label className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block">
-                  Añadir Fragancia a la Orden
+                  Añadir Fragancia a la Orden (Por Código de Barras o Selección)
                 </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={editBarcodeInput}
+                    onChange={(e) => setEditBarcodeInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleScanEditBarcodeOrSearch(editBarcodeInput);
+                      }
+                    }}
+                    placeholder="Escanear código de barras o buscar..."
+                    className="flex-1 px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-mono font-semibold outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleScanEditBarcodeOrSearch(editBarcodeInput)}
+                    className="px-3.5 py-2 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 font-bold text-xs rounded-xl cursor-pointer"
+                  >
+                    Añadir
+                  </button>
+                </div>
                 <select
                   onChange={(e) => {
                     const p = products.find(prod => prod.id === e.target.value);
@@ -472,10 +601,10 @@ export default function Orders() {
                   }}
                   className="block w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-700 dark:text-neutral-200 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent outline-none transition-all cursor-pointer"
                 >
-                  <option value="">-- Selecciona un perfume para añadir --</option>
+                  <option value="">-- O selecciona un perfume de la lista --</option>
                   {products.map(p => (
                     <option key={p.id} value={p.id}>
-                      {p.brand} {p.name} ({p.size})
+                      [{p.brand}] {p.name} ({p.size}) {p.barcode ? `- Barcode: ${p.barcode}` : ''}
                     </option>
                   ))}
                 </select>
@@ -572,12 +701,12 @@ export default function Orders() {
       {/* Manual / Physical Counter Sale Modal */}
       {showPhysicalSaleModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl w-full max-w-lg shadow-xl overflow-hidden flex flex-col my-8 max-h-[85vh]">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl w-full max-w-2xl shadow-xl overflow-hidden flex flex-col my-8 max-h-[90vh]">
             {/* Header */}
             <div className="p-5 sm:p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between flex-shrink-0">
               <h3 className="text-sm font-extrabold text-neutral-900 dark:text-neutral-50 uppercase tracking-wider flex items-center gap-2">
                 <Plus className="w-4 h-4 text-amber-500" />
-                Registrar Venta de Mostrador (Física)
+                Registrar Venta de Mostrador (Física - Múltiples Fragancias)
               </h3>
               <button
                 type="button"
@@ -602,24 +731,47 @@ export default function Orders() {
                 </div>
               )}
 
-              {/* Attach Buyer (Optional) */}
-              <div className="space-y-1.5">
-                <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">
-                  Vincular Perfil de Cliente Registrado (Opcional)
-                </label>
-                <select
-                  value={physicalBuyerId}
-                  onChange={(e) => setPhysicalBuyerId(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-semibold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100 cursor-pointer"
-                >
-                  <option value="">-- Cliente de paso sin perfil --</option>
-                  {(customers || []).map(cust => (
-                    <option key={cust.id} value={cust.id}>
-                      {cust.name} ({cust.phone || 'Sin número'}) - {cust.role || 'detalle'}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[10px] text-neutral-400">Vincular un perfil autocompleta el nombre, WhatsApp y aplica su tipo de tarifa.</p>
+              {/* Attach Buyer & Role */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">
+                    Vincular Perfil Registrado (Opcional)
+                  </label>
+                  <select
+                    value={physicalBuyerId}
+                    onChange={(e) => setPhysicalBuyerId(e.target.value)}
+                    className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-semibold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100 cursor-pointer"
+                  >
+                    <option value="">-- Cliente de paso --</option>
+                    {(customers || []).map(cust => (
+                      <option key={cust.id} value={cust.id}>
+                        {cust.name} ({cust.phone || 'Sin tel'}) - {cust.role || 'detalle'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">
+                    Tipo de Tarifa Aplicada
+                  </label>
+                  <select
+                    value={physicalRoleUsed}
+                    onChange={(e) => {
+                      const newRole = e.target.value;
+                      setPhysicalRoleUsed(newRole);
+                      // Update default prices in list
+                      setPhysicalSaleItems(prev => prev.map(item => ({
+                        ...item,
+                        pricePaid: newRole === 'mayorista' ? (item.pricePromotional || item.pricePublic) : item.pricePublic
+                      })));
+                    }}
+                    className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-semibold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100 cursor-pointer"
+                  >
+                    <option value="detalle">Precio Detalle</option>
+                    <option value="mayorista">Precio Mayorista VIP</option>
+                  </select>
+                </div>
               </div>
 
               {/* Client Info Grid */}
@@ -633,8 +785,8 @@ export default function Orders() {
                     required
                     value={physicalClientName}
                     onChange={(e) => setPhysicalClientName(e.target.value)}
-                    placeholder="Ej. Juan Pérez"
-                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-semibold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100"
+                    placeholder="Ej. Venta de Mostrador / Juan Pérez"
+                    className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-semibold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100"
                   />
                 </div>
 
@@ -647,104 +799,195 @@ export default function Orders() {
                     value={physicalClientPhone}
                     onChange={(e) => setPhysicalClientPhone(e.target.value)}
                     placeholder="Ej. +504 9999-9999"
-                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-semibold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100"
+                    className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-semibold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100"
                   />
                 </div>
               </div>
 
-              {/* Product Select */}
-              <div className="space-y-1.5">
-                <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">
-                  Perfume Vendido <span className="text-red-500">*</span>
-                </label>
-                <select
-                  required
-                  value={physicalProductId}
-                  onChange={(e) => setPhysicalProductId(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-semibold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100 cursor-pointer"
-                >
-                  <option value="">-- Selecciona un Perfume --</option>
-                  {products.map(prod => {
-                    const stock = prod.availableStock !== undefined ? prod.availableStock : prod.stock;
-                    return (
-                      <option key={prod.id} value={prod.id} disabled={stock <= 0}>
-                        [{prod.brand}] {prod.name} ({prod.size}) - Stock: {stock} pzs - L. {prod.pricePublic} (Púb) / L. {prod.pricePromotional} (May)
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
+              <hr className="border-neutral-100 dark:border-neutral-800 my-2" />
 
-              {/* Pricing, Quantity & Category Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                  <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">
-                    Tarifa Aplicada
+              {/* Barcode / Quick Add Search Section */}
+              <div className="space-y-2">
+                <label className="block font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider text-[10px]">
+                  📷 Escanear Código de Barras o Buscar Perfume
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={barcodeInput}
+                    onChange={(e) => setBarcodeInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleScanBarcodeOrSearch(barcodeInput);
+                      }
+                    }}
+                    placeholder="Escanear código de barras o escribir nombre/código y presionar Enter..."
+                    className="flex-1 px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-mono text-xs font-semibold outline-none focus:ring-2 focus:ring-neutral-950 dark:focus:ring-amber-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleScanBarcodeOrSearch(barcodeInput)}
+                    className="px-4 py-2 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 font-bold rounded-xl cursor-pointer"
+                  >
+                    Añadir
+                  </button>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] text-neutral-400 font-semibold">
+                    O selecciona de la lista:
                   </label>
                   <select
-                    value={physicalRoleUsed}
-                    onChange={(e) => setPhysicalRoleUsed(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-semibold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100 cursor-pointer"
+                    value=""
+                    onChange={(e) => {
+                      const selected = products.find(p => p.id === e.target.value);
+                      if (selected) {
+                        handleAddProductToPhysicalSale(selected);
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-semibold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100 cursor-pointer"
                   >
-                    <option value="detalle">Precio al Detalle</option>
-                    <option value="mayorista">Precio Mayorista VIP</option>
+                    <option value="">-- Hacer clic para seleccionar perfume del inventario --</option>
+                    {products.map(prod => {
+                      const stock = prod.availableStock !== undefined ? prod.availableStock : prod.stock;
+                      const prices = getProductPrices(prod);
+                      return (
+                        <option key={prod.id} value={prod.id} disabled={stock <= 0}>
+                          [{prod.brand}] {prod.name} ({prod.size}) - Stock: {stock} u - L. {prices.finalDetalle} (Púb) / L. {prices.finalWholesale} (May)
+                        </option>
+                      );
+                    })}
                   </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">
-                    Precio Cobrado (Unidad)
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    value={physicalPricePaid}
-                    onChange={(e) => setPhysicalPricePaid(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-mono font-bold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">
-                    Cantidad Vendida
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    max={selectedProductObj ? (selectedProductObj.availableStock !== undefined ? selectedProductObj.availableStock : selectedProductObj.stock) : undefined}
-                    value={physicalQuantity}
-                    onChange={(e) => setPhysicalQuantity(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-mono font-bold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100"
-                  />
                 </div>
               </div>
 
-              {selectedProductObj && (
-                <div className="p-3 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-850 rounded-xl space-y-1">
-                  <div className="flex justify-between font-bold text-neutral-500">
-                    <span>Stock Actual:</span>
-                    <span className="font-mono text-neutral-800 dark:text-neutral-200">
-                      {selectedProductObj.availableStock !== undefined ? selectedProductObj.availableStock : selectedProductObj.stock} unidades
-                    </span>
-                  </div>
-                  {Number(physicalQuantity) > (selectedProductObj.availableStock !== undefined ? selectedProductObj.availableStock : selectedProductObj.stock) && (
-                    <p className="text-rose-500 font-bold text-[10px]">⚠️ Error: La cantidad elegida excede el inventario físico disponible.</p>
+              {/* Items Table */}
+              <div className="space-y-2 mt-3">
+                <label className="block font-bold text-neutral-900 dark:text-neutral-100 uppercase tracking-wider text-[11px] flex justify-between items-center">
+                  <span>Perfumes Agregados ({physicalSaleItems.length})</span>
+                  {physicalSaleItems.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setPhysicalSaleItems([])}
+                      className="text-rose-500 hover:underline text-[10px] lowercase cursor-pointer"
+                    >
+                      Vaciar lista
+                    </button>
                   )}
-                </div>
-              )}
+                </label>
+
+                {physicalSaleItems.length === 0 ? (
+                  <div className="p-6 text-center border-2 border-dashed border-neutral-200 dark:border-neutral-800 rounded-2xl text-neutral-400">
+                    <p className="font-semibold">No has añadido perfumes a la venta física.</p>
+                    <p className="text-[10px] mt-1">Escanea un código de barras o selecciona un perfume de la lista superior.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    {physicalSaleItems.map((item) => {
+                      const err = validateItemPrice(item.pricePaid, physicalRoleUsed, item);
+                      const isOverStock = item.quantity > item.availableStock;
+
+                      return (
+                        <div
+                          key={item.productId}
+                          className={`p-3 border rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+                            err || isOverStock
+                              ? 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-300 dark:border-rose-800'
+                              : 'bg-neutral-50 dark:bg-neutral-950 border-neutral-200 dark:border-neutral-800'
+                          }`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <span className="font-extrabold text-neutral-900 dark:text-neutral-100 block truncate">
+                              [{item.brand}] {item.name}
+                            </span>
+                            <span className="text-[10px] text-neutral-400 block font-semibold">
+                              {item.size} {item.barcode && `| Barcode: ${item.barcode}`} | Stock disp: {item.availableStock} u
+                            </span>
+                            {err && (
+                              <p className="text-[10px] text-rose-600 dark:text-rose-400 font-bold mt-0.5">
+                                ⚠️ {err}
+                              </p>
+                            )}
+                            {isOverStock && (
+                              <p className="text-[10px] text-rose-600 dark:text-rose-400 font-bold mt-0.5">
+                                ⚠️ Excede el stock ({item.availableStock} disponibles).
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-3 w-full sm:w-auto justify-between">
+                            {/* Price per item input */}
+                            <div className="flex flex-col">
+                              <label className="text-[9px] font-bold text-neutral-400">Precio (L.)</label>
+                              <input
+                                type="number"
+                                required
+                                min="0"
+                                value={item.pricePaid}
+                                onChange={(e) => handleUpdatePhysicalItemPrice(item.productId, e.target.value)}
+                                className="w-20 px-2 py-1 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg text-xs font-mono font-bold outline-none"
+                              />
+                            </div>
+
+                            {/* Quantity control */}
+                            <div className="flex flex-col items-center">
+                              <label className="text-[9px] font-bold text-neutral-400">Cant</label>
+                              <div className="flex items-center border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-900">
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdatePhysicalItemQty(item.productId, item.quantity - 1)}
+                                  className="px-2 py-0.5 text-xs font-bold text-neutral-500 hover:text-neutral-950 dark:hover:text-neutral-100 cursor-pointer"
+                                >
+                                  -
+                                </button>
+                                <span className="px-2 text-xs font-bold font-mono min-w-[1.2rem] text-center">
+                                  {item.quantity}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdatePhysicalItemQty(item.productId, item.quantity + 1)}
+                                  className="px-2 py-0.5 text-xs font-bold text-neutral-500 hover:text-neutral-950 dark:hover:text-neutral-100 cursor-pointer"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Subtotal */}
+                            <div className="text-right min-w-[4rem]">
+                              <span className="text-[9px] font-bold text-neutral-400 block">Subtotal</span>
+                              <span className="font-mono font-extrabold text-neutral-900 dark:text-amber-400 text-xs">
+                                L. {(Number(item.pricePaid || 0) * Number(item.quantity || 1)).toLocaleString()}
+                              </span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePhysicalItem(item.productId)}
+                              className="p-1 text-neutral-400 hover:text-rose-600 rounded-lg cursor-pointer"
+                              title="Eliminar"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
 
               {/* Total Calculation Display */}
-              <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/40 dark:border-amber-900/40 rounded-2xl flex items-center justify-between">
+              <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/40 dark:border-amber-900/40 rounded-2xl flex items-center justify-between mt-2">
                 <div>
                   <span className="block text-[10px] text-amber-800 dark:text-amber-500 font-extrabold uppercase tracking-widest font-mono">Total de la Venta</span>
                   <span className="block text-xs text-neutral-500">
-                    L. {Number(physicalPricePaid || 0).toLocaleString()} x {Number(physicalQuantity || 0)} pzs
+                    {physicalSaleItems.reduce((acc, i) => acc + Number(i.quantity || 0), 0)} unidades en total
                   </span>
                 </div>
                 <span className="font-mono font-black text-amber-950 dark:text-amber-200 text-lg">
-                  L. {(Number(physicalPricePaid || 0) * Number(physicalQuantity || 0)).toLocaleString()} HNL
+                  L. {physicalSaleItems.reduce((acc, i) => acc + (Number(i.pricePaid || 0) * Number(i.quantity || 1)), 0).toLocaleString()} HNL
                 </span>
               </div>
 
@@ -759,7 +1002,7 @@ export default function Orders() {
                 </button>
                 <button
                   type="submit"
-                  disabled={reportingPhysicalSale || !physicalProductId || Number(physicalQuantity) > (selectedProductObj ? (selectedProductObj.availableStock !== undefined ? selectedProductObj.availableStock : selectedProductObj.stock) : 0)}
+                  disabled={reportingPhysicalSale || physicalSaleItems.length === 0}
                   className="px-5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-850 dark:hover:bg-amber-300 text-white dark:text-neutral-950 font-black rounded-xl cursor-pointer active:scale-95 transition-all disabled:opacity-50"
                 >
                   {reportingPhysicalSale ? (
@@ -768,7 +1011,7 @@ export default function Orders() {
                       Procesando...
                     </div>
                   ) : (
-                    'Confirmar y Descontar'
+                    'Confirmar Venta y Descontar'
                   )}
                 </button>
               </div>

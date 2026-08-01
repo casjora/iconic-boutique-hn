@@ -1,5 +1,87 @@
 import { create } from 'zustand';
 import { supabase } from './utils/supabase';
+import { getProductPriceForUser } from './utils/productHelper';
+
+// Sound Alert Helpers
+export const playBackupChime = (type = 'order') => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    
+    // Safe AudioContext state handling
+    const ctx = new AudioContext();
+
+    const playTone = (freq, startTime, duration, vol = 0.12) => {
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, startTime);
+      
+      gainNode.gain.setValueAtTime(vol, startTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+      
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+    };
+
+    if (type === 'customer') {
+      // Pleasant dual rising tones: E5 -> G5
+      playTone(659.25, ctx.currentTime, 0.25, 0.12);
+      playTone(783.99, ctx.currentTime + 0.12, 0.35, 0.12);
+    } else {
+      // Pleasant store chime: C5 -> E5 -> C6
+      playTone(523.25, ctx.currentTime, 0.2, 0.12);
+      playTone(659.25, ctx.currentTime + 0.1, 0.2, 0.12);
+      playTone(1046.50, ctx.currentTime + 0.2, 0.4, 0.12);
+    }
+  } catch (e) {
+    console.warn('Web Audio API backup chime failed:', e);
+  }
+};
+
+export const playCustomerAlertSound = () => {
+  try {
+    const audio = new Audio('https://nsubmnvkojsmoykfcjgl.supabase.co/storage/v1/object/public/miscelaneas/New_customer.mp3');
+    
+    // If resource fails to load (CORS/404), fall back to synthesized chime
+    audio.onerror = () => {
+      console.warn('Failed to load customer MP3 from storage, falling back to backup chime.');
+      playBackupChime('customer');
+    };
+
+    audio.play().catch(e => {
+      console.log('Audio playback prevented by browser or blocked, triggering backup chime:', e);
+      playBackupChime('customer');
+    });
+  } catch (err) {
+    console.warn('Audio playback error:', err);
+    playBackupChime('customer');
+  }
+};
+
+export const playOrderAlertSound = () => {
+  try {
+    const audio = new Audio('https://nsubmnvkojsmoykfcjgl.supabase.co/storage/v1/object/public/miscelaneas/orders_sound.mp3');
+    
+    // If resource fails to load (CORS/404), fall back to synthesized chime
+    audio.onerror = () => {
+      console.warn('Failed to load orders MP3 from storage, falling back to backup chime.');
+      playBackupChime('order');
+    };
+
+    audio.play().catch(e => {
+      console.log('Audio playback prevented by browser or blocked, triggering backup chime:', e);
+      playBackupChime('order');
+    });
+  } catch (err) {
+    console.warn('Audio playback error:', err);
+    playBackupChime('order');
+  }
+};
 
 // Helper to map DB products (snake_case) to Frontend products (camelCase)
 const mapProductFromDb = (p) => {
@@ -182,7 +264,7 @@ export const useStore = create((setOriginal, get) => {
         let mappedRole = 'pendiente';
         if (profile) {
           const r = String(profile.role || '').toLowerCase();
-          if (r === 'dueño' || r === 'owner') mappedRole = 'owner';
+          if (r === 'dueño' || r === 'owner') mappedRole = 'dueño';
           else if (r === 'vendedor') mappedRole = 'vendedor';
           else if (r === 'mayorista') mappedRole = 'mayorista';
           else if (r === 'detalle') mappedRole = 'detalle';
@@ -261,7 +343,7 @@ export const useStore = create((setOriginal, get) => {
         let mappedRole = 'pendiente';
         if (profile) {
           const r = String(profile.role || '').toLowerCase();
-          if (r === 'dueño' || r === 'owner') mappedRole = 'owner';
+          if (r === 'dueño' || r === 'owner') mappedRole = 'dueño';
           else if (r === 'vendedor') mappedRole = 'vendedor';
           else if (r === 'mayorista') mappedRole = 'mayorista';
           else if (r === 'detalle') mappedRole = 'detalle';
@@ -590,8 +672,14 @@ export const useStore = create((setOriginal, get) => {
         const dbUpdates = [];
         for (const p of products) {
           if (productIds.includes(p.id)) {
-            const cleanDesc = p.description ? p.description.replace(/\[PROMO:\d+\]/g, '').trim() : '';
-            const newDesc = discountPercent > 0 ? `${cleanDesc}\n\n[PROMO:${discountPercent}]`.trim() : cleanDesc;
+            const cleanDesc = p.description 
+              ? p.description
+                  .replace(/\[PROMO_DETALLE:.*?\]/g, '')
+                  .replace(/\[PROMO_MAYORISTA:.*?\]/g, '')
+                  .replace(/\[PROMO:\d+\]/g, '')
+                  .trim()
+              : '';
+            const newDesc = discountPercent > 0 ? `${cleanDesc}\n\n[PROMO_DETALLE:${discountPercent}%]`.trim() : cleanDesc;
             
             const dbProduct = mapProductToDb({ ...p, description: newDesc });
             dbUpdates.push(dbProduct);
@@ -678,7 +766,11 @@ export const useStore = create((setOriginal, get) => {
               products (
                 name,
                 brand,
-                size
+                size,
+                cost,
+                price_promotional,
+                price_public,
+                description
               )
             )
           `)
@@ -702,7 +794,11 @@ export const useStore = create((setOriginal, get) => {
             brand: item.products?.brand || '',
             size: item.products?.size || '',
             quantity: item.quantity,
-            pricePaid: Number(item.price_paid)
+            pricePaid: Number(item.price_paid),
+            cost: Number(item.products?.cost || 0),
+            pricePromotional: Number(item.products?.price_promotional || 0),
+            pricePublic: Number(item.products?.price_public || 0),
+            description: item.products?.description || ''
           }))
         }));
 
@@ -731,11 +827,10 @@ export const useStore = create((setOriginal, get) => {
 
       const isClient = user?.role === 'client';
       const isVendedor = user?.role === 'vendedor' || user?.role === 'owner';
-      const hasVipPrice = !!user;
       const roleUsed = isClient ? 'usuario' : (isVendedor ? (user?.role === 'owner' ? 'dueño' : 'vendedor') : 'publico');
 
       const total = cart.reduce((acc, curr) => {
-        const price = hasVipPrice ? curr.product.pricePromotional : curr.product.pricePublic;
+        const price = getProductPriceForUser(curr.product, user);
         return acc + (price * curr.quantity);
       }, 0);
 
@@ -765,7 +860,7 @@ export const useStore = create((setOriginal, get) => {
           order_id: orderId,
           product_id: item.product.id,
           quantity: item.quantity,
-          price_paid: hasVipPrice ? item.product.pricePromotional : item.product.pricePublic
+          price_paid: getProductPriceForUser(item.product, user)
         }));
 
         const { error: itemsErr } = await supabase
@@ -792,7 +887,7 @@ export const useStore = create((setOriginal, get) => {
             brand: item.product.brand,
             size: item.product.size,
             quantity: item.quantity,
-            pricePaid: hasVipPrice ? item.product.pricePromotional : item.product.pricePublic
+            pricePaid: getProductPriceForUser(item.product, user)
           }))
         };
 
@@ -802,7 +897,7 @@ export const useStore = create((setOriginal, get) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               order: orderCreated,
-              hasVipPrice
+              hasVipPrice: !!user
             })
           });
         } catch (tgErr) {
@@ -965,89 +1060,129 @@ export const useStore = create((setOriginal, get) => {
     updateOrder: async (orderId, clientName, clientPhone, newItems) => {
       set({ loading: true, error: null });
       try {
-        const { data: orderData, error: orderDataErr } = await supabase
-          .from('orders')
-          .select('status')
-          .eq('id', orderId)
-          .maybeSingle();
+        let apiSuccess = false;
+        let apiError = null;
 
-        if (orderDataErr) throw orderDataErr;
-        const isDelivered = orderData && orderData.status === 'entregado';
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const token = session?.access_token;
 
-        if (isDelivered) {
-          const { data: oldItems, error: oldItemsErr } = await supabase
-            .from('order_items')
-            .select('product_id, quantity')
-            .eq('order_id', orderId);
+          const response = await fetch('/api/update-order', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ orderId, clientName, clientPhone, newItems })
+          });
 
-          if (oldItemsErr) throw oldItemsErr;
+          const responseText = await response.text();
+          let resData = null;
+          try {
+            resData = JSON.parse(responseText);
+          } catch {
+            // Not JSON
+          }
 
-          if (oldItems) {
-            for (const oldItem of oldItems) {
-              const { data: prod } = await supabase
-                .from('products')
-                .select('stock')
-                .eq('id', oldItem.product_id)
-                .maybeSingle();
-              if (prod) {
-                await supabase
+          if (response.ok && resData && resData.success) {
+            apiSuccess = true;
+          } else if (resData && resData.error) {
+            apiError = resData.error;
+          }
+        } catch (fetchErr) {
+          console.warn('API update-order failed, falling back to direct DB:', fetchErr);
+        }
+
+        if (!apiSuccess) {
+          if (apiError) {
+            throw new Error(apiError);
+          }
+
+          // Direct DB Fallback
+          const { data: orderData, error: orderDataErr } = await supabase
+            .from('orders')
+            .select('status')
+            .eq('id', orderId)
+            .maybeSingle();
+
+          if (orderDataErr) throw orderDataErr;
+          const isDelivered = orderData && orderData.status === 'entregado';
+
+          if (isDelivered) {
+            const { data: oldItems, error: oldItemsErr } = await supabase
+              .from('order_items')
+              .select('product_id, quantity')
+              .eq('order_id', orderId);
+
+            if (oldItemsErr) throw oldItemsErr;
+
+            if (oldItems) {
+              for (const oldItem of oldItems) {
+                const { data: prod } = await supabase
                   .from('products')
-                  .update({ stock: Number(prod.stock || 0) + Number(oldItem.quantity) })
-                  .eq('id', oldItem.product_id);
+                  .select('stock')
+                  .eq('id', oldItem.product_id)
+                  .maybeSingle();
+                if (prod) {
+                  await supabase
+                    .from('products')
+                    .update({ stock: Number(prod.stock || 0) + Number(oldItem.quantity) })
+                    .eq('id', oldItem.product_id);
+                }
               }
             }
           }
-        }
 
-        const { error: deleteErr } = await supabase
-          .from('order_items')
-          .delete()
-          .eq('order_id', orderId);
+          const { error: deleteErr } = await supabase
+            .from('order_items')
+            .delete()
+            .eq('order_id', orderId);
 
-        if (deleteErr) throw deleteErr;
+          if (deleteErr) throw deleteErr;
 
-        const total = newItems.reduce((acc, curr) => acc + (curr.pricePaid * curr.quantity), 0);
+          const total = newItems.reduce((acc, curr) => acc + (curr.pricePaid * curr.quantity), 0);
 
-        const itemsToInsert = newItems.map(item => ({
-          order_id: orderId,
-          product_id: item.productId,
-          quantity: item.quantity,
-          price_paid: item.pricePaid
-        }));
+          const itemsToInsert = newItems.map(item => ({
+            order_id: orderId,
+            product_id: item.productId,
+            quantity: item.quantity,
+            price_paid: item.pricePaid
+          }));
 
-        const { error: insertErr } = await supabase
-          .from('order_items')
-          .insert(itemsToInsert);
+          const { error: insertErr } = await supabase
+            .from('order_items')
+            .insert(itemsToInsert);
 
-        if (insertErr) throw insertErr;
+          if (insertErr) throw insertErr;
 
-        if (isDelivered) {
-          for (const item of newItems) {
-            const { data: prod } = await supabase
-              .from('products')
-              .select('stock')
-              .eq('id', item.productId)
-              .maybeSingle();
-            if (prod) {
-              const newStock = Math.max(0, Number(prod.stock || 0) - Number(item.quantity));
-              await supabase
+          if (isDelivered) {
+            for (const item of newItems) {
+              const { data: prod } = await supabase
                 .from('products')
-                .update({ stock: newStock })
-                .eq('id', item.productId);
+                .select('stock')
+                .eq('id', item.productId)
+                .maybeSingle();
+              if (prod) {
+                const newStock = Math.max(0, Number(prod.stock || 0) - Number(item.quantity));
+                await supabase
+                  .from('products')
+                  .update({ stock: newStock })
+                  .eq('id', item.productId);
+              }
             }
           }
+
+          const { error: orderUpdateErr } = await supabase
+            .from('orders')
+            .update({
+              client_name: clientName,
+              client_phone: clientPhone,
+              total: total
+            })
+            .eq('id', orderId);
+
+          if (orderUpdateErr) throw orderUpdateErr;
         }
-
-        const { error: orderUpdateErr } = await supabase
-          .from('orders')
-          .update({
-            client_name: clientName,
-            client_phone: clientPhone,
-            total: total
-          })
-          .eq('id', orderId);
-
-        if (orderUpdateErr) throw orderUpdateErr;
 
         await get().fetchOrders();
         await get().fetchProducts();
@@ -1341,6 +1476,7 @@ export const useStore = create((setOriginal, get) => {
           const hasNewPending = result.some(c => isPending(c) && !prevPendingIds.has(c.id));
           if (hasNewPending) {
             set({ hasNewRegistrationsAlert: true });
+            playCustomerAlertSound();
           }
         }
 
@@ -1506,8 +1642,9 @@ export const useStore = create((setOriginal, get) => {
             console.log('Realtime profile insert received:', payload.new);
             // Fetch customers again
             await get().fetchCustomers();
-            // Set alert
+            // Set alert and play sound
             set({ hasNewRegistrationsAlert: true });
+            playCustomerAlertSound();
           }
         )
         .subscribe();
@@ -1536,46 +1673,77 @@ export const useStore = create((setOriginal, get) => {
             await get().fetchOrders();
             if (payload.eventType === 'INSERT') {
               set({ hasNewOrdersAlert: true });
+              playOrderAlertSound();
             }
           }
         )
         .subscribe();
     },
 
-    reportPhysicalSale: async (productId, quantity, clientName, clientPhone, pricePaid, buyerId, roleUsed) => {
+    reportPhysicalSale: async (itemsOrProductId, quantityOrName, clientNameOrPhone, clientPhoneOrBuyerId, pricePaidOrRole, buyerIdParam, roleUsedParam) => {
       set({ loading: true, error: null });
       try {
+        let items = [];
+        let clientName = 'Venta Física (Mostrador)';
+        let clientPhone = '';
+        let buyerId = null;
+        let roleUsed = 'detalle';
+
+        if (Array.isArray(itemsOrProductId)) {
+          items = itemsOrProductId;
+          clientName = quantityOrName || 'Venta Física (Mostrador)';
+          clientPhone = clientNameOrPhone || '';
+          buyerId = clientPhoneOrBuyerId || null;
+          roleUsed = pricePaidOrRole || 'detalle';
+        } else {
+          items = [{
+            productId: itemsOrProductId,
+            quantity: Number(quantityOrName || 1),
+            pricePaid: Number(pricePaidOrRole || 0)
+          }];
+          clientName = clientNameOrPhone || 'Venta Física (Mostrador)';
+          clientPhone = clientPhoneOrBuyerId || '';
+          buyerId = buyerIdParam || null;
+          roleUsed = roleUsedParam || 'detalle';
+        }
+
+        if (!items || items.length === 0) {
+          throw new Error('Debes incluir al menos un perfume en la venta.');
+        }
+
         const orderId = 'physical_' + Date.now() + '_' + Math.floor(Math.random() * 100);
         const orderDate = new Date().toLocaleDateString('es-HN', {
           year: 'numeric', month: 'long', day: 'numeric',
           hour: '2-digit', minute: '2-digit'
         });
 
-        // 1. Get current stock
-        const { data: prod, error: prodErr } = await supabase
-          .from('products')
-          .select('stock')
-          .eq('id', productId)
-          .maybeSingle();
+        // 1. Calculate total and verify stock
+        let total = 0;
+        for (const item of items) {
+          const { data: prod, error: prodErr } = await supabase
+            .from('products')
+            .select('stock, name')
+            .eq('id', item.productId)
+            .maybeSingle();
 
-        if (prodErr) throw prodErr;
-        if (!prod) throw new Error('Producto no encontrado');
+          if (prodErr) throw prodErr;
+          if (!prod) throw new Error(`Producto no encontrado.`);
 
-        const currentStock = Number(prod.stock || 0);
-        if (currentStock < quantity) {
-          throw new Error(`Stock insuficiente. Stock actual en inventario: ${currentStock}`);
+          const currentStock = Number(prod.stock || 0);
+          if (currentStock < item.quantity) {
+            throw new Error(`Stock insuficiente para "${prod.name}". Stock actual: ${currentStock}, solicitado: ${item.quantity}`);
+          }
+          total += Number(item.pricePaid) * Number(item.quantity);
         }
 
-        const newStock = currentStock - quantity;
-
-        // 2. Insert completed order with status 'entregado'
+        // 2. Insert order
         const { error: orderErr } = await supabase
           .from('orders')
           .insert({
             id: orderId,
             client_name: clientName || 'Venta Física (Mostrador)',
             client_phone: clientPhone || '',
-            total: pricePaid * quantity,
+            total: total,
             status: 'entregado',
             role_used: roleUsed || 'detalle',
             buyer_id: buyerId || null,
@@ -1584,27 +1752,34 @@ export const useStore = create((setOriginal, get) => {
 
         if (orderErr) throw orderErr;
 
-        // 3. Insert order item
-        const { error: itemsErr } = await supabase
-          .from('order_items')
-          .insert({
-            order_id: orderId,
-            product_id: productId,
-            quantity: quantity,
-            price_paid: pricePaid
-          });
+        // 3. Insert items and subtract stock
+        for (const item of items) {
+          const { error: itemsErr } = await supabase
+            .from('order_items')
+            .insert({
+              order_id: orderId,
+              product_id: item.productId,
+              quantity: item.quantity,
+              price_paid: item.pricePaid
+            });
 
-        if (itemsErr) throw itemsErr;
+          if (itemsErr) throw itemsErr;
 
-        // 4. Update product stock directly in DB
-        const { error: stockErr } = await supabase
-          .from('products')
-          .update({ stock: newStock })
-          .eq('id', productId);
+          const { data: currentP } = await supabase
+            .from('products')
+            .select('stock')
+            .eq('id', item.productId)
+            .single();
 
-        if (stockErr) throw stockErr;
+          if (currentP) {
+            const newStock = Math.max(0, Number(currentP.stock) - item.quantity);
+            await supabase
+              .from('products')
+              .update({ stock: newStock })
+              .eq('id', item.productId);
+          }
+        }
 
-        // 5. Refresh products and orders to keep UI updated
         await get().fetchProducts();
         await get().fetchOrders();
 

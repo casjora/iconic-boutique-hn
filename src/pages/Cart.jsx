@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useStore } from '../store';
 import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, Phone, User, ShoppingBag, ArrowLeft, Loader2, ClipboardList, Tag } from 'lucide-react';
-import { isProductSet } from '../utils/productHelper';
+import { isProductSet, getProductPriceForUser } from '../utils/productHelper';
 
 export default function CartView() {
   const { cart, removeFromCart, updateCartQuantity, submitOrder, user, loading } = useStore();
@@ -15,7 +15,7 @@ export default function CartView() {
 
   const hasVipPrice = !!user;
   const total = cart.reduce((acc, curr) => {
-    const price = hasVipPrice ? curr.product.pricePromotional : curr.product.pricePublic;
+    const price = getProductPriceForUser(curr.product, user);
     return acc + (price * curr.quantity);
   }, 0);
 
@@ -153,7 +153,7 @@ export default function CartView() {
         <div className="border border-neutral-200 bg-white rounded-3xl divide-y divide-neutral-100 overflow-hidden shadow-sm">
           {cart.map((item) => {
             const isSet = isProductSet(item.product);
-            const price = hasVipPrice ? item.product.pricePromotional : item.product.pricePublic;
+            const price = getProductPriceForUser(item.product, user);
             
             return (
               <div key={item.product.id} className="p-4 sm:p-5 flex flex-col sm:flex-row gap-4 items-start relative">

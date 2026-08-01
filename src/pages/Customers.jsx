@@ -544,7 +544,7 @@ export default function Customers() {
                               </div>
                             ) : editable ? (
                               <select
-                                value={(customer.role === 'dueño' || customer.role === 'owner') ? 'owner' : 
+                                value={(customer.role === 'dueño' || customer.role === 'owner') ? 'dueño' : 
                                        (customer.role === 'vendedor' ? 'vendedor' : 
                                         (customer.role === 'mayorista' ? 'mayorista' : 
                                          (customer.role === 'detalle' ? 'detalle' : 'pendiente')))}
@@ -556,10 +556,10 @@ export default function Customers() {
                                 )}
                                 <option value="detalle">Tarifa Detalle</option>
                                 <option value="mayorista">Tarifa Mayorista</option>
-                                {currentUser?.role === 'owner' && (
+                                {(currentUser?.role === 'owner' || currentUser?.role === 'dueño') && (
                                   <>
                                     <option value="vendedor">Vendedor Staff</option>
-                                    <option value="owner">Dueño / Owner</option>
+                                    <option value="dueño">Dueño</option>
                                   </>
                                 )}
                               </select>

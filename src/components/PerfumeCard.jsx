@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useStore } from '../store';
 import { ShoppingCart, Heart, Tag } from 'lucide-react';
-import { isProductSet, getProductPromoDiscount } from '../utils/productHelper';
+import { isProductSet, getProductPrices } from '../utils/productHelper';
 import { motion } from 'motion/react';
 
 const PerfumeCard = React.memo(({ product }) => {
@@ -16,16 +16,11 @@ const PerfumeCard = React.memo(({ product }) => {
 
   // Price calculations
   const isSet = isProductSet(product);
-  const publicDiscountPct = product.publicDiscount || 0;
-  const promoDiscountPct = getProductPromoDiscount(product);
-  const effectiveDiscountPct = Math.max(publicDiscountPct, promoDiscountPct);
-  const hasDiscount = effectiveDiscountPct > 0;
   const isFav = favorites.includes(product.id);
 
-  // Calculate discounted public price
-  const rawDiscountedPrice = hasDiscount ? Math.round(product.pricePublic * (1 - effectiveDiscountPct / 100)) : product.pricePublic;
-  // Ensure no price drops below wholesale price
-  const finalPublicPrice = Math.max(rawDiscountedPrice, product.pricePromotional || 0);
+  const prices = useMemo(() => getProductPrices(product), [product]);
+  const hasDiscount = prices.hasDetallePromo;
+  const finalPublicPrice = prices.finalDetalle;
 
   const cartItem = cart.find(item => item.product.id === product.id);
   const quantityInCart = cartItem ? cartItem.quantity : 0;
@@ -72,9 +67,14 @@ const PerfumeCard = React.memo(({ product }) => {
             Set
           </span>
         )}
-        {hasDiscount && (
+        {hasDiscount && !isMayorista && (
           <span className="inline-flex items-center gap-1 rounded-full bg-red-600 dark:bg-rose-500 px-2.5 py-0.5 text-[9px] font-black text-white uppercase tracking-wider shadow-sm">
-            Oferta -{effectiveDiscountPct}%
+            Oferta Detalle
+          </span>
+        )}
+        {prices.hasMayoristaPromo && isMayorista && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-600 px-2.5 py-0.5 text-[9px] font-black text-white uppercase tracking-wider shadow-sm">
+            Oferta Mayorista
           </span>
         )}
       </div>
@@ -134,15 +134,19 @@ const PerfumeCard = React.memo(({ product }) => {
               // Mayorista pricing: Retail struck through, Mayorista price highlighted
               <>
                 <div className="flex items-center justify-between text-[11px] font-semibold text-neutral-400 dark:text-neutral-500">
-                  <span>Precio Detalle:</span>
-                  <span className="line-through font-mono">L. {product.pricePublic.toLocaleString()}</span>
+                  <span>Precio Detalle Base:</span>
+                  <span className="line-through font-mono">L. {prices.pricePublic.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] font-semibold text-neutral-400 dark:text-neutral-500">
+                  <span>Precio Mayorista Base (25% menos):</span>
+                  <span className="font-mono">L. {prices.baseWholesale.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between rounded-lg bg-amber-50 dark:bg-amber-950/40 p-2 text-xs border border-amber-200 dark:border-amber-900/60 shadow-2xs">
                   <span className="flex items-center gap-1 font-extrabold text-amber-900 dark:text-amber-300">
-                    🏷️ Precio Mayorista:
+                    🏷️ Precio Mayorista Final:
                   </span>
                   <span className="font-mono font-black text-amber-950 dark:text-amber-200 text-sm">
-                    L. {product.pricePromotional.toLocaleString()}
+                    L. {prices.finalWholesale.toLocaleString()}
                   </span>
                 </div>
               </>
@@ -152,19 +156,19 @@ const PerfumeCard = React.memo(({ product }) => {
                 <div className="flex items-center justify-between text-[11px] font-semibold text-neutral-600 dark:text-neutral-400">
                   <span>Detalle:</span>
                   <span className={hasDiscount ? 'line-through text-neutral-400 font-mono' : 'font-mono text-neutral-900 dark:text-neutral-100 font-bold'}>
-                    L. {product.pricePublic.toLocaleString()}
+                    L. {prices.pricePublic.toLocaleString()}
                   </span>
                 </div>
                 {hasDiscount && (
                   <div className="flex items-center justify-between text-xs font-bold text-red-600 dark:text-rose-400 font-mono">
-                    <span>Oferta:</span>
-                    <span>L. {finalPublicPrice.toLocaleString()}</span>
+                    <span>Detalle Oferta:</span>
+                    <span>L. {prices.finalDetalle.toLocaleString()}</span>
                   </div>
                 )}
                 <div className="flex items-center justify-between rounded-lg bg-neutral-100 dark:bg-neutral-800 p-1.5 text-xs">
-                  <span className="font-bold text-neutral-700 dark:text-neutral-300">Mayorista:</span>
+                  <span className="font-bold text-neutral-700 dark:text-neutral-300">Mayoreo Base (L. {prices.baseWholesale.toLocaleString()}):</span>
                   <span className="font-mono font-black text-neutral-900 dark:text-neutral-100">
-                    L. {product.pricePromotional.toLocaleString()}
+                    L. {prices.finalWholesale.toLocaleString()}
                   </span>
                 </div>
               </>
@@ -174,14 +178,14 @@ const PerfumeCard = React.memo(({ product }) => {
                 <>
                   <div className="flex items-center justify-between text-[11px] font-semibold text-neutral-400 dark:text-neutral-500">
                     <span>Precio Regular:</span>
-                    <span className="line-through font-mono">L. {product.pricePublic.toLocaleString()}</span>
+                    <span className="line-through font-mono">L. {prices.pricePublic.toLocaleString()}</span>
                   </div>
                   <div className="flex items-center justify-between rounded-lg bg-red-50 dark:bg-rose-950/40 p-1.5 text-xs border border-red-100 dark:border-rose-900/50">
                     <span className="flex items-center gap-1 font-extrabold text-red-700 dark:text-rose-300">
-                      🔥 Oferta:
+                      🔥 Oferta Detalle:
                     </span>
                     <span className="font-mono font-black text-red-950 dark:text-rose-200 text-sm">
-                      L. {finalPublicPrice.toLocaleString()}
+                      L. {prices.finalDetalle.toLocaleString()}
                     </span>
                   </div>
                 </>
@@ -189,7 +193,7 @@ const PerfumeCard = React.memo(({ product }) => {
                 <div className="flex items-center justify-between text-xs py-1">
                   <span className="font-semibold text-neutral-500 dark:text-neutral-400">Precio:</span>
                   <span className="font-mono font-black text-neutral-900 dark:text-neutral-100 text-sm">
-                    L. {product.pricePublic.toLocaleString()}
+                    L. {prices.pricePublic.toLocaleString()}
                   </span>
                 </div>
               )

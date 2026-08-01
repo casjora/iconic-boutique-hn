@@ -19,7 +19,7 @@ export default function Navbar() {
 
   const cartCount = cart.reduce((acc, curr) => acc + curr.quantity, 0);
 
-  const isOwner = user?.role === 'owner';
+  const isOwner = user?.role === 'owner' || user?.role === 'dueño';
   const isVendedor = user?.role === 'vendedor';
 
   const pendingRegistrationsCount = (customers || []).filter(c => !c.role || c.role === 'pendiente' || c.role === 'usuario' || c.role === 'cliente').length;
@@ -208,7 +208,7 @@ export default function Navbar() {
               <div className="hidden sm:flex items-center gap-2 border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 rounded-xl px-2.5 py-1.5">
                 <div className="text-left leading-none">
                   <span className="text-[9px] font-bold text-neutral-400 dark:text-neutral-500 block uppercase tracking-widest leading-none">
-                    {user.role === "owner"
+                    {user.role === "dueño" || user.role === "owner"
                       ? "👑 Dueño"
                       : user.role === "vendedor"
                         ? "💼 Vendedor"

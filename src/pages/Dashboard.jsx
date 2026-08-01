@@ -25,7 +25,7 @@ import { isProductSet } from '../utils/productHelper';
 
 export default function Dashboard() {
   const { products, orders, fetchProducts, fetchOrders, user } = useStore();
-  const isOwner = user?.role === 'owner';
+  const isOwner = user?.role === 'owner' || user?.role === 'dueño';
   
   // Active timeframe for sales analysis
   const [timeframe, setTimeframe] = useState('all'); // 'all', 'month', 'last30', 'last90', 'year'

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
@@ -6,9 +7,10 @@ import uploadPdfHandler from './api/products/upload-pdf.js';
 import sendTelegramHandler from './api/send-telegram.js';
 import updateOrderStatusHandler from './api/update-order-status.js';
 import deleteCustomerHandler from './api/delete-customer.js';
+import updateOrderHandler from './api/update-order.js';
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(express.json({ limit: '15mb' }));
 
@@ -17,6 +19,7 @@ app.post('/api/products/upload-pdf', uploadPdfHandler);
 app.post('/api/send-telegram', sendTelegramHandler);
 app.post('/api/update-order-status', updateOrderStatusHandler);
 app.post('/api/delete-customer', deleteCustomerHandler);
+app.post('/api/update-order', updateOrderHandler);
 
 // Dummy database for config / telegram configuration
 const DB_FILE = path.join(process.cwd(), 'server-db.json');
@@ -32,6 +35,7 @@ function loadDB() {
     return { telegram: { token: '', chatId: '', active: false } };
   }
 }
+
 function saveDB(data) {
   try {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
