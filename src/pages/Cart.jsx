@@ -1,17 +1,18 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trash2, Phone, User, ShoppingBag, ArrowLeft, Loader2, ClipboardList, Tag } from 'lucide-react';
+import { Trash2, Phone, User, ShoppingBag, ArrowLeft, Loader2, ClipboardList, Tag, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { isProductSet, getProductPriceForUser } from '../utils/productHelper';
 
 export default function CartView() {
-  const { cart, removeFromCart, updateCartQuantity, submitOrder, user, loading } = useStore();
+  const { cart, removeFromCart, updateCartQuantity, submitOrder, user, loading, error } = useStore();
   const navigate = useNavigate();
 
   // Contact form state
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState('');
   const [sentOrder, setSentOrder] = useState(null);
+  const [stockNotice, setStockNotice] = useState(null);
 
   const hasVipPrice = !!user;
   const total = cart.reduce((acc, curr) => {
@@ -30,10 +31,13 @@ export default function CartView() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name || !phone) return;
+    setStockNotice(null);
 
-    const orderCreated = await submitOrder(name.trim(), phone.trim());
-    if (orderCreated) {
-      setSentOrder(orderCreated);
+    const result = await submitOrder(name.trim(), phone.trim());
+    if (result && result.id) {
+      setSentOrder(result);
+    } else if (result && result.outOfStock) {
+      setStockNotice('Atención: Algunos productos tenían stock limitado y sus cantidades en el carrito han sido ajustadas a la disponibilidad real.');
     }
   };
 
@@ -58,36 +62,44 @@ export default function CartView() {
 
     return (
       <div className="max-w-xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-        <div className="bg-white border border-neutral-200 rounded-3xl p-8 sm:p-10 text-center space-y-6 shadow-sm fade-in-up">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-8 sm:p-10 text-center space-y-6 shadow-sm fade-in-up">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400">
             <ClipboardList className="h-7 w-7" />
           </div>
           
           <div className="space-y-2">
-            <h2 className="font-display text-2xl font-black text-neutral-900 tracking-tight sm:text-3xl">
+            <h2 className="font-display text-2xl font-black text-neutral-900 dark:text-neutral-100 tracking-tight sm:text-3xl">
               ¡Cotización Generada Exitosamente!
             </h2>
-            <p className="text-xs text-neutral-500 leading-relaxed max-w-sm mx-auto">
-              Tu orden ha sido registrada en nuestro sistema de forma manual. Tu id de orden es <code className="font-mono bg-neutral-100 px-1.5 py-0.5 rounded text-neutral-800 text-xs font-bold">{sentOrder.id}</code>.
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed max-w-sm mx-auto">
+              Tu orden ha sido registrada en nuestro sistema de forma manual. Tu ID de orden es <code className="font-mono bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded text-neutral-800 dark:text-neutral-200 text-xs font-bold">{sentOrder.id}</code>.
             </p>
           </div>
 
-          <div className="border border-neutral-100 bg-neutral-50/50 rounded-2xl p-4 text-left space-y-2 text-xs">
-            <div className="flex justify-between border-b border-neutral-100 pb-2">
-              <span className="font-semibold text-neutral-500">Cliente:</span>
-              <span className="font-bold text-neutral-900">{sentOrder.clientName}</span>
+          {/* Operational UX Disclaimer */}
+          <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-2xl text-left flex items-start gap-3">
+            <ShieldCheck className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-900 dark:text-amber-200 font-medium leading-relaxed">
+              <strong>Aviso operativo:</strong> Tu orden ha sido registrada. Un vendedor verificará la disponibilidad física de los productos para confirmar y coordinar tu entrega.
+            </p>
+          </div>
+
+          <div className="border border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/40 rounded-2xl p-4 text-left space-y-2 text-xs">
+            <div className="flex justify-between border-b border-neutral-100 dark:border-neutral-800 pb-2">
+              <span className="font-semibold text-neutral-500 dark:text-neutral-400">Cliente:</span>
+              <span className="font-bold text-neutral-900 dark:text-neutral-100">{sentOrder.clientName}</span>
             </div>
-            <div className="flex justify-between border-b border-neutral-100 pb-2">
-              <span className="font-semibold text-neutral-500">Teléfono:</span>
-              <span className="font-bold text-neutral-900">{sentOrder.clientPhone}</span>
+            <div className="flex justify-between border-b border-neutral-100 dark:border-neutral-800 pb-2">
+              <span className="font-semibold text-neutral-500 dark:text-neutral-400">Teléfono:</span>
+              <span className="font-bold text-neutral-900 dark:text-neutral-100">{sentOrder.clientPhone}</span>
             </div>
-            <div className="flex justify-between border-b border-neutral-100 pb-2">
-              <span className="font-semibold text-neutral-500">Fecha:</span>
-              <span className="font-bold text-neutral-900">{sentOrder.date}</span>
+            <div className="flex justify-between border-b border-neutral-100 dark:border-neutral-800 pb-2">
+              <span className="font-semibold text-neutral-500 dark:text-neutral-400">Fecha:</span>
+              <span className="font-bold text-neutral-900 dark:text-neutral-100">{sentOrder.date}</span>
             </div>
             <div className="flex justify-between pt-2">
-              <span className="font-extrabold text-neutral-900">Total Cotizado:</span>
-              <span className="font-mono font-black text-neutral-950 text-sm">L. {sentOrder.total.toLocaleString()} HNL</span>
+              <span className="font-extrabold text-neutral-900 dark:text-neutral-100">Total Cotizado:</span>
+              <span className="font-mono font-black text-neutral-950 dark:text-neutral-50 text-sm">L. {sentOrder.total.toLocaleString()} HNL</span>
             </div>
           </div>
 
@@ -108,7 +120,7 @@ export default function CartView() {
                 setPhone('');
                 navigate('/home');
               }}
-              className="w-full py-3 px-4 bg-white hover:bg-neutral-50 text-neutral-700 font-bold rounded-xl text-xs border border-neutral-200 transition-colors cursor-pointer active:scale-95"
+              className="w-full py-3 px-4 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-bold rounded-xl text-xs border border-neutral-200 dark:border-neutral-700 transition-colors cursor-pointer active:scale-95"
             >
               Seguir Comprando
             </button>
@@ -239,6 +251,14 @@ export default function CartView() {
 
         <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-sm space-y-6">
           <h3 className="font-display font-bold text-neutral-900 text-base border-b border-neutral-100 pb-3">Resumen de Cotización</h3>
+
+          {/* Stock Notice Alert */}
+          {(stockNotice || error) && (
+            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 leading-relaxed font-medium flex items-start gap-2.5">
+              <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+              <span>{stockNotice || error}</span>
+            </div>
+          )}
           
           <div className="space-y-2 text-xs">
             <div className="flex justify-between text-neutral-500">
@@ -255,6 +275,14 @@ export default function CartView() {
               <span className="font-extrabold text-neutral-900">Total Cotizado:</span>
               <span className="font-mono font-black text-neutral-950">L. {total.toLocaleString()} HNL</span>
             </div>
+          </div>
+
+          {/* OperationalUX Disclaimer */}
+          <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-2xl text-[11px] text-neutral-600 leading-relaxed font-medium text-left flex items-start gap-2">
+            <ShieldCheck className="h-4 w-4 text-neutral-500 flex-shrink-0 mt-0.5" />
+            <span>
+              <strong>Nota:</strong> Tu orden ha sido registrada. Un vendedor verificará la disponibilidad física de los productos para confirmar y coordinar tu entrega.
+            </span>
           </div>
 
           {!hasVipPrice && (

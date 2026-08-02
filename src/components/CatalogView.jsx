@@ -758,8 +758,8 @@ export default function CatalogView({ favoritesOnly = false }) {
         ) : (
           <div className="space-y-8">
             <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {displayedProducts.map((p) => (
-                <PerfumeCard key={p.id} product={p} />
+              {displayedProducts.map((p, idx) => (
+                <PerfumeCard key={p.id} product={p} index={idx} />
               ))}
             </div>
 

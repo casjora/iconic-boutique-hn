@@ -4,7 +4,7 @@ import { ShoppingCart, Heart, Tag } from 'lucide-react';
 import { isProductSet, getProductPrices } from '../utils/productHelper';
 import { motion } from 'motion/react';
 
-const PerfumeCard = React.memo(({ product }) => {
+const PerfumeCard = React.memo(({ product, index = 10 }) => {
   const { addToCart, favorites, toggleFavorite, user, cart, updateCartQuantity, removeFromCart } = useStore();
 
   // Role checks
@@ -94,12 +94,16 @@ const PerfumeCard = React.memo(({ product }) => {
         </button>
       )}
 
-      {/* Image container */}
+      {/* Image container with fixed aspect ratio to eliminate Cumulative Layout Shift (CLS) */}
       <div className="aspect-square flex items-center justify-center overflow-hidden bg-neutral-100 dark:bg-neutral-800/60 p-4 relative">
         <img
           src={product.image_url || '/placeholder-perfume.png'}
-          alt={product.name}
-          loading="lazy"
+          alt={`${product.brand || ''} ${product.name || 'Perfume'} original en Honduras`}
+          loading={index < 4 ? 'eager' : 'lazy'}
+          fetchpriority={index < 4 ? 'high' : 'auto'}
+          decoding="async"
+          width="300"
+          height="300"
           referrerPolicy="no-referrer"
           className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
         />

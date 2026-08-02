@@ -174,6 +174,7 @@ export const useStore = create((setOriginal, get) => {
     user: null,
     checkingSession: true,
     products: [],
+    productsLastFetched: null,
     orders: [],
     customers: [],
     cart: [],
@@ -594,20 +595,34 @@ export const useStore = create((setOriginal, get) => {
       }
     },
 
-    fetchProducts: async () => {
+    fetchProducts: async (force = false) => {
+      const now = Date.now();
+      const { products, productsLastFetched, user } = get();
+      const userRole = user?.role;
+      const isAdmin = ['dueño', 'owner', 'vendedor'].includes(userRole);
+      const CACHE_TTL = 3 * 60 * 1000; // 3 minutes TTL for clients/guests
+
+      // Stale-While-Revalidate: Return cached products for clients/guests if fresh
+      if (!isAdmin && !force && products.length > 0 && productsLastFetched && (now - productsLastFetched < CACHE_TTL)) {
+        return products;
+      }
+
       set({ loading: true, error: null });
       try {
+        // Optimized Egress query: select specific required columns instead of wildcard '*'
         const { data, error } = await supabase
           .from('products')
-          .select('*')
+          .select('id, name, brand, size, cost, price_public, price_promotional, stock, category, barcode, description, image_url, featured_public, public_discount')
           .order('name', { ascending: true });
 
         if (error) throw error;
 
         const mapped = data.map(mapProductFromDb);
-        set({ products: mapped, loading: false });
+        set({ products: mapped, productsLastFetched: Date.now(), loading: false });
+        return mapped;
       } catch (err) {
         set({ error: err.message, loading: false });
+        return get().products;
       }
     },
 
@@ -817,12 +832,81 @@ export const useStore = create((setOriginal, get) => {
       }
     },
 
+    // Targeted stock verification for checkout (Minimal egress)
+    verifyCartStock: async () => {
+      const { cart } = get();
+      if (!cart || cart.length === 0) {
+        return { valid: true, outOfStockItems: [] };
+      }
+
+      const cartProductIds = cart.map(item => item.product.id);
+      try {
+        // Query Supabase directly checking ONLY stock for product IDs in cart (.in('id', arrayDeIds))
+        const { data, error } = await supabase
+          .from('products')
+          .select('id, name, stock, price_public')
+          .in('id', cartProductIds);
+
+        if (error) throw error;
+
+        const stockMap = new Map((data || []).map(p => [p.id, Number(p.stock || 0)]));
+        const outOfStockItems = [];
+
+        for (const item of cart) {
+          const realStock = stockMap.has(item.product.id) ? stockMap.get(item.product.id) : 0;
+          if (item.quantity > realStock) {
+            outOfStockItems.push({
+              id: item.product.id,
+              name: item.product.name,
+              requested: item.quantity,
+              available: realStock
+            });
+          }
+        }
+
+        // Automatically update cart quantities or remove items if stock is insufficient
+        if (outOfStockItems.length > 0) {
+          set((state) => ({
+            cart: state.cart
+              .map(item => {
+                const avail = stockMap.has(item.product.id) ? stockMap.get(item.product.id) : 0;
+                if (avail <= 0) return null;
+                if (item.quantity > avail) {
+                  return { ...item, quantity: avail };
+                }
+                return item;
+              })
+              .filter(Boolean)
+          }));
+        }
+
+        return {
+          valid: outOfStockItems.length === 0,
+          outOfStockItems
+        };
+      } catch (err) {
+        console.error('Error verifying cart stock:', err);
+        return { valid: true, outOfStockItems: [] };
+      }
+    },
+
     submitOrder: async (clientName, clientPhone) => {
       set({ loading: true, error: null });
       const { cart, user } = get();
       if (!cart.length) {
         set({ error: 'El carrito está vacío', loading: false });
         return null;
+      }
+
+      // Perform targeted stock verification before confirming order
+      const stockCheck = await get().verifyCartStock();
+      if (!stockCheck.valid) {
+        const itemNames = stockCheck.outOfStockItems.map(i => `"${i.name}" (Disponible: ${i.available})`).join(', ');
+        set({
+          error: `Disponibilidad modificada: El stock cambió para: ${itemNames}. Hemos actualizado las cantidades en tu carrito.`,
+          loading: false
+        });
+        return { outOfStock: true, outOfStockItems: stockCheck.outOfStockItems };
       }
 
       const isClient = user?.role === 'client';
