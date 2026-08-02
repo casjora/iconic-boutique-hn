@@ -16,6 +16,8 @@ export default defineConfig(() => {
       },
     },
     build: {
+      target: 'esnext',
+      cssCodeSplit: true,
       rollupOptions: {
         external: ['pdf2json'],
         output: {
@@ -23,19 +25,17 @@ export default defineConfig(() => {
             if (id.includes('node_modules')) {
               if (id.includes('pdf2json')) return null;
 
-              // 1. Separar las librerías base de React que son pesadas
-              if (id.includes('react-dom')) return 'vendor-react-core';
+              // 1. Separar librerías base de React
+              if (id.includes('react-dom') || id.includes('react/')) return 'vendor-react-core';
               
-              // 2. Tus categorías existentes
+              // 2. Chunks específicos por módulos
               if (id.includes('lucide-react')) return 'vendor-lucide';
               if (id.includes('@supabase')) return 'vendor-supabase';
               if (id.includes('recharts')) return 'vendor-recharts';
-              if (id.includes('react-router') || id.includes('react-router-dom')) return 'vendor-router';
-              
-              // 3. Separar la SDK de Google Gen AI si se asocia al bundle
+              if (id.includes('react-router')) return 'vendor-router';
               if (id.includes('@google/genai')) return 'vendor-gemini-sdk';
 
-              // Fallback para el resto de dependencias pequeñas
+              // Fallback para resto de dependencias
               return 'vendor-core';
             }
           },

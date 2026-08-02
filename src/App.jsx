@@ -384,12 +384,12 @@ export default function App() {
             </a>
           </div>
 
-          <p className="text-[10px] text-neutral-400 dark:text-neutral-500 font-semibold max-w-md mx-auto leading-relaxed">
+          <p className="text-[10px] text-neutral-600 dark:text-neutral-400 font-semibold max-w-md mx-auto leading-relaxed">
             Distribuidores de perfumería y fragancias 100% originales de
             diseñador en Honduras. Ubicados en Torre Metrópolis, Tegucigalpa.
           </p>
 
-          <div className="border-t border-neutral-100 dark:border-neutral-800 pt-3 text-[10px] text-neutral-400 dark:text-neutral-500 font-semibold font-mono">
+          <div className="border-t border-neutral-100 dark:border-neutral-800 pt-3 text-[10px] text-neutral-600 dark:text-neutral-400 font-semibold font-mono">
             &copy; {new Date().getFullYear()} Iconic Boutique. Todos los
             derechos reservados.
           </div>

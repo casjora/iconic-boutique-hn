@@ -100,7 +100,7 @@ const PerfumeCard = React.memo(({ product, index = 10 }) => {
           src={product.image_url || '/placeholder-perfume.png'}
           alt={`${product.brand || ''} ${product.name || 'Perfume'} original en Honduras`}
           loading={index < 4 ? 'eager' : 'lazy'}
-          fetchpriority={index < 4 ? 'high' : 'auto'}
+          fetchPriority={index < 4 ? 'high' : 'auto'}
           decoding="async"
           width="300"
           height="300"
