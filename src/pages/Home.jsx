@@ -83,6 +83,16 @@ export default function Home() {
 
   return (
     <div className="space-y-12 max-w-7xl mx-auto">
+      {/* Dynamic SEO Title & Location Introduction Header */}
+      <header className="text-center max-w-3xl mx-auto space-y-3 px-4 pt-2">
+        <h1 className="font-display text-2xl sm:text-3xl font-black text-neutral-900 dark:text-neutral-100 uppercase tracking-wider">
+          Perfumes y Lociones Originales en Honduras
+        </h1>
+        <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed max-w-2xl mx-auto">
+          Encuentra fragancias de diseñador 100% auténticas y estuches de regalo exclusivos. Realizamos envíos rápidos y garantizados a Tegucigalpa, San Pedro Sula, Olancho, Santa Bárbara, Copán y a todo el territorio nacional.
+        </p>
+      </header>
+
       {/* Hero Carousel */}
       <section className="relative h-[65vh] w-full overflow-hidden rounded-3xl bg-neutral-900 shadow-lg">
         <AnimatePresence mode="wait">

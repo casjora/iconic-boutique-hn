@@ -1,24 +1,35 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, lazy, Suspense } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useStore } from './store';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
-import Catalog from './pages/Catalog';
-import Favorites from './pages/Favorites';
-import Cart from './pages/Cart';
-import Login from './pages/Login';
-import ForgotPassword from './pages/ForgotPassword';
-import UpdatePassword from './pages/UpdatePassword';
-import Dashboard from './pages/Dashboard';
-import Inventory from './pages/Inventory';
-import Barcodes from './pages/Barcodes';
-import Config from './pages/Config';
-import Orders from './pages/Orders';
-import Showroom from './pages/Showroom';
-import Customers from './pages/Customers';
-import AboutUs from './components/AboutUs';
 import { Loader2, ShieldAlert, ShoppingBag, Users, X, ExternalLink } from 'lucide-react';
 import ScrollToTop from './components/ScrollToTop';
+
+// Code-split route components to minimize initial bundle size
+const Catalog = lazy(() => import('./pages/Catalog'));
+const Favorites = lazy(() => import('./pages/Favorites'));
+const Cart = lazy(() => import('./pages/Cart'));
+const Login = lazy(() => import('./pages/Login'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const UpdatePassword = lazy(() => import('./pages/UpdatePassword'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Inventory = lazy(() => import('./pages/Inventory'));
+const Barcodes = lazy(() => import('./pages/Barcodes'));
+const Config = lazy(() => import('./pages/Config'));
+const Orders = lazy(() => import('./pages/Orders'));
+const Showroom = lazy(() => import('./pages/Showroom'));
+const Customers = lazy(() => import('./pages/Customers'));
+const AboutUs = lazy(() => import('./components/AboutUs'));
+
+function RouteFallback() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 space-y-3">
+      <Loader2 className="h-8 w-8 animate-spin text-neutral-800 dark:text-amber-400" />
+      <span className="text-xs font-semibold text-neutral-500 uppercase tracking-widest">Cargando sección...</span>
+    </div>
+  );
+}
 
 export default function App() {
   const location = useLocation();
@@ -224,7 +235,9 @@ export default function App() {
 
       {/* Main Container Wrapper */}
       <main id="print-area-wrapper" className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col">
-        {renderView()}
+        <Suspense fallback={<RouteFallback />}>
+          {renderView()}
+        </Suspense>
       </main>
 
       {/* Floating Scroll To Top Button */}
@@ -384,9 +397,8 @@ export default function App() {
             </a>
           </div>
 
-          <p className="text-[10px] text-neutral-600 dark:text-neutral-400 font-semibold max-w-md mx-auto leading-relaxed">
-            Distribuidores de perfumería y fragancias 100% originales de
-            diseñador en Honduras. Ubicados en Torre Metrópolis, Tegucigalpa.
+          <p className="text-[10px] text-neutral-600 dark:text-neutral-400 font-semibold max-w-xl mx-auto leading-relaxed">
+            Distribuidores de perfumería y fragancias 100% originales de diseñador en Honduras. Ubicados en Torre Metrópolis, Tegucigalpa. Envíos rápidos y garantizados a Tegucigalpa, San Pedro Sula, Olancho, Santa Bárbara, Copán, Choluteca, Cortés, Comayagua, Atlántida, El Paraíso, La Paz, Colón, Lempira, Intibucá, Ocotepeque, Valle, Yoro, Gracias a Dios e Islas de la Bahía.
           </p>
 
           <div className="border-t border-neutral-100 dark:border-neutral-800 pt-3 text-[10px] text-neutral-600 dark:text-neutral-400 font-semibold font-mono">
