@@ -609,10 +609,14 @@ export const useStore = create((setOriginal, get) => {
 
       set({ loading: true, error: null });
       try {
+        const columns = isAdmin
+          ? 'id, name, brand, size, cost, price_public, price_promotional, stock, category, barcode, description, image_url, featured_public, public_discount'
+          : 'id, name, brand, size, price_public, price_promotional, stock, category, barcode, description, image_url, featured_public, public_discount';
+
         // Optimized Egress query: select specific required columns instead of wildcard '*'
         const { data, error } = await supabase
           .from('products')
-          .select('id, name, brand, size, cost, price_public, price_promotional, stock, category, barcode, description, image_url, featured_public, public_discount')
+          .select(columns)
           .order('name', { ascending: true });
 
         if (error) throw error;
