@@ -530,8 +530,8 @@ export default function Orders() {
 
       {/* Edit Order Modal */}
       {editingOrder && (
-        <div className="fixed inset-0 z-50 flex justify-center bg-neutral-900/60 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto">
-          <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-2xl w-full max-w-5xl my-auto flex flex-col fade-in-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 sm:p-6">
+          <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-2xl w-full max-w-5xl h-[90vh] max-h-[90vh] flex flex-col fade-in-up overflow-hidden">
             <div className="p-5 sm:p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between flex-shrink-0">
               <h3 className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-sm sm:text-base truncate pr-2">
                 Editar Detalles de Orden: <span className="font-mono font-black text-xs sm:text-sm">{editingOrder.id}</span>
@@ -541,7 +541,7 @@ export default function Orders() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveEdit} className="p-5 sm:p-6 space-y-4 sm:space-y-5">
+            <form onSubmit={handleSaveEdit} className="p-5 sm:p-6 space-y-4 sm:space-y-5 flex-1 overflow-y-auto">
               
               {/* Cliente info fields */}
               <div className="grid gap-4 sm:grid-cols-2">
@@ -801,8 +801,8 @@ export default function Orders() {
 
       {/* Manual / Physical Counter Sale Modal */}
       {showPhysicalSaleModal && (
-        <div className="fixed inset-0 z-50 flex justify-center bg-neutral-900/60 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto">
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl w-full max-w-5xl my-auto shadow-xl flex flex-col fade-in-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 sm:p-6">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl w-full max-w-5xl h-[90vh] max-h-[90vh] shadow-xl flex flex-col fade-in-up overflow-hidden">
             {/* Header */}
             <div className="p-5 sm:p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between flex-shrink-0">
               <h3 className="text-sm font-extrabold text-neutral-900 dark:text-neutral-50 uppercase tracking-wider flex items-center gap-2">
@@ -819,7 +819,8 @@ export default function Orders() {
             </div>
 
             {/* Content / Form */}
-            <form onSubmit={handleReportPhysicalSaleSubmit} className="p-5 sm:p-6 space-y-4 text-xs">
+            <form onSubmit={handleReportPhysicalSaleSubmit} className="flex-1 flex flex-col overflow-hidden text-xs">
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
               
               {physicalSaleMsg.text && (
                 <div className={`p-4 rounded-xl border flex items-center gap-2 font-semibold ${
@@ -1151,8 +1152,10 @@ export default function Orders() {
                 </span>
               </div>
 
+              </div>
+
               {/* Form Footer Actions */}
-              <div className="border-t border-neutral-100 dark:border-neutral-800 pt-4 flex gap-2 justify-end">
+              <div className="p-5 sm:p-6 bg-neutral-50 dark:bg-neutral-800/80 border-t border-neutral-100 dark:border-neutral-800 flex gap-2 justify-end flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowPhysicalSaleModal(false)}
