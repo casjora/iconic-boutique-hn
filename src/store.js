@@ -577,7 +577,7 @@ export const useStore = create((setOriginal, get) => {
               price_public: Number(u.pricePublic !== undefined ? u.pricePublic : (original.pricePublic || 0)),
               price_promotional: Number(u.pricePromotional !== undefined ? u.pricePromotional : (original.pricePromotional || 0)),
               category: dbCategory || 'Femenino',
-              barcode: original.barcode || null,
+              barcode: u.barcode !== undefined ? u.barcode : (original.barcode || null),
               description: original.description || null,
               image_url: original.imageUrl || null
             };
@@ -681,6 +681,31 @@ export const useStore = create((setOriginal, get) => {
       } catch (err) {
         set({ error: err.message, loading: false });
         return false;
+      }
+    },
+
+    updateProductBarcode: async (id, newBarcode) => {
+      set({ loading: true, error: null });
+      try {
+        const cleanBarcode = String(newBarcode || '').trim();
+        const { data, error } = await supabase
+          .from('products')
+          .update({ barcode: cleanBarcode })
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const updatedProduct = mapProductFromDb(data);
+        set((state) => ({
+          products: state.products.map(p => p.id === id ? updatedProduct : p),
+          loading: false
+        }));
+        return { success: true, product: updatedProduct };
+      } catch (err) {
+        set({ error: err.message, loading: false });
+        return { success: false, error: err.message };
       }
     },
 

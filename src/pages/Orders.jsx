@@ -6,11 +6,22 @@ import { getProductPrices } from '../utils/productHelper';
 export default function Orders() {
   const { 
     orders, products, updateOrderStatus, updateOrder, reportPhysicalSale, 
-    loading: storeLoading, error: storeError, fetchCustomers, customers 
+    loading: storeLoading, error: storeError, fetchCustomers, customers,
+    updateProductBarcode
   } = useStore();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('Todos');
+
+  // Barcode quick assignment modal state
+  const [assignBarcodeState, setAssignBarcodeState] = useState({
+    isOpen: false,
+    scannedBarcode: '',
+    selectedProdId: '',
+    targetContext: 'physical',
+    isSaving: false,
+    msg: ''
+  });
 
   // Modal active variables
   const [viewingOrder, setViewingOrder] = useState(null);
@@ -75,7 +86,43 @@ export default function Orders() {
       handleAddProductToPhysicalSale(matched);
       setBarcodeInput('');
     } else {
-      alert(`No se encontró ningún perfume con el código o nombre: "${inputVal}"`);
+      setAssignBarcodeState({
+        isOpen: true,
+        scannedBarcode: inputVal.trim(),
+        selectedProdId: products[0]?.id || '',
+        targetContext: 'physical',
+        isSaving: false,
+        msg: ''
+      });
+      setBarcodeInput('');
+    }
+  };
+
+  const handleSaveBarcodeAssignment = async () => {
+    const { scannedBarcode, selectedProdId, targetContext } = assignBarcodeState;
+    if (!scannedBarcode || !selectedProdId) return;
+
+    setAssignBarcodeState(prev => ({ ...prev, isSaving: true, msg: '' }));
+    const res = await updateProductBarcode(selectedProdId, scannedBarcode);
+    if (res.success) {
+      const prod = res.product || products.find(p => p.id === selectedProdId);
+      if (prod) {
+        if (targetContext === 'physical') {
+          handleAddProductToPhysicalSale({ ...prod, barcode: scannedBarcode });
+        } else if (targetContext === 'editOrder') {
+          handleAddItemToEdit({ ...prod, barcode: scannedBarcode });
+        }
+      }
+      setAssignBarcodeState({
+        isOpen: false,
+        scannedBarcode: '',
+        selectedProdId: '',
+        targetContext: 'physical',
+        isSaving: false,
+        msg: ''
+      });
+    } else {
+      setAssignBarcodeState(prev => ({ ...prev, isSaving: false, msg: res.error || 'Error al guardar el código de barras' }));
     }
   };
 
@@ -238,7 +285,15 @@ export default function Orders() {
       handleAddItemToEdit(matched);
       setEditBarcodeInput('');
     } else {
-      alert(`No se encontró ningún perfume con el código o nombre: "${inputVal}"`);
+      setAssignBarcodeState({
+        isOpen: true,
+        scannedBarcode: inputVal.trim(),
+        selectedProdId: products[0]?.id || '',
+        targetContext: 'editOrder',
+        isSaving: false,
+        msg: ''
+      });
+      setEditBarcodeInput('');
     }
   };
 
@@ -1180,6 +1235,85 @@ export default function Orders() {
               </div>
 
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Barcode Modal */}
+      {assignBarcodeState.isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-3">
+              <h3 className="text-base font-extrabold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+                🏷️ Asignar Código de Barras
+              </h3>
+              <button
+                type="button"
+                onClick={() => setAssignBarcodeState(prev => ({ ...prev, isOpen: false }))}
+                className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg text-neutral-400"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-neutral-600 dark:text-neutral-400">
+              El código de barras <span className="font-mono font-bold text-amber-600 dark:text-amber-400">"{assignBarcodeState.scannedBarcode}"</span> no está asignado. Selecciónalo en la lista para asociarlo al perfume y agregarlo a la venta.
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1">
+                  Código de Barras Escaneado
+                </label>
+                <input
+                  type="text"
+                  value={assignBarcodeState.scannedBarcode}
+                  onChange={(e) => setAssignBarcodeState(prev => ({ ...prev, scannedBarcode: e.target.value }))}
+                  className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-xs font-mono font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1">
+                  Seleccionar Perfume del Inventario
+                </label>
+                <select
+                  value={assignBarcodeState.selectedProdId}
+                  onChange={(e) => setAssignBarcodeState(prev => ({ ...prev, selectedProdId: e.target.value }))}
+                  className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-xs font-semibold"
+                >
+                  {products.map(p => (
+                    <option key={p.id} value={p.id}>
+                      [{p.brand}] {p.name} ({p.size}) {p.barcode ? `- CB actual: ${p.barcode}` : '- Sin CB'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {assignBarcodeState.msg && (
+                <div className="p-2.5 bg-red-50 dark:bg-red-950/30 border border-red-200 text-red-700 dark:text-red-300 rounded-xl text-xs font-semibold">
+                  {assignBarcodeState.msg}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setAssignBarcodeState(prev => ({ ...prev, isOpen: false }))}
+                className="px-4 py-2 border border-neutral-200 dark:border-neutral-700 text-xs font-bold rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={assignBarcodeState.isSaving || !assignBarcodeState.selectedProdId || !assignBarcodeState.scannedBarcode}
+                onClick={handleSaveBarcodeAssignment}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl shadow disabled:opacity-50"
+              >
+                {assignBarcodeState.isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Guardar y Agregar'}
+              </button>
+            </div>
           </div>
         </div>
       )}
