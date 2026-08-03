@@ -83,6 +83,8 @@ export const playOrderAlertSound = () => {
   }
 };
 
+const PRODUCT_SELECT_COLUMNS = 'id, name, brand, size, cost, price_public, price_promotional, stock, category, barcode, description, image_url, featured_public, public_discount';
+
 // Helper to map DB products (snake_case) to Frontend products (camelCase)
 const mapProductFromDb = (p) => {
   let uiCategory = 'Damas';
@@ -342,13 +344,17 @@ export const useStore = create((setOriginal, get) => {
         if (profileErr) throw profileErr;
 
         let mappedRole = 'pendiente';
-        if (profile) {
-          const r = String(profile.role || '').toLowerCase();
-          if (r === 'dueño' || r === 'owner') mappedRole = 'dueño';
-          else if (r === 'vendedor') mappedRole = 'vendedor';
-          else if (r === 'mayorista') mappedRole = 'mayorista';
-          else if (r === 'detalle') mappedRole = 'detalle';
-        }
+        const userMetaRole = data.user.user_metadata?.role;
+        const profileRole = profile?.role;
+        const primaryRole = (profileRole && ['dueño', 'owner', 'vendedor', 'mayorista', 'detalle'].includes(String(profileRole).toLowerCase()))
+          ? profileRole
+          : (userMetaRole || profileRole || '');
+
+        const r = String(primaryRole).toLowerCase();
+        if (r === 'dueño' || r === 'owner') mappedRole = 'dueño';
+        else if (r === 'vendedor') mappedRole = 'vendedor';
+        else if (r === 'mayorista') mappedRole = 'mayorista';
+        else if (r === 'detalle') mappedRole = 'detalle';
 
         const userEmail = data.user.email || '';
         const emailConfirmed = !!(data.user.email_confirmed_at || data.user.confirmed_at || userEmail.endsWith('@iconicboutique.hn'));
@@ -640,7 +646,7 @@ export const useStore = create((setOriginal, get) => {
         const { data, error } = await supabase
           .from('products')
           .insert([dbProduct])
-          .select()
+          .select(PRODUCT_SELECT_COLUMNS)
           .single();
 
         if (error) throw error;
@@ -669,7 +675,7 @@ export const useStore = create((setOriginal, get) => {
           .from('products')
           .update(dbProduct)
           .eq('id', id)
-          .select()
+          .select(PRODUCT_SELECT_COLUMNS)
           .single();
 
         if (error) throw error;
@@ -694,7 +700,7 @@ export const useStore = create((setOriginal, get) => {
           .from('products')
           .update({ barcode: cleanBarcode })
           .eq('id', id)
-          .select()
+          .select(PRODUCT_SELECT_COLUMNS)
           .single();
 
         if (error) throw error;
