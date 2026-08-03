@@ -582,8 +582,10 @@ export const useStore = create((setOriginal, get) => {
               image_url: original.imageUrl || null
             };
           });
-          const { error: updErr } = await supabase.from('products').upsert(dbUpdates);
-          if (updErr) throw updErr;
+          for (const item of dbUpdates) {
+            const { error: updErr } = await supabase.from('products').update(item).eq('id', item.id);
+            if (updErr) throw updErr;
+          }
           countUpdated = updates.length;
         }
 
@@ -731,8 +733,10 @@ export const useStore = create((setOriginal, get) => {
         }
 
         if (dbUpdates.length > 0) {
-          const { error } = await supabase.from('products').upsert(dbUpdates);
-          if (error) throw error;
+          for (const item of dbUpdates) {
+            const { error } = await supabase.from('products').update({ description: item.description }).eq('id', item.id);
+            if (error) throw error;
+          }
         }
 
         await get().fetchProducts();
