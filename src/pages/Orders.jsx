@@ -530,8 +530,8 @@ export default function Orders() {
 
       {/* Edit Order Modal */}
       {editingOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 sm:p-6 overflow-hidden">
-          <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-2xl w-full max-w-5xl h-[92vh] max-h-[92vh] overflow-hidden flex flex-col fade-in-up">
+        <div className="fixed inset-0 z-50 flex justify-center bg-neutral-900/60 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto">
+          <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-2xl w-full max-w-5xl my-auto flex flex-col fade-in-up">
             <div className="p-5 sm:p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between flex-shrink-0">
               <h3 className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-sm sm:text-base truncate pr-2">
                 Editar Detalles de Orden: <span className="font-mono font-black text-xs sm:text-sm">{editingOrder.id}</span>
@@ -541,7 +541,7 @@ export default function Orders() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveEdit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 sm:space-y-5">
+            <form onSubmit={handleSaveEdit} className="p-5 sm:p-6 space-y-4 sm:space-y-5">
               
               {/* Cliente info fields */}
               <div className="grid gap-4 sm:grid-cols-2">
@@ -801,8 +801,8 @@ export default function Orders() {
 
       {/* Manual / Physical Counter Sale Modal */}
       {showPhysicalSaleModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 sm:p-6 overflow-hidden">
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl w-full max-w-5xl h-[92vh] max-h-[92vh] shadow-xl overflow-hidden flex flex-col fade-in-up">
+        <div className="fixed inset-0 z-50 flex justify-center bg-neutral-900/60 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl w-full max-w-5xl my-auto shadow-xl flex flex-col fade-in-up">
             {/* Header */}
             <div className="p-5 sm:p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between flex-shrink-0">
               <h3 className="text-sm font-extrabold text-neutral-900 dark:text-neutral-50 uppercase tracking-wider flex items-center gap-2">
@@ -819,7 +819,7 @@ export default function Orders() {
             </div>
 
             {/* Content / Form */}
-            <form onSubmit={handleReportPhysicalSaleSubmit} className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+            <form onSubmit={handleReportPhysicalSaleSubmit} className="p-5 sm:p-6 space-y-4 text-xs">
               
               {physicalSaleMsg.text && (
                 <div className={`p-4 rounded-xl border flex items-center gap-2 font-semibold ${
@@ -852,26 +852,32 @@ export default function Orders() {
                   </select>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">
-                    Tipo de Tarifa Aplicada
+                <div className="space-y-1.5 flex flex-col justify-end">
+                  <span className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">
+                    Tarifa Aplicada
+                  </span>
+                  <label className="flex items-center gap-3 px-4 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-bold text-neutral-800 dark:text-neutral-200 cursor-pointer select-none hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-all h-[38px]">
+                    <input
+                      type="checkbox"
+                      checked={physicalRoleUsed === 'mayorista'}
+                      onChange={(e) => {
+                        const isWholesale = e.target.checked;
+                        const newRole = isWholesale ? 'mayorista' : 'detalle';
+                        setPhysicalRoleUsed(newRole);
+                        // Update default prices in list
+                        setPhysicalSaleItems(prev => prev.map(item => ({
+                          ...item,
+                          pricePaid: newRole === 'mayorista' ? (item.pricePromotional || item.pricePublic) : item.pricePublic
+                        })));
+                      }}
+                      className="w-4 h-4 rounded text-amber-500 accent-amber-500 cursor-pointer"
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-extrabold text-neutral-800 dark:text-neutral-100">
+                        ¿Es venta al mayoreo?
+                      </span>
+                    </div>
                   </label>
-                  <select
-                    value={physicalRoleUsed}
-                    onChange={(e) => {
-                      const newRole = e.target.value;
-                      setPhysicalRoleUsed(newRole);
-                      // Update default prices in list
-                      setPhysicalSaleItems(prev => prev.map(item => ({
-                        ...item,
-                        pricePaid: newRole === 'mayorista' ? (item.pricePromotional || item.pricePublic) : item.pricePublic
-                      })));
-                    }}
-                    className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-semibold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100 cursor-pointer"
-                  >
-                    <option value="detalle">Precio Detalle</option>
-                    <option value="mayorista">Precio Mayorista VIP</option>
-                  </select>
                 </div>
               </div>
 
