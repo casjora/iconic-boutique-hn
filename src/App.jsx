@@ -234,7 +234,7 @@ export default function App() {
       <Navbar />
 
       {/* Main Container Wrapper */}
-      <main id="print-area-wrapper" className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col">
+      <main id="print-area-wrapper" className="min-h-screen flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col">
         <Suspense fallback={<RouteFallback />}>
           {renderView()}
         </Suspense>
