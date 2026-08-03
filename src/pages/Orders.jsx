@@ -251,6 +251,15 @@ export default function Orders() {
     }));
   };
 
+  const handleUpdateItemPrice = (productId, newPrice) => {
+    setEditItems(prev => prev.map(item => {
+      if (item.productId === productId) {
+        return { ...item, pricePaid: newPrice };
+      }
+      return item;
+    }));
+  };
+
   const handleRemoveItem = (productId) => {
     setEditItems(prev => prev.filter(item => item.productId !== productId));
   };
@@ -521,8 +530,8 @@ export default function Orders() {
 
       {/* Edit Order Modal */}
       {editingOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto">
-          <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col my-auto max-h-[90vh] fade-in-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 sm:p-6 overflow-hidden">
+          <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-2xl w-full max-w-5xl h-[92vh] max-h-[92vh] overflow-hidden flex flex-col fade-in-up">
             <div className="p-5 sm:p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between flex-shrink-0">
               <h3 className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-sm sm:text-base truncate pr-2">
                 Editar Detalles de Orden: <span className="font-mono font-black text-xs sm:text-sm">{editingOrder.id}</span>
@@ -565,32 +574,88 @@ export default function Orders() {
               </div>
 
               {/* Add Perfume block */}
-              <div className="bg-neutral-50 dark:bg-neutral-800/50 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 space-y-3">
+              <div className="bg-neutral-50 dark:bg-neutral-800/50 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 space-y-3 relative">
                 <label className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block">
                   Añadir Fragancia a la Orden (Por Código de Barras o Selección)
                 </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={editBarcodeInput}
-                    onChange={(e) => setEditBarcodeInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleScanEditBarcodeOrSearch(editBarcodeInput);
-                      }
-                    }}
-                    placeholder="Escanear código de barras o buscar..."
-                    className="flex-1 px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-mono font-semibold outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400"
-                  />
+                <div className="flex gap-2 relative">
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      value={editBarcodeInput}
+                      onChange={(e) => setEditBarcodeInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleScanEditBarcodeOrSearch(editBarcodeInput);
+                        }
+                      }}
+                      placeholder="Escribir nombre o marca para buscar..."
+                      className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-mono font-semibold outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400"
+                    />
+                    
+                    {/* Autocomplete Dropdown overlay */}
+                    {editBarcodeInput.trim().length > 0 && (
+                      <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xl z-50 max-h-56 overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800">
+                        {products
+                          .filter(p => {
+                            const term = editBarcodeInput.toLowerCase();
+                            return (p.name || '').toLowerCase().includes(term) ||
+                                   (p.brand || '').toLowerCase().includes(term) ||
+                                   (p.barcode || '').toLowerCase().includes(term);
+                          })
+                          .slice(0, 8)
+                          .map(p => {
+                            const stock = p.availableStock !== undefined ? p.availableStock : p.stock;
+                            return (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => {
+                                  handleAddItemToEdit(p);
+                                  setEditBarcodeInput('');
+                                }}
+                                className="w-full text-left px-3 py-2.5 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center justify-between text-xs transition-colors cursor-pointer"
+                              >
+                                <div>
+                                  <span className="font-extrabold text-neutral-900 dark:text-neutral-100 block">
+                                    [{p.brand}] {p.name}
+                                  </span>
+                                  <span className="text-[10px] text-neutral-400 dark:text-neutral-500 block">
+                                    Tamaño: {p.size} {p.barcode ? `| CB: ${p.barcode}` : ''}
+                                  </span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="font-mono text-[10px] bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded text-neutral-600 dark:text-neutral-400">
+                                    Stock: {stock} u
+                                  </span>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        {products.filter(p => {
+                          const term = editBarcodeInput.toLowerCase();
+                          return (p.name || '').toLowerCase().includes(term) ||
+                                 (p.brand || '').toLowerCase().includes(term) ||
+                                 (p.barcode || '').toLowerCase().includes(term);
+                        }).length === 0 && (
+                          <div className="px-3 py-2.5 text-xs text-neutral-400 text-center">
+                            No se encontraron resultados
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  
                   <button
                     type="button"
                     onClick={() => handleScanEditBarcodeOrSearch(editBarcodeInput)}
-                    className="px-3.5 py-2 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 font-bold text-xs rounded-xl cursor-pointer"
+                    className="px-3.5 py-2 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-850 dark:hover:bg-amber-300 text-white dark:text-neutral-950 font-bold text-xs rounded-xl cursor-pointer"
                   >
                     Añadir
                   </button>
                 </div>
+                
                 <select
                   onChange={(e) => {
                     const p = products.find(prod => prod.id === e.target.value);
@@ -617,48 +682,84 @@ export default function Orders() {
                 </h4>
 
                 <div className="border border-neutral-200 dark:border-neutral-700 rounded-2xl overflow-hidden divide-y divide-neutral-100 dark:divide-neutral-800">
-                  {editItems.map((item, idx) => (
-                    <div key={idx} className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                      <div>
-                        <span className="font-extrabold text-neutral-900 dark:text-neutral-100 block">{item.brand} {item.name}</span>
-                        <span className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5 block font-semibold">
-                          Tamaño: {item.size} | L. {item.pricePaid.toLocaleString()} c/u
-                        </span>
-                      </div>
+                  {editItems.map((item, idx) => {
+                    const orderRole = getEditingOrderRole();
+                    const err = validateItemPrice(item.pricePaid, orderRole, item);
 
-                      <div className="flex items-center gap-4 ml-auto">
-                        {/* Quantity adjust */}
-                        <div className="flex items-center border border-neutral-200 dark:border-neutral-700 rounded-xl bg-neutral-50 dark:bg-neutral-800">
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateItemQty(item.productId, item.quantity - 1)}
-                            className="px-2 py-1 text-sm font-bold text-neutral-500 dark:text-neutral-400 hover:text-neutral-950 dark:hover:text-neutral-100 cursor-pointer"
-                          >
-                            -
-                          </button>
-                          <span className="px-2 text-xs font-bold text-neutral-950 dark:text-neutral-100 font-mono min-w-[1.5rem] text-center">
-                            {item.quantity}
+                    return (
+                      <div key={idx} className={`p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
+                        err ? 'bg-rose-50/50 dark:bg-rose-950/20 border border-rose-300 dark:border-rose-800 rounded-xl' : ''
+                      }`}>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-extrabold text-neutral-900 dark:text-neutral-100 block truncate">{item.brand} {item.name}</span>
+                          <span className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5 block font-semibold">
+                            Tamaño: {item.size}
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateItemQty(item.productId, item.quantity + 1)}
-                            className="px-2 py-1 text-sm font-bold text-neutral-500 dark:text-neutral-400 hover:text-neutral-950 dark:hover:text-neutral-100 cursor-pointer"
-                          >
-                            +
-                          </button>
+                          {err && (
+                            <p className="text-[10px] text-rose-600 dark:text-rose-400 font-bold mt-0.5">
+                              ⚠️ {err}
+                            </p>
+                          )}
                         </div>
 
-                        {/* Trash */}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItem(item.productId)}
-                          className="p-1.5 text-neutral-400 hover:text-red-600 dark:text-neutral-500 dark:hover:text-rose-400 rounded-lg cursor-pointer"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <div className="flex items-center gap-4 ml-auto w-full sm:w-auto justify-between sm:justify-end">
+                          {/* Price edit (Sellers/Owners can edit) */}
+                          <div className="flex flex-col">
+                            <label className="text-[9px] font-bold text-neutral-400">Precio (L.)</label>
+                            <input
+                              type="number"
+                              required
+                              min="0"
+                              value={item.pricePaid}
+                              onChange={(e) => handleUpdateItemPrice(item.productId, e.target.value)}
+                              className="w-20 px-2 py-1 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-xs font-mono font-bold outline-none"
+                            />
+                          </div>
+
+                          {/* Quantity adjust */}
+                          <div className="flex flex-col items-center">
+                            <label className="text-[9px] font-bold text-neutral-400">Cant</label>
+                            <div className="flex items-center border border-neutral-200 dark:border-neutral-700 rounded-xl bg-neutral-50 dark:bg-neutral-800">
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateItemQty(item.productId, item.quantity - 1)}
+                                className="px-2 py-0.5 text-xs font-bold text-neutral-500 hover:text-neutral-950 dark:hover:text-neutral-100 cursor-pointer"
+                              >
+                                -
+                              </button>
+                              <span className="px-2 text-xs font-bold text-neutral-950 dark:text-neutral-100 font-mono min-w-[1.2rem] text-center">
+                                {item.quantity}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateItemQty(item.productId, item.quantity + 1)}
+                                className="px-2 py-0.5 text-xs font-bold text-neutral-500 hover:text-neutral-950 dark:hover:text-neutral-100 cursor-pointer"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Subtotal */}
+                          <div className="text-right min-w-[4rem]">
+                            <span className="text-[9px] font-bold text-neutral-400 block">Subtotal</span>
+                            <span className="font-mono font-extrabold text-neutral-900 dark:text-amber-400 text-xs">
+                              L. {(Number(item.pricePaid || 0) * Number(item.quantity || 1)).toLocaleString()}
+                            </span>
+                          </div>
+
+                          {/* Trash */}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(item.productId)}
+                            className="p-1 text-neutral-400 hover:text-red-600 dark:text-neutral-500 dark:hover:text-rose-400 rounded-lg cursor-pointer"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -668,7 +769,7 @@ export default function Orders() {
               <div className="text-left">
                 <span className="text-[10px] text-neutral-400 dark:text-neutral-500 block font-bold">Subtotal Estimado:</span>
                 <span className="font-mono font-black text-neutral-950 dark:text-amber-400 text-base">
-                  L. {editItems.reduce((acc, curr) => acc + (curr.pricePaid * curr.quantity), 0).toLocaleString()} HNL
+                  L. {editItems.reduce((acc, curr) => acc + (Number(curr.pricePaid || 0) * Number(curr.quantity || 1)), 0).toLocaleString()} HNL
                 </span>
               </div>
 
@@ -700,8 +801,8 @@ export default function Orders() {
 
       {/* Manual / Physical Counter Sale Modal */}
       {showPhysicalSaleModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl w-full max-w-2xl shadow-xl overflow-hidden flex flex-col my-8 max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 sm:p-6 overflow-hidden">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl w-full max-w-5xl h-[92vh] max-h-[92vh] shadow-xl overflow-hidden flex flex-col fade-in-up">
             {/* Header */}
             <div className="p-5 sm:p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between flex-shrink-0">
               <h3 className="text-sm font-extrabold text-neutral-900 dark:text-neutral-50 uppercase tracking-wider flex items-center gap-2">
@@ -804,27 +905,80 @@ export default function Orders() {
                 </div>
               </div>
 
-              <hr className="border-neutral-100 dark:border-neutral-800 my-2" />
-
               {/* Barcode / Quick Add Search Section */}
-              <div className="space-y-2">
+              <div className="space-y-2 relative">
                 <label className="block font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider text-[10px]">
                   📷 Escanear Código de Barras o Buscar Perfume
                 </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={barcodeInput}
-                    onChange={(e) => setBarcodeInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleScanBarcodeOrSearch(barcodeInput);
-                      }
-                    }}
-                    placeholder="Escanear código de barras o escribir nombre/código y presionar Enter..."
-                    className="flex-1 px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-mono text-xs font-semibold outline-none focus:ring-2 focus:ring-neutral-950 dark:focus:ring-amber-400"
-                  />
+                <div className="flex gap-2 relative">
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      value={barcodeInput}
+                      onChange={(e) => setBarcodeInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleScanBarcodeOrSearch(barcodeInput);
+                        }
+                      }}
+                      placeholder="Escribir nombre o marca para buscar..."
+                      className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-mono text-xs font-semibold outline-none focus:ring-2 focus:ring-neutral-950 dark:focus:ring-amber-400"
+                    />
+                    
+                    {/* Autocomplete Dropdown overlay */}
+                    {barcodeInput.trim().length > 0 && (
+                      <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xl z-50 max-h-56 overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800">
+                        {products
+                          .filter(p => {
+                            const term = barcodeInput.toLowerCase();
+                            return (p.name || '').toLowerCase().includes(term) ||
+                                   (p.brand || '').toLowerCase().includes(term) ||
+                                   (p.barcode || '').toLowerCase().includes(term);
+                          })
+                          .slice(0, 8)
+                          .map(p => {
+                            const stock = p.availableStock !== undefined ? p.availableStock : p.stock;
+                            return (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => {
+                                  handleAddProductToPhysicalSale(p);
+                                  setBarcodeInput('');
+                                }}
+                                className="w-full text-left px-3 py-2.5 hover:bg-neutral-50 dark:hover:bg-neutral-800 flex items-center justify-between text-xs transition-colors cursor-pointer"
+                              >
+                                <div>
+                                  <span className="font-extrabold text-neutral-900 dark:text-neutral-100 block">
+                                    [{p.brand}] {p.name}
+                                  </span>
+                                  <span className="text-[10px] text-neutral-400 dark:text-neutral-500 block">
+                                    Tamaño: {p.size} {p.barcode ? `| CB: ${p.barcode}` : ''}
+                                  </span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="font-mono text-[10px] bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded text-neutral-600 dark:text-neutral-400">
+                                    Stock: {stock} u
+                                  </span>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        {products.filter(p => {
+                          const term = barcodeInput.toLowerCase();
+                          return (p.name || '').toLowerCase().includes(term) ||
+                                 (p.brand || '').toLowerCase().includes(term) ||
+                                 (p.barcode || '').toLowerCase().includes(term);
+                        }).length === 0 && (
+                          <div className="px-3 py-2.5 text-xs text-neutral-400 text-center">
+                            No se encontraron resultados
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  
                   <button
                     type="button"
                     onClick={() => handleScanBarcodeOrSearch(barcodeInput)}
