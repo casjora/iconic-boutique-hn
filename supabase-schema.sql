@@ -178,6 +178,21 @@ WHERE
 -- Revoke all table-level access to the raw table from public roles
 REVOKE ALL ON public.products_raw FROM anon, authenticated, public;
 
+-- Clean up any legacy or orphan triggers on products or products_raw
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN (
+    SELECT trigger_name, event_object_table
+    FROM information_schema.triggers
+    WHERE event_object_schema = 'public'
+      AND event_object_table IN ('products', 'products_raw')
+  ) LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS %I ON public.%I;', r.trigger_name, r.event_object_table);
+  END LOOP;
+END $$;
+
 -- Grant access on products view
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.products TO anon, authenticated, service_role;
 
