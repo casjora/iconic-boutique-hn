@@ -116,7 +116,14 @@ export default async function handler(req, res) {
 
     let totalProductosExtraidos = [...productsParsedSoFar];
 
-    const geminiApiKey = process.env.GEMINI_API_KEY;
+    const geminiApiKeys = [
+      process.env.GEMINI_API_KEY,
+      process.env.GEMINI_API_KEY_2,
+      process.env.GEMINI_API_KEY_3,
+      process.env["GEMINI_API_KEY_3 "],
+      process.env.GEMINI_KEY,
+      process.env.VITE_GEMINI_API_KEY
+    ].map(k => (typeof k === "string" ? k.trim() : "")).filter(Boolean);
     
     // Robust resolution of DeepSeek API Key and Base URL
     let deepseekApiKey = "";
@@ -235,38 +242,54 @@ export default async function handler(req, res) {
 
             rawText = response.choices[0]?.message?.content?.trim() || "";
           } else {
-            if (!geminiApiKey) {
+            if (geminiApiKeys.length === 0) {
               throw new Error("La clave de API de Gemini no está configurada.");
             }
 
-            const ai = new GoogleGenAI({ 
-              apiKey: geminiApiKey,
-              httpOptions: {
-                headers: {
-                  'User-Agent': 'aistudio-build'
-                }
-              }
-            });
+            let geminiError = null;
+            let success = false;
 
-            const response = await ai.models.generateContent({
-              model: attempt.name,
-              contents: [
-                {
-                  role: "user",
-                  parts: [
-                    { text: prompt },
-                    { text: "--- CONTENIDO PÁGINA " + (i + 1) + " ---\n" + textoDeLaPagina }
-                  ]
-                }
-              ],
-              config: {
-                responseMimeType: "application/json",
-                responseSchema: schema,
-                temperature: 0.0
-              }
-            });
+            for (const keyCandidate of geminiApiKeys) {
+              try {
+                const ai = new GoogleGenAI({ 
+                  apiKey: keyCandidate,
+                  httpOptions: {
+                    headers: {
+                      'User-Agent': 'aistudio-build'
+                    }
+                  }
+                });
 
-            rawText = response.text.trim();
+                const response = await ai.models.generateContent({
+                  model: attempt.name,
+                  contents: [
+                    {
+                      role: "user",
+                      parts: [
+                        { text: prompt },
+                        { text: "--- CONTENIDO PÁGINA " + (i + 1) + " ---\n" + textoDeLaPagina }
+                      ]
+                    }
+                  ],
+                  config: {
+                    responseMimeType: "application/json",
+                    responseSchema: schema,
+                    temperature: 0.0
+                  }
+                });
+
+                rawText = response.text.trim();
+                success = true;
+                break;
+              } catch (err) {
+                geminiError = err;
+                console.warn(`[Gemini API key failed, intentando siguiente clave...]:`, err.message);
+              }
+            }
+
+            if (!success && geminiError) {
+              throw geminiError;
+            }
           }
 
           if (rawText.startsWith("```")) {

@@ -560,15 +560,17 @@ export default function Inventory() {
     e.preventDefault();
     setError(null);
 
+    const original = isEditing ? products.find(p => p.id === editingId) : null;
+
     const finalDescription = setProductPromotions(formDescription, formPromoDetalle, formPromoMayorista);
 
     const data = {
       name: formName.trim(),
       brand: formBrand.trim(),
       size: formSize.trim(),
-      cost: Number(formCost) || 0,
-      pricePublic: Number(formPricePublic) || 0,
-      pricePromotional: Math.round((Number(formPricePublic) || 0) * 0.75),
+      cost: isVendedor ? (original?.cost || 0) : (Number(formCost) || 0),
+      pricePublic: isVendedor ? (original?.pricePublic || 0) : (Number(formPricePublic) || 0),
+      pricePromotional: isVendedor ? (original?.pricePromotional || 0) : Math.round((Number(formPricePublic) || 0) * 0.75),
       stock: Number(formStock) || 0,
       category: formCategory,
       barcode: formBarcode.trim(),
@@ -1474,8 +1476,8 @@ export default function Inventory() {
           </div>
         </div>
 
-        {/* Bulk Promotions Panel */}
-        {(user?.role === 'owner' || user?.role === 'vendedor' || user?.role === 'dueño') && (
+        {/* Bulk Promotions Panel (Owners Only) */}
+        {(user?.role === 'owner' || user?.role === 'dueño') && (
           <div className="bg-amber-50/40 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-3xl p-4 sm:p-5 shadow-sm space-y-3">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="space-y-0.5 text-left">
@@ -2034,14 +2036,14 @@ export default function Inventory() {
               <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 bg-neutral-50 dark:bg-neutral-905 p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800">
                 <div>
                   <label htmlFor="prod-promo-detalle" className="text-[10px] font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider block mb-1">
-                    🏷️ Oferta Clientes Detalle
+                    <span>🏷️ Oferta Clientes Detalle</span>
                   </label>
                   <input
                     id="prod-promo-detalle"
                     type="text"
                     value={formPromoDetalle}
                     onChange={(e) => setFormPromoDetalle(e.target.value)}
-                    className="block w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 transition-all outline-none font-mono"
+                    className="block w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 rounded-xl text-xs font-semibold font-mono transition-all outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400"
                     placeholder="Eje: 20% o 100"
                   />
                   <span className="text-[9px] text-neutral-400 block mt-1">Escribe un porcentaje (ej: <b>20%</b>) o un monto fijo (ej: <b>150</b>).</span>
@@ -2049,14 +2051,14 @@ export default function Inventory() {
 
                 <div>
                   <label htmlFor="prod-promo-mayorista" className="text-[10px] font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider block mb-1">
-                    📦 Oferta Clientes Mayoristas
+                    <span>📦 Oferta Clientes Mayoristas</span>
                   </label>
                   <input
                     id="prod-promo-mayorista"
                     type="text"
                     value={formPromoMayorista}
                     onChange={(e) => setFormPromoMayorista(e.target.value)}
-                    className="block w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 transition-all outline-none font-mono"
+                    className="block w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 rounded-xl text-xs font-semibold font-mono transition-all outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400"
                     placeholder="Eje: 10% o 50"
                   />
                   <span className="text-[9px] text-neutral-400 block mt-1">Escribe un porcentaje (ej: <b>10%</b>) o un monto fijo (ej: <b>50</b>).</span>
@@ -2087,7 +2089,7 @@ export default function Inventory() {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading || !formName || !formBrand || (isOwner && !formCost) || !formPricePublic || formStock === ''}
+                  disabled={loading || !formName || !formBrand || (isOwner && !formCost) || (!isVendedor && !formPricePublic) || formStock === ''}
                   className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer disabled:opacity-50"
                 >
                   {loading ? (

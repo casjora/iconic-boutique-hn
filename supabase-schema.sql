@@ -156,7 +156,7 @@ SELECT
   brand,
   size,
   CASE
-    WHEN public.get_my_role() IN ('dueño', 'owner', 'vendedor') THEN cost
+    WHEN public.get_my_role() IN ('dueño', 'owner') THEN cost
     ELSE 0
   END AS cost,
   price_public,
@@ -187,6 +187,7 @@ RETURNS TRIGGER AS $func$
 DECLARE
   v_role TEXT;
   v_jwt_json JSONB;
+  v_profile_role TEXT;
 BEGIN
   v_role := COALESCE(public.get_my_role(), '');
 
@@ -213,14 +214,13 @@ BEGIN
     END;
     IF v_role NOT IN ('dueño', 'owner', 'vendedor') THEN
       BEGIN
-        SELECT lower(trim(coalesce(role, ''))) INTO v_role FROM public.profiles WHERE id = auth.uid();
+        SELECT lower(trim(coalesce(role, ''))) INTO v_profile_role FROM public.profiles WHERE id = auth.uid();
+        IF v_profile_role IN ('dueño', 'owner', 'vendedor') THEN
+          v_role := v_profile_role;
+        END IF;
       EXCEPTION WHEN OTHERS THEN
         NULL;
       END;
-    END IF;
-    -- If logged in as authenticated staff/user and not explicitly a client/buyer role, grant seller permissions
-    IF v_role NOT IN ('dueño', 'owner', 'vendedor', 'detalle', 'mayorista', 'cliente', 'publico') THEN
-      v_role := 'vendedor';
     END IF;
   END IF;
 
@@ -296,14 +296,14 @@ BEGIN
       RETURNING * INTO NEW;
       RETURN NEW;
     ELSE
-      -- Vendedor updating: preserve existing cost, allow updating prices and all product details
+      -- Vendedor updating: preserve existing cost, price_public, and price_promotional strictly
       UPDATE public.products_raw SET
         name = COALESCE(NEW.name, OLD.name),
         brand = COALESCE(NEW.brand, OLD.brand),
         size = COALESCE(NEW.size, OLD.size),
         cost = OLD.cost,
-        price_public = COALESCE(NEW.price_public, OLD.price_public),
-        price_promotional = COALESCE(NEW.price_promotional, OLD.price_promotional),
+        price_public = OLD.price_public,
+        price_promotional = OLD.price_promotional,
         stock = COALESCE(NEW.stock, OLD.stock),
         category = COALESCE(NEW.category, OLD.category),
         barcode = COALESCE(NEW.barcode, OLD.barcode),
@@ -313,6 +313,8 @@ BEGIN
         public_discount = COALESCE(NEW.public_discount, OLD.public_discount)
       WHERE id = OLD.id
       RETURNING * INTO NEW;
+
+      NEW.cost := 0;
       RETURN NEW;
     END IF;
   ELSIF TG_OP = 'DELETE' THEN
