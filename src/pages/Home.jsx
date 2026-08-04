@@ -127,7 +127,7 @@ export default function Home() {
                 transition={{ delay: 0.4 }}
                 className="mt-8"
               >
-                <Link to={categories[currentIndex]?.path || '#'} className="rounded-full bg-white px-8 py-3.5 text-xs font-black text-neutral-950 tracking-wider uppercase transition hover:bg-neutral-100 shadow-md">
+                <Link to={categories[currentIndex]?.path || '#'} className="rounded-full bg-white px-5 py-2.5 sm:px-8 sm:py-3.5 text-[10px] sm:text-xs font-black text-neutral-950 tracking-wider uppercase transition hover:bg-neutral-100 shadow-md text-center">
                   Explorar Colección
                 </Link>
               </motion.div>
@@ -153,7 +153,7 @@ export default function Home() {
       </section>
 
       {/* Categories Grid */}
-      <section className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-4">
+<section className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-4">
         {categories.map((cat) => (
           <Link key={cat.name} to={cat.path} className="group relative aspect-square overflow-hidden rounded-3xl bg-neutral-100 border border-neutral-200 shadow-sm">
             <img 
@@ -165,8 +165,15 @@ export default function Home() {
               height="300"
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
             />
-            <div className="absolute inset-0 flex items-end gradient-to-t from-neutral-950/80 to-transparent p-6">
-              <h3 className="font-display text-sm font-bold text-white uppercase tracking-wider">{cat.name}</h3>
+            
+            {/* Contenedor del degradado actualizado */}
+            <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/90 via-black/40 to-transparent p-4 sm:p-6">
+              
+              {/* Texto con drop-shadow fuerte para garantizar lectura */}
+              <h3 className="font-display text-sm font-bold text-white uppercase tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                {cat.name}
+              </h3>
+              
             </div>
           </Link>
         ))}
