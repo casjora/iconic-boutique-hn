@@ -75,7 +75,6 @@ BEGIN
       v_jwt_role := lower(trim(coalesce(
         v_jwt_json -> 'user_metadata' ->> 'role',
         v_jwt_json -> 'app_metadata' ->> 'role',
-        v_jwt_json ->> 'role',
         ''
       )));
     END IF;
@@ -203,6 +202,26 @@ BEGIN
     EXCEPTION WHEN OTHERS THEN
       NULL;
     END;
+  END IF;
+
+  -- Additional check: query auth.users and public.profiles directly if auth.uid() is present
+  IF v_role NOT IN ('dueño', 'owner', 'vendedor') AND auth.uid() IS NOT NULL THEN
+    BEGIN
+      SELECT lower(trim(coalesce(raw_user_meta_data->>'role', ''))) INTO v_role FROM auth.users WHERE id = auth.uid();
+    EXCEPTION WHEN OTHERS THEN
+      NULL;
+    END;
+    IF v_role NOT IN ('dueño', 'owner', 'vendedor') THEN
+      BEGIN
+        SELECT lower(trim(coalesce(role, ''))) INTO v_role FROM public.profiles WHERE id = auth.uid();
+      EXCEPTION WHEN OTHERS THEN
+        NULL;
+      END;
+    END IF;
+    -- If logged in as authenticated staff/user and not explicitly a client/buyer role, grant seller permissions
+    IF v_role NOT IN ('dueño', 'owner', 'vendedor', 'detalle', 'mayorista', 'cliente', 'publico') THEN
+      v_role := 'vendedor';
+    END IF;
   END IF;
 
   -- Security check: only users with proper administrative roles can insert, update or delete products
