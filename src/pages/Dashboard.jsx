@@ -87,7 +87,9 @@ export default function Dashboard() {
     completed.forEach(o => {
       (o.items || []).forEach(item => {
         const p = products.find(prod => prod.id === item.productId);
-        const itemCost = p ? Number(p.cost || 0) : 0;
+        const itemCost = (item.cost !== undefined && Number(item.cost) > 0)
+          ? Number(item.cost)
+          : (p ? Number(p.cost || 0) : 0);
         completedCost += itemCost * Number(item.quantity || 1);
       });
     });
@@ -294,24 +296,57 @@ export default function Dashboard() {
     };
   }, [products, filteredOrders]);
 
-  // Static physical inventory statistics
+  // Comprehensive inventory & acquired capital statistics
   const inventoryStats = useMemo(() => {
-    const totalInventoryValue = products.reduce((acc, p) => acc + (Number(p.pricePublic || 0) * p.stock), 0);
-    const totalInventoryCost = products.reduce((acc, p) => acc + (Number(p.cost || 0) * p.stock), 0);
+    // Calculate total delivered sales cost & units (all-time) to know total acquired investment
+    let totalDeliveredCost = 0;
+    let totalDeliveredRevenue = 0;
+    let totalDeliveredUnits = 0;
+
+    orders.filter(o => o.status === 'entregado').forEach(o => {
+      (o.items || []).forEach(item => {
+        const p = products.find(prod => prod.id === item.productId);
+        const qty = Number(item.quantity || 1);
+        const cost = (item.cost !== undefined && Number(item.cost) > 0)
+          ? Number(item.cost)
+          : (p ? Number(p.cost || 0) : 0);
+        const price = Number(item.pricePaid || 0);
+
+        totalDeliveredCost += cost * qty;
+        totalDeliveredRevenue += price * qty;
+        totalDeliveredUnits += qty;
+      });
+    });
+
+    const totalInventoryValue = products.reduce((acc, p) => acc + (Number(p.pricePublic || 0) * Number(p.stock || 0)), 0);
+    const totalInventoryCost = products.reduce((acc, p) => acc + (Number(p.cost || 0) * Number(p.stock || 0)), 0);
     const expectedProfit = totalInventoryValue - totalInventoryCost;
-    const totalUnitsInStock = products.reduce((acc, p) => acc + p.stock, 0);
+
+    // Total acquired initial investment = remaining stock cost + sold merchandise cost
+    const totalAcquiredCost = totalInventoryCost + totalDeliveredCost;
+    const totalUnitsInStock = products.reduce((acc, p) => acc + Number(p.stock || 0), 0);
+    const totalAcquiredUnits = totalUnitsInStock + totalDeliveredUnits;
+
     const uniqueFragrances = products.length;
+    const fragrancesWithStock = products.filter(p => Number(p.stock || 0) > 0).length;
+    const zeroStockFragrances = products.filter(p => Number(p.stock || 0) <= 0).length;
     const totalSets = products.filter(isProductSet).length;
 
     return {
       totalInventoryValue,
       totalInventoryCost,
+      totalDeliveredCost,
+      totalAcquiredCost,
+      totalDeliveredRevenue,
       expectedProfit,
       totalUnitsInStock,
+      totalAcquiredUnits,
       uniqueFragrances,
+      fragrancesWithStock,
+      zeroStockFragrances,
       totalSets
     };
-  }, [products]);
+  }, [products, orders]);
 
   // Brand sales/stock status breakdown
   const brandStatsBreakdown = useMemo(() => {
@@ -991,10 +1026,46 @@ export default function Dashboard() {
         {/* Static inventory metrics counters */}
         <div className="grid gap-3 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           
+          {/* Total Acquired Investment (Initial Lot Cost = Stock + Sold) */}
+          {isOwner && (
+            <div className="bg-gradient-to-br from-amber-500/10 via-white to-amber-500/5 dark:from-amber-950/40 dark:via-neutral-900 dark:to-neutral-900 border border-amber-300 dark:border-amber-800/80 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm flex items-center sm:items-start gap-3 sm:gap-4 relative overflow-hidden">
+              <div className="p-2.5 sm:p-3 bg-amber-500 text-neutral-950 rounded-xl sm:rounded-2xl shrink-0 font-bold">
+                <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+              <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
+                <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-widest font-mono block truncate">Inversión Total Adquirida</span>
+                <span className="block text-xl sm:text-2xl font-black text-amber-950 dark:text-amber-200 font-mono truncate">
+                  L. {inventoryStats.totalAcquiredCost.toLocaleString()}
+                </span>
+                <span className="block text-[10px] font-semibold text-neutral-600 dark:text-neutral-400 truncate font-mono">
+                  Stock: L. {inventoryStats.totalInventoryCost.toLocaleString()} | Vendido: L. {inventoryStats.totalDeliveredCost.toLocaleString()}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Current Stock Investment Cost */}
+          {isOwner && (
+            <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm flex items-center sm:items-start gap-3 sm:gap-4">
+              <div className="p-2.5 sm:p-3 bg-neutral-900 dark:bg-neutral-800 text-amber-400 rounded-xl sm:rounded-2xl shrink-0">
+                <Package className="h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+              <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
+                <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest font-mono block truncate">Costo en Stock Disponible</span>
+                <span className="block text-xl sm:text-2xl font-black text-neutral-950 dark:text-neutral-100 font-mono truncate">
+                  L. {inventoryStats.totalInventoryCost.toLocaleString()}
+                </span>
+                <span className="block text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 truncate">
+                  {inventoryStats.totalUnitsInStock} unidades en bodega
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Public active retail value of stock */}
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm flex items-center sm:items-start gap-3 sm:gap-4">
-            <div className="p-2.5 sm:p-3 bg-neutral-950 dark:bg-neutral-800 text-amber-400 rounded-xl sm:rounded-2xl shrink-0">
-              <Package className="h-5 w-5 sm:h-6 sm:w-6" />
+            <div className="p-2.5 sm:p-3 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-xl sm:rounded-2xl shrink-0">
+              <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
               <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest font-mono block truncate">Valor Público en Stock</span>
@@ -1006,24 +1077,6 @@ export default function Dashboard() {
               </span>
             </div>
           </div>
-
-          {/* Investment Capital (FOB/CIF total) */}
-          {isOwner && (
-            <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm flex items-center sm:items-start gap-3 sm:gap-4">
-              <div className="p-2.5 sm:p-3 bg-neutral-900 dark:bg-neutral-800 text-amber-500 dark:text-amber-400 rounded-xl sm:rounded-2xl shrink-0">
-                <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6" />
-              </div>
-              <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
-                <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest font-mono block truncate">Costo Inversión de Stock</span>
-                <span className="block text-xl sm:text-2xl font-black text-neutral-950 dark:text-neutral-100 font-mono truncate">
-                  L. {inventoryStats.totalInventoryCost.toLocaleString()}
-                </span>
-                <span className="block text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 truncate">
-                  FOB/CIF total invertido en aduana
-                </span>
-              </div>
-            </div>
-          )}
 
           {/* Expected gross profit on stock */}
           {isOwner && (
@@ -1044,29 +1097,31 @@ export default function Dashboard() {
           )}
 
           {/* Total units & unique brands stats card */}
-          <div className="bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm flex flex-col justify-between">
-            <div className="grid grid-cols-3 gap-1 text-center">
-              <div className="space-y-0.5">
+          <div className="bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm flex flex-col justify-between sm:col-span-2 lg:col-span-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center divide-x divide-neutral-200 dark:divide-neutral-800">
+              <div className="space-y-0.5 px-2">
                 <span className="block text-sm sm:text-base font-black text-neutral-950 dark:text-neutral-100 font-mono">{inventoryStats.uniqueFragrances}</span>
-                <span className="text-[8px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider font-mono block">Fragancias</span>
+                <span className="text-[9px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider font-mono block">Fragancias Totales</span>
+                <span className="text-[9px] text-neutral-500 font-mono block">({inventoryStats.fragrancesWithStock} con stock / {inventoryStats.zeroStockFragrances} agotadas)</span>
               </div>
-              <div className="space-y-0.5 border-x border-neutral-200 dark:border-neutral-800">
-                <span className="block text-sm sm:text-base font-black text-neutral-950 dark:text-neutral-100 font-mono">{inventoryStats.totalUnitsInStock}</span>
-                <span className="text-[8px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider font-mono block">Unidades</span>
+              <div className="space-y-0.5 px-2">
+                <span className="block text-sm sm:text-base font-black text-neutral-950 dark:text-neutral-100 font-mono">{inventoryStats.totalUnitsInStock} u.</span>
+                <span className="text-[9px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider font-mono block">Unidades Disponibles</span>
+                <span className="text-[9px] text-neutral-500 font-mono block">(de {inventoryStats.totalAcquiredUnits} u. adquiridas)</span>
               </div>
-              <div className="space-y-0.5">
+              <div className="space-y-0.5 px-2">
                 <span className="block text-sm sm:text-base font-black text-neutral-950 dark:text-neutral-100 font-mono">{inventoryStats.totalSets}</span>
-                <span className="text-[8px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider font-mono block">Sets/Combos</span>
+                <span className="text-[9px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider font-mono block">Sets/Combos</span>
               </div>
+              {isOwner && (
+                <div className="space-y-0.5 px-2">
+                  <span className="block text-sm sm:text-base font-black text-neutral-950 dark:text-neutral-100 font-mono">
+                    L. {inventoryStats.totalUnitsInStock > 0 ? Math.round(inventoryStats.totalInventoryCost / inventoryStats.totalUnitsInStock).toLocaleString() : 0}
+                  </span>
+                  <span className="text-[9px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider font-mono block">Costo Promedio Unitario</span>
+                </div>
+              )}
             </div>
-            {isOwner && (
-              <div className="text-center border-t border-neutral-100 dark:border-neutral-800 pt-2 sm:pt-3 mt-2 sm:mt-3">
-                <span className="text-[9px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider font-mono">Costo Unitario Promedio:</span>
-                <strong className="block text-xs text-neutral-800 dark:text-neutral-200 font-mono">
-                  L. {inventoryStats.totalUnitsInStock > 0 ? Math.round(inventoryStats.totalInventoryCost / inventoryStats.totalUnitsInStock).toLocaleString() : 0} HNL
-                </strong>
-              </div>
-            )}
           </div>
 
         </div>
