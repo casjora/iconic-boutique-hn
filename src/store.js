@@ -136,6 +136,10 @@ const mapProductToDb = (p) => {
     featured_public: p.featuredPublic !== undefined ? Boolean(p.featuredPublic) : true,
     public_discount: Number(p.publicDiscount || 0)
   };
+
+  if (p.id && (!p.cost || Number(p.cost) <= 0)) {
+    delete dbRecord.cost;
+  }
   
   return dbRecord;
 };

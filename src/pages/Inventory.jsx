@@ -568,7 +568,7 @@ export default function Inventory() {
       name: formName.trim(),
       brand: formBrand.trim(),
       size: formSize.trim(),
-      cost: isVendedor ? (original?.cost || 0) : (Number(formCost) || 0),
+      cost: isVendedor ? undefined : (Number(formCost) > 0 ? Number(formCost) : undefined),
       pricePublic: isVendedor ? (original?.pricePublic || 0) : (Number(formPricePublic) || 0),
       pricePromotional: isVendedor ? (original?.pricePromotional || 0) : Math.round((Number(formPricePublic) || 0) * 0.75),
       stock: Number(formStock) || 0,

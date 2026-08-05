@@ -297,7 +297,7 @@ BEGIN
         name = COALESCE(NEW.name, OLD.name),
         brand = COALESCE(NEW.brand, OLD.brand),
         size = COALESCE(NEW.size, OLD.size),
-        cost = COALESCE(NEW.cost, OLD.cost),
+        cost = CASE WHEN NEW.cost IS NOT NULL AND NEW.cost > 0 THEN NEW.cost ELSE OLD.cost END,
         price_public = COALESCE(NEW.price_public, OLD.price_public),
         price_promotional = COALESCE(NEW.price_promotional, OLD.price_promotional),
         stock = COALESCE(NEW.stock, OLD.stock),
