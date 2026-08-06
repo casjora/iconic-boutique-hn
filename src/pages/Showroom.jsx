@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../store';
 import { 
   Tag, Save, Search, 
-  Loader2, Filter, AlertCircle, CheckCircle2, Info 
+  Loader2, Filter, AlertCircle, CheckCircle2, Info, CheckCheck, XSquare
 } from 'lucide-react';
 import { 
   getProductPublicCategories, 
@@ -116,6 +116,8 @@ export default function Showroom() {
     }));
   };
 
+  const ALL_COLUMNS = ['damas', 'caballeros', 'estuches-dama', 'estuches-caballero'];
+
   const handleSelectAllInColumn = (catKey, selectValue) => {
     setEdits(prev => {
       const next = { ...prev };
@@ -132,6 +134,28 @@ export default function Showroom() {
         } else {
           updatedCats = updatedCats.filter(c => c !== catKey);
         }
+
+        next[p.id] = {
+          ...current,
+          featuredPublic: updatedCats.length > 0,
+          publicCategories: updatedCats
+        };
+      });
+      return next;
+    });
+  };
+
+  const handleSelectAllEverything = (selectValue) => {
+    setEdits(prev => {
+      const next = { ...prev };
+      filteredProducts.forEach(p => {
+        const current = next[p.id] || {
+          featuredPublic: true,
+          publicDiscount: 0,
+          publicCategories: getProductPublicCategories(p)
+        };
+
+        const updatedCats = selectValue ? [...ALL_COLUMNS] : [];
 
         next[p.id] = {
           ...current,
@@ -255,7 +279,7 @@ export default function Showroom() {
         )}
       </div>
 
-      {/* Toolbar: Filters & Bulk Discount */}
+      {/* Toolbar: Filters, Bulk Discount & Column Selectors */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-4">
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
           {/* Search Input */}
@@ -306,6 +330,61 @@ export default function Showroom() {
             </button>
           </div>
         </div>
+
+        {/* Master Column Selection Bar */}
+        <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-extrabold text-neutral-700 dark:text-neutral-300">Acciones de Columnas ({filteredProducts.length} perfumes):</span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleSelectAllEverything(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl shadow-xs transition-colors cursor-pointer text-xs"
+                title="Selecciona las 4 columnas para todos los perfumes filtrados"
+              >
+                <CheckCheck className="w-3.5 h-3.5" />
+                Marcar Todas las Columnas
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectAllEverything(false)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 font-extrabold rounded-xl transition-colors cursor-pointer text-xs"
+                title="Deselecciona todas las columnas para todos los perfumes filtrados"
+              >
+                <XSquare className="w-3.5 h-3.5" />
+                Deseleccionar Todas
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+            <span className="text-neutral-400 font-medium">Por columna:</span>
+            <button
+              onClick={() => handleSelectAllInColumn('damas', true)}
+              className="px-2 py-1 bg-pink-100 hover:bg-pink-200 dark:bg-pink-950 dark:hover:bg-pink-900 text-pink-700 dark:text-pink-300 rounded-lg font-bold transition-colors"
+            >
+              + Damas
+            </button>
+            <button
+              onClick={() => handleSelectAllInColumn('caballeros', true)}
+              className="px-2 py-1 bg-blue-100 hover:bg-blue-200 dark:bg-blue-950 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-lg font-bold transition-colors"
+            >
+              + Caballeros
+            </button>
+            <button
+              onClick={() => handleSelectAllInColumn('estuches-dama', true)}
+              className="px-2 py-1 bg-purple-100 hover:bg-purple-200 dark:bg-purple-950 dark:hover:bg-purple-900 text-purple-700 dark:text-purple-300 rounded-lg font-bold transition-colors"
+            >
+              + Set Damas
+            </button>
+            <button
+              onClick={() => handleSelectAllInColumn('estuches-caballero', true)}
+              className="px-2 py-1 bg-amber-100 hover:bg-amber-200 dark:bg-amber-950 dark:hover:bg-amber-900 text-amber-700 dark:text-amber-300 rounded-lg font-bold transition-colors"
+            >
+              + Set Cab.
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Main Matrix Table */}
@@ -314,16 +393,39 @@ export default function Showroom() {
           <table className="w-full text-left border-collapse min-w-[700px] table-fixed">
             <thead className="sticky top-0 z-20 shadow-xs bg-neutral-50 dark:bg-neutral-900">
               <tr className="bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 text-[11px] font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                <th className="py-3.5 px-4 w-[280px] sm:w-[340px] truncate bg-neutral-50 dark:bg-neutral-900 sticky top-0 z-20">Perfume / Detalles</th>
+                <th className="py-3.5 px-4 w-[280px] sm:w-[340px] truncate bg-neutral-50 dark:bg-neutral-900 sticky top-0 z-20">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Perfume / Detalles</span>
+                    <div className="flex items-center gap-1.5 font-normal text-[10px] normal-case">
+                      <button 
+                        type="button" 
+                        onClick={() => handleSelectAllEverything(true)} 
+                        className="text-amber-600 dark:text-amber-400 font-extrabold hover:underline cursor-pointer"
+                        title="Marcar todas las columnas"
+                      >
+                        Marcar Todo
+                      </button>
+                      <span className="text-neutral-300 dark:text-neutral-700">|</span>
+                      <button 
+                        type="button" 
+                        onClick={() => handleSelectAllEverything(false)} 
+                        className="text-neutral-400 hover:underline cursor-pointer"
+                        title="Desmarcar todas las columnas"
+                      >
+                        Desmarcar
+                      </button>
+                    </div>
+                  </div>
+                </th>
                 
                 {/* Column 2: Damas */}
                 <th className="py-3.5 px-2 text-center w-[100px] sm:w-[110px] bg-pink-100 dark:bg-pink-950 border-l border-neutral-200/60 dark:border-neutral-800/60 sticky top-0 z-20">
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-pink-700 dark:text-pink-300 font-extrabold truncate w-full">Damas</span>
                     <div className="flex items-center gap-1 text-[9px] font-normal normal-case">
-                      <button onClick={() => handleSelectAllInColumn('damas', true)} className="text-pink-600 hover:underline">Todos</button>
+                      <button onClick={() => handleSelectAllInColumn('damas', true)} className="text-pink-700 dark:text-pink-300 font-extrabold hover:underline cursor-pointer">Todos</button>
                       <span>•</span>
-                      <button onClick={() => handleSelectAllInColumn('damas', false)} className="text-neutral-400 hover:underline">Ninguno</button>
+                      <button onClick={() => handleSelectAllInColumn('damas', false)} className="text-neutral-500 dark:text-neutral-400 hover:underline cursor-pointer">Ninguno</button>
                     </div>
                   </div>
                 </th>
@@ -333,9 +435,9 @@ export default function Showroom() {
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-blue-700 dark:text-blue-300 font-extrabold truncate w-full">Caballeros</span>
                     <div className="flex items-center gap-1 text-[9px] font-normal normal-case">
-                      <button onClick={() => handleSelectAllInColumn('caballeros', true)} className="text-blue-600 hover:underline">Todos</button>
+                      <button onClick={() => handleSelectAllInColumn('caballeros', true)} className="text-blue-700 dark:text-blue-300 font-extrabold hover:underline cursor-pointer">Todos</button>
                       <span>•</span>
-                      <button onClick={() => handleSelectAllInColumn('caballeros', false)} className="text-neutral-400 hover:underline">Ninguno</button>
+                      <button onClick={() => handleSelectAllInColumn('caballeros', false)} className="text-neutral-500 dark:text-neutral-400 hover:underline cursor-pointer">Ninguno</button>
                     </div>
                   </div>
                 </th>
@@ -345,9 +447,9 @@ export default function Showroom() {
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-purple-700 dark:text-purple-300 font-extrabold truncate w-full">Set Damas</span>
                     <div className="flex items-center gap-1 text-[9px] font-normal normal-case">
-                      <button onClick={() => handleSelectAllInColumn('estuches-dama', true)} className="text-purple-600 hover:underline">Todos</button>
+                      <button onClick={() => handleSelectAllInColumn('estuches-dama', true)} className="text-purple-700 dark:text-purple-300 font-extrabold hover:underline cursor-pointer">Todos</button>
                       <span>•</span>
-                      <button onClick={() => handleSelectAllInColumn('estuches-dama', false)} className="text-neutral-400 hover:underline">Ninguno</button>
+                      <button onClick={() => handleSelectAllInColumn('estuches-dama', false)} className="text-neutral-500 dark:text-neutral-400 hover:underline cursor-pointer">Ninguno</button>
                     </div>
                   </div>
                 </th>
@@ -357,9 +459,9 @@ export default function Showroom() {
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-amber-700 dark:text-amber-300 font-extrabold truncate w-full">Set Cab.</span>
                     <div className="flex items-center gap-1 text-[9px] font-normal normal-case">
-                      <button onClick={() => handleSelectAllInColumn('estuches-caballero', true)} className="text-amber-600 hover:underline">Todos</button>
+                      <button onClick={() => handleSelectAllInColumn('estuches-caballero', true)} className="text-amber-700 dark:text-amber-300 font-extrabold hover:underline cursor-pointer">Todos</button>
                       <span>•</span>
-                      <button onClick={() => handleSelectAllInColumn('estuches-caballero', false)} className="text-neutral-400 hover:underline">Ninguno</button>
+                      <button onClick={() => handleSelectAllInColumn('estuches-caballero', false)} className="text-neutral-500 dark:text-neutral-400 hover:underline cursor-pointer">Ninguno</button>
                     </div>
                   </div>
                 </th>
