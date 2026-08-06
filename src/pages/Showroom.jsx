@@ -312,7 +312,7 @@ export default function Showroom() {
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[700px] table-fixed">
-            <thead className="sticky top-16 z-20 shadow-xs">
+            <thead className="sticky top-0 z-20 shadow-xs">
               <tr className="bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 text-[11px] font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                 <th className="py-3.5 px-4 w-[280px] sm:w-[340px] truncate bg-neutral-50 dark:bg-neutral-900">Perfume / Detalles</th>
                 
