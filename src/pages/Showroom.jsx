@@ -312,12 +312,12 @@ export default function Showroom() {
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[700px] table-fixed">
-            <thead>
-              <tr className="bg-neutral-50 dark:bg-neutral-800/70 border-b border-neutral-200 dark:border-neutral-800 text-[11px] font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                <th className="py-3.5 px-4 w-[280px] sm:w-[340px] truncate">Perfume / Detalles</th>
+            <thead className="sticky top-16 z-20 shadow-xs">
+              <tr className="bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 text-[11px] font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                <th className="py-3.5 px-4 w-[280px] sm:w-[340px] truncate bg-neutral-50 dark:bg-neutral-900">Perfume / Detalles</th>
                 
                 {/* Column 2: Damas */}
-                <th className="py-3.5 px-2 text-center w-[100px] sm:w-[110px] bg-pink-50/50 dark:bg-pink-950/20 border-l border-neutral-200/60 dark:border-neutral-800/60">
+                <th className="py-3.5 px-2 text-center w-[100px] sm:w-[110px] bg-pink-100/90 dark:bg-pink-950/90 border-l border-neutral-200/60 dark:border-neutral-800/60 backdrop-blur-xs">
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-pink-700 dark:text-pink-300 font-extrabold truncate w-full">Damas</span>
                     <div className="flex items-center gap-1 text-[9px] font-normal normal-case">
@@ -329,7 +329,7 @@ export default function Showroom() {
                 </th>
 
                 {/* Column 3: Caballeros */}
-                <th className="py-3.5 px-2 text-center w-[100px] sm:w-[110px] bg-blue-50/50 dark:bg-blue-950/20 border-l border-neutral-200/60 dark:border-neutral-800/60">
+                <th className="py-3.5 px-2 text-center w-[100px] sm:w-[110px] bg-blue-100/90 dark:bg-blue-950/90 border-l border-neutral-200/60 dark:border-neutral-800/60 backdrop-blur-xs">
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-blue-700 dark:text-blue-300 font-extrabold truncate w-full">Caballeros</span>
                     <div className="flex items-center gap-1 text-[9px] font-normal normal-case">
@@ -341,7 +341,7 @@ export default function Showroom() {
                 </th>
 
                 {/* Column 4: Set Damas */}
-                <th className="py-3.5 px-2 text-center w-[100px] sm:w-[110px] bg-purple-50/50 dark:bg-purple-950/20 border-l border-neutral-200/60 dark:border-neutral-800/60">
+                <th className="py-3.5 px-2 text-center w-[100px] sm:w-[110px] bg-purple-100/90 dark:bg-purple-950/90 border-l border-neutral-200/60 dark:border-neutral-800/60 backdrop-blur-xs">
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-purple-700 dark:text-purple-300 font-extrabold truncate w-full">Set Damas</span>
                     <div className="flex items-center gap-1 text-[9px] font-normal normal-case">
@@ -353,7 +353,7 @@ export default function Showroom() {
                 </th>
 
                 {/* Column 5: Set Caballeros */}
-                <th className="py-3.5 px-2 text-center w-[100px] sm:w-[110px] bg-amber-50/50 dark:bg-amber-950/20 border-l border-neutral-200/60 dark:border-neutral-800/60">
+                <th className="py-3.5 px-2 text-center w-[100px] sm:w-[110px] bg-amber-100/90 dark:bg-amber-950/90 border-l border-neutral-200/60 dark:border-neutral-800/60 backdrop-blur-xs">
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-amber-700 dark:text-amber-300 font-extrabold truncate w-full">Set Cab.</span>
                     <div className="flex items-center gap-1 text-[9px] font-normal normal-case">
