@@ -88,9 +88,13 @@ const PRODUCT_SELECT_COLUMNS = 'id, name, brand, size, cost, price_public, price
 // Helper to map DB products (snake_case) to Frontend products (camelCase)
 const mapProductFromDb = (p) => {
   let uiCategory = 'Damas';
-  if (p.category === 'Masculino') uiCategory = 'Caballeros';
-  else if (p.category === 'Unisex') uiCategory = 'Unisex';
-  else if (p.category === 'Femenino') uiCategory = 'Damas';
+  const cat = (p.category || '').trim();
+  if (cat === 'Masculino' || cat === 'M') uiCategory = 'Caballeros';
+  else if (cat === 'Unisex' || cat === 'U') uiCategory = 'Unisex';
+  else if (cat === 'Femenino' || cat === 'W') uiCategory = 'Damas';
+  else if (cat === 'Revision' || cat === 'Revisión' || cat === 'Pendiente') uiCategory = 'Revisión';
+  else if (cat === 'Caballeros') uiCategory = 'Caballeros';
+  else if (cat === 'Damas') uiCategory = 'Damas';
 
   return {
     id: p.id,
@@ -116,9 +120,11 @@ const mapProductToDb = (p) => {
   const generatedBarcode = p.barcode || Math.floor(1000000000000 + Math.random() * 9000000000000).toString();
   
   let dbCategory = 'Femenino';
-  if (p.category === 'Caballeros' || p.category === 'Masculino' || p.category === 'Niños') dbCategory = 'Masculino';
-  else if (p.category === 'Unisex') dbCategory = 'Unisex';
-  else if (p.category === 'Damas' || p.category === 'Femenino') dbCategory = 'Femenino';
+  const cat = (p.category || '').trim();
+  if (cat === 'Caballeros' || cat === 'Masculino' || cat === 'Niños' || cat === 'M') dbCategory = 'Masculino';
+  else if (cat === 'Unisex' || cat === 'U') dbCategory = 'Unisex';
+  else if (cat === 'Damas' || cat === 'Femenino' || cat === 'W') dbCategory = 'Femenino';
+  else if (cat === 'Revisión' || cat === 'Revision') dbCategory = 'Revision';
 
   const dbRecord = {
     id: generatedId,
@@ -567,13 +573,17 @@ export const useStore = create((setOriginal, get) => {
             let dbCategory = undefined;
             const categoryToUse = u.category !== undefined ? u.category : original.category;
             if (categoryToUse !== undefined) {
-              if (categoryToUse === 'Caballeros' || categoryToUse === 'Masculino' || categoryToUse === 'Niños') dbCategory = 'Masculino';
-              else if (categoryToUse === 'Unisex') dbCategory = 'Unisex';
-              else if (categoryToUse === 'Damas' || categoryToUse === 'Femenino') dbCategory = 'Femenino';
+              const catStr = String(categoryToUse).trim();
+              if (catStr === 'Caballeros' || catStr === 'Masculino' || catStr === 'Niños' || catStr === 'M') dbCategory = 'Masculino';
+              else if (catStr === 'Unisex' || catStr === 'U') dbCategory = 'Unisex';
+              else if (catStr === 'Damas' || catStr === 'Femenino' || catStr === 'W') dbCategory = 'Femenino';
+              else if (catStr === 'Revisión' || catStr === 'Revision') dbCategory = 'Revision';
             }
             if (!dbCategory && original.category) {
-              if (original.category === 'Masculino' || original.category === 'Caballeros') dbCategory = 'Masculino';
-              else if (original.category === 'Unisex') dbCategory = 'Unisex';
+              const origCat = String(original.category).trim();
+              if (origCat === 'Masculino' || origCat === 'Caballeros' || origCat === 'M') dbCategory = 'Masculino';
+              else if (origCat === 'Unisex' || origCat === 'U') dbCategory = 'Unisex';
+              else if (origCat === 'Revision' || origCat === 'Revisión') dbCategory = 'Revision';
               else dbCategory = 'Femenino';
             }
 
@@ -1522,7 +1532,8 @@ export const useStore = create((setOriginal, get) => {
             return {
               ...p,
               featuredPublic: update.featuredPublic !== undefined ? Boolean(update.featuredPublic) : p.featuredPublic,
-              publicDiscount: update.publicDiscount !== undefined ? Number(update.publicDiscount || 0) : p.publicDiscount
+              publicDiscount: update.publicDiscount !== undefined ? Number(update.publicDiscount || 0) : p.publicDiscount,
+              description: update.description !== undefined ? update.description : p.description
             };
           }
           return p;
@@ -1540,6 +1551,7 @@ export const useStore = create((setOriginal, get) => {
               const dbPayload = {};
               if (item.featuredPublic !== undefined) dbPayload.featured_public = Boolean(item.featuredPublic);
               if (item.publicDiscount !== undefined) dbPayload.public_discount = Number(item.publicDiscount || 0);
+              if (item.description !== undefined) dbPayload.description = item.description;
 
               return supabase
                 .from('products')

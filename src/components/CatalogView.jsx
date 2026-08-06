@@ -4,7 +4,7 @@ import { useStore } from '../store';
 import { Link, useLocation } from 'react-router-dom';
 import PerfumeCard from './PerfumeCard';
 import { Percent, Award, Heart, Sparkles, Search, SlidersHorizontal, RefreshCw, Flame, Download, FileDown, FileSpreadsheet, FileText, X, Loader2 } from 'lucide-react';
-import { isProductSet, getProductPromoDiscount, getProductPrices } from '../utils/productHelper';
+import { isProductSet, getProductPromoDiscount, getProductPrices, isProductInPublicCategory } from '../utils/productHelper';
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
 
@@ -508,13 +508,13 @@ export default function CatalogView({ favoritesOnly = false }) {
         : selectedCategory === 'Sets / Estuches'
           ? isProductSet(p)
           : selectedCategory === 'Estuches Dama'
-            ? (pCat === 'Damas' || pCat === 'Femenino' || pCat === 'Unisex') && isProductSet(p)
+            ? isProductInPublicCategory(p, 'estuches-dama')
             : selectedCategory === 'Estuches Caballero'
-              ? (pCat === 'Caballeros' || pCat === 'Masculino' || pCat === 'Unisex') && isProductSet(p)
+              ? isProductInPublicCategory(p, 'estuches-caballero')
               : selectedCategory === 'Damas'
-                ? (pCat === 'Damas' || pCat === 'Femenino' || pCat === 'Unisex') && !isProductSet(p)
+                ? isProductInPublicCategory(p, 'damas')
                 : selectedCategory === 'Caballeros'
-                  ? (pCat === 'Caballeros' || pCat === 'Masculino' || pCat === 'Unisex') && !isProductSet(p)
+                  ? isProductInPublicCategory(p, 'caballeros')
                   : pCat === selectedCategory;
       
       const matchesPromo = !showPromoOnly || getProductPromoDiscount(p) > 0;

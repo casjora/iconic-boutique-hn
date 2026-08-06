@@ -3,11 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useStore } from '../store';
-
-const isEstuche = (p) => {
-  const text = ((p.name || '') + ' ' + (p.description || '') + ' ' + (p.brand || '')).toLowerCase();
-  return text.includes('estuche') || text.includes('set') || text.includes('kit') || text.includes('gift set');
-};
+import { isProductInPublicCategory } from '../utils/productHelper';
 
 export default function Home() {
   const { products } = useStore();
@@ -18,23 +14,9 @@ export default function Home() {
     const usedImages = new Set();
 
     const getCategoryImage = (catKey, defaultImage) => {
-      const isSet = catKey.startsWith('estuches');
-      const isMale = catKey.includes('caballero') || catKey === 'caballeros';
-      const isFemale = catKey.includes('dama') || catKey === 'damas';
-
       const match = products.find(p => {
-        // Must be selected in Showroom (featuredPublic is true)
-        if (!p.featuredPublic) return false;
-        
-        const setFlag = isEstuche(p);
-        if (isSet !== setFlag) return false;
-
-        const pCat = String(p.category || '');
-        const isProductMale = pCat === 'Caballeros' || pCat === 'Masculino' || pCat === 'Unisex';
-        const isProductFemale = pCat === 'Damas' || pCat === 'Femenino' || pCat === 'Unisex';
-
-        if (isMale && !isProductMale) return false;
-        if (isFemale && !isProductFemale) return false;
+        // Must be active in this public category
+        if (!isProductInPublicCategory(p, catKey)) return false;
 
         // Ensure the product has a valid image string and has not been used already
         if (!p.image_url || !p.image_url.startsWith('http')) return false;

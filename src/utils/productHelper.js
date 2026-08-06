@@ -1,3 +1,43 @@
+export function detectProductCategory(str) {
+  if (!str) return 'Revision';
+  const text = String(str).trim();
+  const upper = text.toUpperCase();
+
+  // 1. Direct explicit single letter tokens or categories
+  if (upper === 'M' || upper === 'MAN' || upper === 'MEN' || upper === 'MASCULINO' || upper === 'CABALLERO' || upper === 'CABALLEROS' || upper === 'HOMBRE') {
+    return 'Caballeros';
+  }
+  if (upper === 'W' || upper === 'WOMAN' || upper === 'WOMEN' || upper === 'FEMENINO' || upper === 'LADY' || upper === 'LADIES' || upper === 'DAMAS' || upper === 'DAMA' || upper === 'MUJER') {
+    return 'Damas';
+  }
+  if (upper === 'U' || upper === 'UNISEX') {
+    return 'Unisex';
+  }
+
+  // 2. Token boundary / word match check in multi-word product strings or descriptions
+  // Check for standalone M, W, U tokens with word boundaries (e.g., "100 ML EDT M", "EDP W 3.4 OZ", "SPRAY U")
+  if (/\bM\b/.test(upper) || /\bMEN\b/.test(upper) || /\bMAN\b/.test(upper) || /\bPOUR HOMME\b/.test(upper) || /\bCABALLERO\b/.test(upper) || /\bHOMBRE\b/.test(upper) || /\bBOY\b/.test(upper)) {
+    return 'Caballeros';
+  }
+  if (/\bW\b/.test(upper) || /\bWOMEN\b/.test(upper) || /\bWOMAN\b/.test(upper) || /\bPOUR FEMME\b/.test(upper) || /\bLADY\b/.test(upper) || /\bLADIES\b/.test(upper) || /\bDAMA\b/.test(upper) || /\bMUJER\b/.test(upper) || /\bGIRL\b/.test(upper)) {
+    return 'Damas';
+  }
+  if (/\bU\b/.test(upper) || /\bUNISEX\b/.test(upper)) {
+    return 'Unisex';
+  }
+
+  // 3. Substring search if full words exist
+  if (upper.includes('MASCULINO') || upper.includes('CABALLEROS')) {
+    return 'Caballeros';
+  }
+  if (upper.includes('FEMENINO') || upper.includes('DAMAS')) {
+    return 'Damas';
+  }
+
+  // Fallback: Revision Manual
+  return 'Revision';
+}
+
 export function isProductSet(product) {
   if (!product) return false;
   
@@ -134,12 +174,65 @@ export function getProductPromoDiscount(product) {
   return 0;
 }
 
+export function getProductPublicCategories(product) {
+  if (!product) return [];
+  // 1. If description contains [PUB_CATS:cat1,cat2], parse it
+  if (product.description) {
+    const match = product.description.match(/\[PUB_CATS:(.*?)\]/);
+    if (match) {
+      if (!match[1].trim()) return [];
+      return match[1].split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    }
+  }
+
+  // 2. Default fallback based on product category & isProductSet
+  const pCat = String(product.category || '').trim();
+  const setFlag = isProductSet(product);
+
+  const isDama = pCat === 'Damas' || pCat === 'Femenino' || pCat === 'W';
+  const isCaballero = pCat === 'Caballeros' || pCat === 'Masculino' || pCat === 'M';
+  const isUnisex = pCat === 'Unisex' || pCat === 'U';
+
+  const cats = [];
+  if (!setFlag) {
+    if (isDama) cats.push('damas');
+    if (isCaballero) cats.push('caballeros');
+    if (isUnisex) {
+      cats.push('damas');
+      cats.push('caballeros');
+    }
+  } else {
+    if (isDama) cats.push('estuches-dama');
+    if (isCaballero) cats.push('estuches-caballero');
+    if (isUnisex) {
+      cats.push('estuches-dama');
+      cats.push('estuches-caballero');
+    }
+  }
+
+  return cats;
+}
+
+export function setProductPublicCategoriesInDesc(description, categoriesArray) {
+  const desc = String(description || '').replace(/\[PUB_CATS:.*?\]/g, '').trim();
+  const tag = `[PUB_CATS:${categoriesArray.join(',')}]`;
+  return desc ? `${desc} ${tag}` : tag;
+}
+
+export function isProductInPublicCategory(product, targetCat) {
+  if (!product) return false;
+  if (product.featuredPublic === false) return false;
+  const cats = getProductPublicCategories(product);
+  return cats.includes(targetCat.toLowerCase());
+}
+
 export function cleanProductDescription(description) {
   if (!description) return '';
   return description
     .replace(/\[PROMO_DETALLE:.*?\]/g, '')
     .replace(/\[PROMO_MAYORISTA:.*?\]/g, '')
     .replace(/\[PROMO:\d+\]/g, '')
+    .replace(/\[PUB_CATS:.*?\]/g, '')
     .trim();
 }
 

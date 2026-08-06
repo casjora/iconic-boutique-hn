@@ -93,7 +93,7 @@ export default async function handler(req, res) {
                    "- size: Tamaño (ej. 3.3 oz, 100 ml).\n" +
                    "- unitPriceUSD: El precio unitario en dólares que aparece en la columna Price (Número decimal).\n" +
                    "- stock: Cantidad de unidades de la columna QTY (Número entero).\n" +
-                   "- category: Género (Masculino, Femenino o Unisex).\n" +
+                   "- category: Género o letra de clasificación (M = Masculino, W = Femenino, U = Unisex, o Revision si no especifica).\n" +
                    "- barcode: Código numérico de la columna UPC. Si viene vacío, con un string vacío.";
 
     const schema = {
@@ -220,7 +220,7 @@ export default async function handler(req, res) {
               '  "size": "Tamaño ej. 3.3 oz, 100 ml (string)",\n' +
               '  "unitPriceUSD": 0.0, // Precio unitario de la columna Price (number decimal)\n' +
               '  "stock": 0, // Cantidad de la columna QTY (number entero)\n' +
-              '  "category": "Masculino|Femenino|Unisex",\n' +
+              '  "category": "Masculino|Femenino|Unisex|Revision|M|W|U",\n' +
               '  "barcode": "Código UPC o string vacío si no hay"\n' +
               "}\n\n" +
               "REGLAS CRÍTICAS:\n" +
@@ -377,14 +377,27 @@ export default async function handler(req, res) {
       }
 
       // Exact non-conflicting gender detection
-      let category = (p.category || 'Unisex').trim();
-      const catLower = category.toLowerCase();
-      if (catLower.includes('femenino') || catLower.includes('mujer') || catLower.includes('women') || catLower.includes('woman') || catLower.includes('lady') || catLower.includes('ladies') || catLower.includes('girl')) {
-        category = 'Femenino';
-      } else if (catLower.includes('masculino') || catLower.includes('hombre') || catLower.includes('men') || catLower.includes('man') || catLower.includes('boy')) {
+      let category = (p.category || '').trim();
+      const catUpper = category.toUpperCase();
+      const nameUpper = (p.name || '').toUpperCase();
+
+      if (catUpper === 'M' || catUpper === 'MAN' || catUpper === 'MEN' || catUpper === 'MASCULINO' || catUpper.includes('MASCULINO') || /\bM\b/.test(nameUpper) || /\bMEN\b/.test(nameUpper) || /\bMAN\b/.test(nameUpper)) {
         category = 'Masculino';
-      } else {
+      } else if (catUpper === 'W' || catUpper === 'WOMAN' || catUpper === 'WOMEN' || catUpper === 'FEMENINO' || catUpper.includes('FEMENINO') || /\bW\b/.test(nameUpper) || /\bWOMEN\b/.test(nameUpper) || /\bWOMAN\b/.test(nameUpper)) {
+        category = 'Femenino';
+      } else if (catUpper === 'U' || catUpper === 'UNISEX' || catUpper.includes('UNISEX') || /\bU\b/.test(nameUpper) || /\bUNISEX\b/.test(nameUpper)) {
         category = 'Unisex';
+      } else if (catUpper === 'REVISION' || catUpper === 'REVISIÓN') {
+        category = 'Revision';
+      } else {
+        // Fallback: check full name
+        if (/\b(MASCULINO|HOMBRE|POUR HOMME|CABALLERO)\b/.test(nameUpper)) {
+          category = 'Masculino';
+        } else if (/\b(FEMENINO|MUJER|POUR FEMME|DAMA|LADY|LADIES)\b/.test(nameUpper)) {
+          category = 'Femenino';
+        } else {
+          category = 'Revision';
+        }
       }
 
       const barcode = (p.barcode || '').trim() || `740${Math.floor(100000000 + Math.random() * 900000000)}`;

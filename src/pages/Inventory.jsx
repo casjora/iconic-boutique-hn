@@ -10,7 +10,7 @@ import {
   AlertCircle, Check, Percent, Download, Share2,
   FileDown, FileSpreadsheet, FileText, X
 } from 'lucide-react';
-import { isProductSet, getProductPromoDiscount, cleanProductDescription, getProductPromoDetalle, getProductPromoMayorista, setProductPromotions, getProductPrices } from '../utils/productHelper';
+import { isProductSet, getProductPromoDiscount, cleanProductDescription, getProductPromoDetalle, getProductPromoMayorista, setProductPromotions, getProductPrices, detectProductCategory } from '../utils/productHelper';
 import { generateBarcodeSVG } from '../utils/barcode';
 
 export default function Inventory() {
@@ -162,10 +162,14 @@ export default function Inventory() {
       const matchesCategory = selectedCategory === 'Todas'
         ? true
         : selectedCategory === 'Damas'
-          ? (pCat === 'Damas' || pCat === 'Femenino' || pCat === 'Unisex')
+          ? (pCat === 'Damas' || pCat === 'Femenino' || pCat === 'W')
           : selectedCategory === 'Caballeros'
-            ? (pCat === 'Caballeros' || pCat === 'Masculino' || pCat === 'Unisex')
-            : pCat === selectedCategory;
+            ? (pCat === 'Caballeros' || pCat === 'Masculino' || pCat === 'M')
+            : selectedCategory === 'Unisex'
+              ? (pCat === 'Unisex' || pCat === 'U')
+              : selectedCategory === 'Revisión'
+                ? (pCat === 'Revisión' || pCat === 'Revision' || pCat === 'Pendiente')
+                : pCat === selectedCategory;
 
       return matchesSearch && matchesBrand && matchesCategory;
     });
@@ -199,7 +203,6 @@ export default function Inventory() {
   const parseProductString = (rawStr) => {
     let name = rawStr.replace(/^\d+\s*/, '').replace(/^"|"$/g, '').trim();
     let size = '100 ml';
-    let category = 'Damas';
     let brand = 'Otras Marcas';
 
     const knownBrands = [
@@ -227,11 +230,7 @@ export default function Inventory() {
       size = `${sizeMatch[1]} ${sizeMatch[2].toLowerCase()}`;
     }
 
-    if (upperStr.includes('MEN') || upperStr.includes('POUR HOMME') || upperStr.includes('CABALLERO') || upperStr.includes('BOY')) {
-      category = 'Caballeros';
-    } else if (upperStr.includes('UNISEX')) {
-      category = 'Unisex';
-    }
+    const category = detectProductCategory(name);
 
     return { brand, name, size, category };
   };
@@ -1256,8 +1255,10 @@ export default function Inventory() {
                         onChange={(e) => handleUpdateDraftField(idx, 'category', e.target.value)}
                         className="px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs text-neutral-900 dark:text-neutral-100"
                       >
-                        <option value="Damas" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Damas</option>
-                        <option value="Caballeros" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Caballeros</option>
+                        <option value="Damas" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Damas (W)</option>
+                        <option value="Caballeros" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Caballeros (M)</option>
+                        <option value="Unisex" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Unisex (U)</option>
+                        <option value="Revisión" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Revisión Manual</option>
                       </select>
                     </td>
                     <td className="px-4 py-2 text-right">
@@ -1447,7 +1448,7 @@ export default function Inventory() {
 
         {/* Filter and Search Box */}
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-4 sm:p-5 shadow-sm space-y-4">
-          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-4">
             <div className="sm:col-span-2 relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                 <Search className="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
@@ -1471,6 +1472,20 @@ export default function Inventory() {
                 {uniqueBrands.map(brand => (
                   <option key={brand} value={brand} className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">{brand}</option>
                 ))}
+              </select>
+            </div>
+
+            <div>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="block w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-700 dark:text-neutral-200 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent outline-none transition-all cursor-pointer"
+              >
+                <option value="Todas" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Todas las Categorías</option>
+                <option value="Damas" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Damas / Femenino (W)</option>
+                <option value="Caballeros" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Caballeros / Masculino (M)</option>
+                <option value="Unisex" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Unisex (U)</option>
+                <option value="Revisión" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Revisión Manual</option>
               </select>
             </div>
           </div>
@@ -1574,6 +1589,23 @@ export default function Inventory() {
                             {isSet && (
                               <span className="inline-flex items-center rounded-full bg-indigo-50 dark:bg-indigo-950/80 px-1.5 py-0.5 text-[8px] font-extrabold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border border-indigo-100 dark:border-indigo-800">
                                 Set
+                              </span>
+                            )}
+                            {p.category === 'Revisión' || p.category === 'Revision' ? (
+                              <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-950 px-1.5 py-0.5 text-[8px] font-extrabold text-amber-800 dark:text-amber-300 uppercase tracking-wider border border-amber-200 dark:border-amber-800">
+                                Revisión Manual
+                              </span>
+                            ) : p.category === 'Unisex' ? (
+                              <span className="inline-flex items-center rounded-full bg-purple-50 dark:bg-purple-950/80 px-1.5 py-0.5 text-[8px] font-extrabold text-purple-700 dark:text-purple-300 uppercase tracking-wider border border-purple-100 dark:border-purple-800">
+                                Unisex (U)
+                              </span>
+                            ) : p.category === 'Caballeros' || p.category === 'Masculino' ? (
+                              <span className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-950/80 px-1.5 py-0.5 text-[8px] font-extrabold text-blue-700 dark:text-blue-300 uppercase tracking-wider border border-blue-100 dark:border-blue-800">
+                                Caballeros (M)
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full bg-pink-50 dark:bg-pink-950/80 px-1.5 py-0.5 text-[8px] font-extrabold text-pink-700 dark:text-pink-300 uppercase tracking-wider border border-pink-100 dark:border-pink-800">
+                                Damas (W)
                               </span>
                             )}
                             {getProductPromoDetalle(p) && (
@@ -1949,8 +1981,10 @@ export default function Inventory() {
                     onChange={(e) => setFormCategory(e.target.value)}
                     className="block w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-700 dark:text-neutral-200 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent transition-all outline-none cursor-pointer"
                   >
-                    <option value="Damas" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Damas</option>
-                    <option value="Caballeros" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Caballeros</option>
+                    <option value="Damas" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Damas (W)</option>
+                    <option value="Caballeros" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Caballeros (M)</option>
+                    <option value="Unisex" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Unisex (U)</option>
+                    <option value="Revisión" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Revisión Manual</option>
                   </select>
                 </div>
               </div>
