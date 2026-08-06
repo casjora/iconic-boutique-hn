@@ -311,15 +311,15 @@ export default function Showroom() {
       {/* Main Matrix Table */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[760px]">
+          <table className="w-full text-left border-collapse min-w-[700px] table-fixed">
             <thead>
               <tr className="bg-neutral-50 dark:bg-neutral-800/70 border-b border-neutral-200 dark:border-neutral-800 text-[11px] font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                <th className="py-3.5 px-4 min-w-[280px]">Perfume / Detalles</th>
+                <th className="py-3.5 px-4 w-[280px] sm:w-[340px] truncate">Perfume / Detalles</th>
                 
                 {/* Column 2: Damas */}
-                <th className="py-3.5 px-3 text-center min-w-[110px] bg-pink-50/50 dark:bg-pink-950/20 border-l border-neutral-200/60 dark:border-neutral-800/60">
+                <th className="py-3.5 px-2 text-center w-[100px] sm:w-[110px] bg-pink-50/50 dark:bg-pink-950/20 border-l border-neutral-200/60 dark:border-neutral-800/60">
                   <div className="flex flex-col items-center gap-1">
-                    <span className="text-pink-700 dark:text-pink-300 font-extrabold">Damas</span>
+                    <span className="text-pink-700 dark:text-pink-300 font-extrabold truncate w-full">Damas</span>
                     <div className="flex items-center gap-1 text-[9px] font-normal normal-case">
                       <button onClick={() => handleSelectAllInColumn('damas', true)} className="text-pink-600 hover:underline">Todos</button>
                       <span>•</span>
@@ -329,9 +329,9 @@ export default function Showroom() {
                 </th>
 
                 {/* Column 3: Caballeros */}
-                <th className="py-3.5 px-3 text-center min-w-[110px] bg-blue-50/50 dark:bg-blue-950/20 border-l border-neutral-200/60 dark:border-neutral-800/60">
+                <th className="py-3.5 px-2 text-center w-[100px] sm:w-[110px] bg-blue-50/50 dark:bg-blue-950/20 border-l border-neutral-200/60 dark:border-neutral-800/60">
                   <div className="flex flex-col items-center gap-1">
-                    <span className="text-blue-700 dark:text-blue-300 font-extrabold">Caballeros</span>
+                    <span className="text-blue-700 dark:text-blue-300 font-extrabold truncate w-full">Caballeros</span>
                     <div className="flex items-center gap-1 text-[9px] font-normal normal-case">
                       <button onClick={() => handleSelectAllInColumn('caballeros', true)} className="text-blue-600 hover:underline">Todos</button>
                       <span>•</span>
@@ -341,9 +341,9 @@ export default function Showroom() {
                 </th>
 
                 {/* Column 4: Set Damas */}
-                <th className="py-3.5 px-3 text-center min-w-[110px] bg-purple-50/50 dark:bg-purple-950/20 border-l border-neutral-200/60 dark:border-neutral-800/60">
+                <th className="py-3.5 px-2 text-center w-[100px] sm:w-[110px] bg-purple-50/50 dark:bg-purple-950/20 border-l border-neutral-200/60 dark:border-neutral-800/60">
                   <div className="flex flex-col items-center gap-1">
-                    <span className="text-purple-700 dark:text-purple-300 font-extrabold">Set Damas</span>
+                    <span className="text-purple-700 dark:text-purple-300 font-extrabold truncate w-full">Set Damas</span>
                     <div className="flex items-center gap-1 text-[9px] font-normal normal-case">
                       <button onClick={() => handleSelectAllInColumn('estuches-dama', true)} className="text-purple-600 hover:underline">Todos</button>
                       <span>•</span>
@@ -353,9 +353,9 @@ export default function Showroom() {
                 </th>
 
                 {/* Column 5: Set Caballeros */}
-                <th className="py-3.5 px-3 text-center min-w-[110px] bg-amber-50/50 dark:bg-amber-950/20 border-l border-neutral-200/60 dark:border-neutral-800/60">
+                <th className="py-3.5 px-2 text-center w-[100px] sm:w-[110px] bg-amber-50/50 dark:bg-amber-950/20 border-l border-neutral-200/60 dark:border-neutral-800/60">
                   <div className="flex flex-col items-center gap-1">
-                    <span className="text-amber-700 dark:text-amber-300 font-extrabold">Set Caballeros</span>
+                    <span className="text-amber-700 dark:text-amber-300 font-extrabold truncate w-full">Set Cab.</span>
                     <div className="flex items-center gap-1 text-[9px] font-normal normal-case">
                       <button onClick={() => handleSelectAllInColumn('estuches-caballero', true)} className="text-amber-600 hover:underline">Todos</button>
                       <span>•</span>
@@ -394,67 +394,70 @@ export default function Showroom() {
                       }`}
                     >
                       {/* Column 1: Perfume (Thumbnail, Name, Brand, Size, Base Cat, Price & Discount) */}
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
+                      <td className="py-3 px-3 w-[280px] sm:w-[340px] max-w-[340px]">
+                        <div className="flex items-center gap-2.5 min-w-0">
                           <img
                             src={p.image_url || 'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&fit=crop&q=80&w=200'}
                             alt={p.name}
-                            className="w-12 h-12 rounded-xl object-cover bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 shrink-0"
+                            className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-cover bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 shrink-0"
                           />
                           <div className="flex-1 min-w-0 space-y-0.5">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[9px] sm:text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider truncate max-w-[100px]">
                                 {p.brand}
                               </span>
                               
                               {/* Base Category Pill */}
                               {pCat === 'Unisex' || pCat === 'U' ? (
-                                <span className="px-1.5 py-0.2 text-[8px] font-extrabold rounded bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
-                                  Unisex (U)
+                                <span className="px-1.5 py-0.2 text-[8px] font-extrabold rounded bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 shrink-0">
+                                  Unisex
                                 </span>
                               ) : pCat === 'Caballeros' || pCat === 'Masculino' || pCat === 'M' ? (
-                                <span className="px-1.5 py-0.2 text-[8px] font-extrabold rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
-                                  Caballeros (M)
+                                <span className="px-1.5 py-0.2 text-[8px] font-extrabold rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 shrink-0">
+                                  Caballeros
                                 </span>
                               ) : pCat === 'Revisión' || pCat === 'Revision' ? (
-                                <span className="px-1.5 py-0.2 text-[8px] font-extrabold rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
+                                <span className="px-1.5 py-0.2 text-[8px] font-extrabold rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 shrink-0">
                                   Revisión
                                 </span>
                               ) : (
-                                <span className="px-1.5 py-0.2 text-[8px] font-extrabold rounded bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300">
-                                  Damas (W)
+                                <span className="px-1.5 py-0.2 text-[8px] font-extrabold rounded bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300 shrink-0">
+                                  Damas
                                 </span>
                               )}
 
                               {setFlag && (
-                                <span className="px-1.5 py-0.2 text-[8px] font-extrabold rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                                <span className="px-1.5 py-0.2 text-[8px] font-extrabold rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 shrink-0">
                                   Set
                                 </span>
                               )}
                             </div>
 
-                            <h3 className="font-bold text-neutral-900 dark:text-neutral-100 text-xs truncate">
+                            <h3 
+                              className="font-bold text-neutral-900 dark:text-neutral-100 text-[11px] sm:text-xs truncate block"
+                              title={p.name}
+                            >
                               {p.name}
                             </h3>
                             
-                            <div className="flex items-center gap-3 text-[11px] font-mono text-neutral-500 dark:text-neutral-400">
-                              <span>{p.size}</span>
+                            <div className="flex items-center gap-2 text-[10px] sm:text-[11px] font-mono text-neutral-500 dark:text-neutral-400">
+                              <span className="truncate max-w-[60px]">{p.size}</span>
                               <span>•</span>
-                              <span className="font-semibold text-neutral-900 dark:text-neutral-200">
+                              <span className="font-semibold text-neutral-900 dark:text-neutral-200 shrink-0">
                                 L. {Number(p.pricePublic || 0).toLocaleString()}
                               </span>
                               
                               {/* Discount Input */}
-                              <div className="flex items-center gap-1 ml-auto">
-                                <Tag className="w-3 h-3 text-amber-500" />
-                                <span className="text-[10px] font-bold">Desc %:</span>
+                              <div className="flex items-center gap-1 ml-auto shrink-0">
+                                <Tag className="w-2.5 h-2.5 text-amber-500" />
+                                <span className="text-[9px] font-bold hidden sm:inline">Desc%:</span>
                                 <input
                                   type="number"
                                   min="0"
                                   max="100"
                                   value={edit.publicDiscount}
                                   onChange={(e) => handleDiscountChange(p.id, e.target.value)}
-                                  className="w-12 px-1.5 py-0.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-center font-bold text-xs text-neutral-900 dark:text-neutral-100"
+                                  className="w-10 sm:w-12 px-1 py-0.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-center font-bold text-[10px] sm:text-xs text-neutral-900 dark:text-neutral-100"
                                 />
                               </div>
                             </div>
