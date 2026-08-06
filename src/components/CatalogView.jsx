@@ -12,6 +12,7 @@ export default function CatalogView({ favoritesOnly = false }) {
   const { products, user, favorites } = useStore();
   const location = useLocation();
 
+  const isStaff = user && (user.role === 'owner' || user.role === 'dueño' || user.role === 'vendedor');
   const isClient = user?.role === 'client';
   const hasUser = !!user;
 
@@ -455,18 +456,22 @@ export default function CatalogView({ favoritesOnly = false }) {
     setVisibleCount(12);
   }, [location.pathname]);
 
-  // Filters base products: guest/public users only see featuredPublic items
+  // Filters base products: guest/public users only see featuredPublic items. Non-staff users (mayoristas, detalle) do not see out-of-stock items.
   const baseProducts = useMemo(() => {
     let list = products;
     // Only unregistered/guest users should be restricted to featuredPublic items
     if (!user) {
       list = list.filter(p => p.featuredPublic === true);
     }
+    // Non-staff users (wholesale, retail, guests) cannot see out-of-stock products
+    if (!isStaff) {
+      list = list.filter(p => (p.availableStock !== undefined ? p.availableStock : p.stock) > 0);
+    }
     if (favoritesOnly) {
       return list.filter(p => favorites.includes(p.id));
     }
     return list;
-  }, [products, favorites, favoritesOnly, user]);
+  }, [products, favorites, favoritesOnly, user, isStaff]);
 
   // Extract unique brands for the filter select
   const categoryFilteredProducts = useMemo(() => {

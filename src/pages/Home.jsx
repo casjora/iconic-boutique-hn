@@ -18,6 +18,10 @@ export default function Home() {
         // Must be active in this public category
         if (!isProductInPublicCategory(p, catKey)) return false;
 
+        // Ensure the product is in stock
+        const stock = p.availableStock !== undefined ? p.availableStock : p.stock;
+        if (stock <= 0) return false;
+
         // Ensure the product has a valid image string and has not been used already
         if (!p.image_url || !p.image_url.startsWith('http')) return false;
         if (usedImages.has(p.image_url)) return false;
