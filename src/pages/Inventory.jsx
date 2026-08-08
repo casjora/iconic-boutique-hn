@@ -8,10 +8,13 @@ import {
   Plus, Edit2, Trash2, FileUp, Loader2, RefreshCw, 
   Search, AlertTriangle, PlayCircle, 
   AlertCircle, Check, Percent, Download, Share2,
-  FileDown, FileSpreadsheet, FileText, X
+  FileDown, FileSpreadsheet, FileText, X, Image as ImageIcon
 } from 'lucide-react';
 import { isProductSet, getProductPromoDiscount, cleanProductDescription, getProductPromoDetalle, getProductPromoMayorista, setProductPromotions, getProductPrices, detectProductCategory } from '../utils/productHelper';
 import { generateBarcodeSVG } from '../utils/barcode';
+
+const getProductImage = (p) => (p?.imageUrl || p?.image_url || '').trim();
+const hasProductImage = (p) => Boolean(getProductImage(p));
 
 export default function Inventory() {
   const { 
@@ -27,6 +30,8 @@ export default function Inventory() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBrand, setSelectedBrand] = useState('Todas');
   const [selectedCategory, setSelectedCategory] = useState('Todas');
+  const [selectedImageFilter, setSelectedImageFilter] = useState('Todas'); // 'Todas' | 'con_imagen' | 'sin_imagen'
+  const [draftFilter, setDraftFilter] = useState('todos'); // 'todos' | 'nuevos' | 'mismo_costo' | 'distinto_costo'
 
   // Slide-over or Modal states for single product CRUD
   const [isEditing, setIsEditing] = useState(false);
@@ -183,9 +188,66 @@ export default function Inventory() {
                 ? (pCat === 'Revisión' || pCat === 'Revision' || pCat === 'Pendiente')
                 : pCat === selectedCategory;
 
-      return matchesSearch && matchesBrand && matchesCategory;
+      const matchesImage = selectedImageFilter === 'Todas'
+        ? true
+        : selectedImageFilter === 'con_imagen'
+          ? hasProductImage(p)
+          : !hasProductImage(p);
+
+      return matchesSearch && matchesBrand && matchesCategory && matchesImage;
     });
-  }, [products, searchTerm, selectedBrand, selectedCategory]);
+  }, [products, searchTerm, selectedBrand, selectedCategory, selectedImageFilter]);
+
+  const imageStats = useMemo(() => {
+    const withImg = products.filter(hasProductImage).length;
+    const withoutImg = products.length - withImg;
+    return { withImg, withoutImg };
+  }, [products]);
+
+  const draftMetrics = useMemo(() => {
+    if (!parsedProducts || parsedProducts.length === 0) {
+      return { totalLines: 0, totalUnits: 0, countNew: 0, countSameCost: 0, countDiffCost: 0 };
+    }
+    let totalUnits = 0;
+    let countNew = 0;
+    let countSameCost = 0;
+    let countDiffCost = 0;
+
+    parsedProducts.forEach(item => {
+      totalUnits += (Number(item.stock) || 0);
+      if (item.isDifferentCost && item.matchedProductId === 'new') {
+        countDiffCost++;
+      } else if (item.matchedProductId && item.matchedProductId !== 'new') {
+        countSameCost++;
+      } else {
+        countNew++;
+      }
+    });
+
+    return {
+      totalLines: parsedProducts.length,
+      totalUnits,
+      countNew,
+      countSameCost,
+      countDiffCost
+    };
+  }, [parsedProducts]);
+
+  const filteredDraftProducts = useMemo(() => {
+    if (!parsedProducts) return [];
+    return parsedProducts.filter((item) => {
+      if (draftFilter === 'nuevos') {
+        return item.matchedProductId === 'new' && !item.isDifferentCost;
+      }
+      if (draftFilter === 'mismo_costo') {
+        return item.matchedProductId && item.matchedProductId !== 'new';
+      }
+      if (draftFilter === 'distinto_costo') {
+        return item.matchedProductId === 'new' && item.isDifferentCost;
+      }
+      return true;
+    });
+  }, [parsedProducts, draftFilter]);
 
   const uniqueBrands = useMemo(() => {
     const brands = products.map(p => p.brand?.trim()).filter(Boolean);
@@ -1106,20 +1168,20 @@ export default function Inventory() {
       {/* AI Parsing draft overview screen */}
       {isDrafting ? (
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-sm space-y-6">
-          <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-4 gap-4">
             <div>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 mb-2 border border-emerald-200 dark:border-emerald-800">
-                ✓ Extracción Completa con IA
+                ✓ Extracción Completa ({draftMetrics.totalLines} perfumes | +{draftMetrics.totalUnits.toLocaleString()} unidades)
               </span>
               <h3 className="font-display font-black text-neutral-900 dark:text-neutral-100 text-lg">
-                Revisión de Perfumes Detectados en Factura
+                Revisión de Perfumes y Cantidades de Carga
               </h3>
               <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
-                Revisa y edita los valores extraídos antes de registrarlos o sumarlos al inventario de Honduras.
+                Verifica el desglose de perfumes nuevos, actualización de stock y lotes con costos distintos antes de guardar en inventario.
               </p>
             </div>
             
-            <div className="flex gap-2">
+            <div className="flex gap-2 shrink-0">
               <button
                 onClick={() => {
                   setParsedProducts([]);
@@ -1136,6 +1198,107 @@ export default function Inventory() {
                 Guardar en Inventario
               </button>
             </div>
+          </div>
+
+          {/* Metrics Summary Breakdown */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div className="bg-neutral-50 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 p-3 rounded-2xl">
+              <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Fragancias en Archivo</div>
+              <div className="text-lg font-black text-neutral-900 dark:text-neutral-100 font-mono mt-0.5">
+                {draftMetrics.totalLines} <span className="text-xs font-normal text-neutral-500">líneas</span>
+              </div>
+            </div>
+
+            <div className="bg-indigo-50/70 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 p-3 rounded-2xl">
+              <div className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">Total Unidades (Botellas)</div>
+              <div className="text-lg font-black text-indigo-900 dark:text-indigo-200 font-mono mt-0.5">
+                +{draftMetrics.totalUnits.toLocaleString()} <span className="text-xs font-normal">unidades</span>
+              </div>
+            </div>
+
+            <div className="bg-emerald-50/70 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 p-3 rounded-2xl">
+              <div className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Mismo Costo (Suma Stock)</div>
+              <div className="text-lg font-black text-emerald-900 dark:text-emerald-200 font-mono mt-0.5">
+                {draftMetrics.countSameCost} <span className="text-xs font-normal">existentes</span>
+              </div>
+            </div>
+
+            <div className="bg-amber-50/80 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 p-3 rounded-2xl">
+              <div className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">Costo Distinto (Nuevo Lote)</div>
+              <div className="text-lg font-black text-amber-900 dark:text-amber-200 font-mono mt-0.5">
+                {draftMetrics.countDiffCost} <span className="text-xs font-normal">lotes nuevos</span>
+              </div>
+            </div>
+
+            <div className="bg-blue-50/70 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 p-3 rounded-2xl col-span-2 sm:col-span-1">
+              <div className="text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Perfumes Nuevos Catálogo</div>
+              <div className="text-lg font-black text-blue-900 dark:text-blue-200 font-mono mt-0.5">
+                {draftMetrics.countNew} <span className="text-xs font-normal">nuevos</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Special notice if there are different cost matches */}
+          {draftMetrics.countDiffCost > 0 && (
+            <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
+              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <p className="font-bold">
+                  ⚡ Se detectaron {draftMetrics.countDiffCost} perfumes que ya existen en catálogo pero con un costo unitario distinto al costo registrado previamente.
+                </p>
+                <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90">
+                  Por defecto se registrarán como un <strong>nuevo lote independiente</strong> para preservar la exactitud de costos sin modificar lotes anteriores. Si prefieres sumar el stock directamente al lote anterior existente, selecciona la opción de la fragancia en la columna <strong>Vinculación</strong>.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Filter Tabs for Draft List */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <button
+              type="button"
+              onClick={() => setDraftFilter('todos')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all ${
+                draftFilter === 'todos'
+                  ? 'bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950'
+                  : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 hover:bg-neutral-200'
+              }`}
+            >
+              Todos ({draftMetrics.totalLines})
+            </button>
+            <button
+              type="button"
+              onClick={() => setDraftFilter('mismo_costo')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1 ${
+                draftFilter === 'mismo_costo'
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
+              }`}
+            >
+              <Check className="h-3.5 w-3.5" /> Sumarán Stock ({draftMetrics.countSameCost})
+            </button>
+            <button
+              type="button"
+              onClick={() => setDraftFilter('distinto_costo')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1 ${
+                draftFilter === 'distinto_costo'
+                  ? 'bg-amber-600 text-white'
+                  : 'bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100'
+              }`}
+            >
+              ⚡ Costo Distinto ({draftMetrics.countDiffCost})
+            </button>
+            <button
+              type="button"
+              onClick={() => setDraftFilter('nuevos')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1 ${
+                draftFilter === 'nuevos'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-blue-50 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100'
+              }`}
+            >
+              <Plus className="h-3.5 w-3.5" /> Perfumes Nuevos ({draftMetrics.countNew})
+            </button>
           </div>
 
           <div className="overflow-x-auto border border-neutral-200 dark:border-neutral-800 rounded-2xl">
@@ -1155,163 +1318,167 @@ export default function Inventory() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                {parsedProducts.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
-                    <td className="px-2 py-2">
-                      <input
-                        type="text"
-                        value={item.brand}
-                        onChange={(e) => handleUpdateDraftField(idx, 'brand', e.target.value)}
-                        className="w-20 px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs text-neutral-900 dark:text-neutral-100"
-                      />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        type="text"
-                        value={item.name}
-                        onChange={(e) => handleUpdateDraftField(idx, 'name', e.target.value)}
-                        className="w-36 px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs text-neutral-900 dark:text-neutral-100"
-                      />
-                    </td>
-                    <td className="px-2 py-2 max-w-[170px]">
-                      {(() => {
-                        const sameBrandProducts = products.filter(p => 
-                          (p.brand || '').toLowerCase().trim() === (item.brand || '').toLowerCase().trim()
-                        );
+                {filteredDraftProducts.map((item) => {
+                  const idx = parsedProducts.indexOf(item);
 
-                        return (
-                          <div className="flex flex-col gap-1 max-w-[160px]">
-                            <select
-                              value={item.matchedProductId || 'new'}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                handleUpdateDraftField(idx, 'matchedProductId', val);
-                                if (val !== 'new') {
-                                  const matchedProd = products.find(p => p.id === val);
-                                  if (matchedProd) {
-                                    handleUpdateDraftField(idx, 'pricePublic', matchedProd.pricePublic);
-                                    handleUpdateDraftField(idx, 'pricePromotional', matchedProd.pricePromotional);
-                                    let localCat = 'Damas';
-                                    if (matchedProd.category === 'Masculino') localCat = 'Caballeros';
-                                    else if (matchedProd.category === 'Unisex') localCat = 'Unisex';
-                                    handleUpdateDraftField(idx, 'category', localCat);
-                                    if (matchedProd.cost) {
-                                      handleUpdateDraftField(idx, 'cost', matchedProd.cost);
+                  return (
+                    <tr key={idx} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
+                      <td className="px-2 py-2">
+                        <input
+                          type="text"
+                          value={item.brand}
+                          onChange={(e) => handleUpdateDraftField(idx, 'brand', e.target.value)}
+                          className="w-20 px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs text-neutral-900 dark:text-neutral-100"
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          type="text"
+                          value={item.name}
+                          onChange={(e) => handleUpdateDraftField(idx, 'name', e.target.value)}
+                          className="w-36 px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs text-neutral-900 dark:text-neutral-100"
+                        />
+                      </td>
+                      <td className="px-2 py-2 max-w-[170px]">
+                        {(() => {
+                          const sameBrandProducts = products.filter(p => 
+                            (p.brand || '').toLowerCase().trim() === (item.brand || '').toLowerCase().trim()
+                          );
+
+                          return (
+                            <div className="flex flex-col gap-1 max-w-[160px]">
+                              <select
+                                value={item.matchedProductId || 'new'}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  handleUpdateDraftField(idx, 'matchedProductId', val);
+                                  if (val !== 'new') {
+                                    const matchedProd = products.find(p => p.id === val);
+                                    if (matchedProd) {
+                                      handleUpdateDraftField(idx, 'pricePublic', matchedProd.pricePublic);
+                                      handleUpdateDraftField(idx, 'pricePromotional', matchedProd.pricePromotional);
+                                      let localCat = 'Damas';
+                                      if (matchedProd.category === 'Masculino') localCat = 'Caballeros';
+                                      else if (matchedProd.category === 'Unisex') localCat = 'Unisex';
+                                      handleUpdateDraftField(idx, 'category', localCat);
+                                      if (matchedProd.cost) {
+                                        handleUpdateDraftField(idx, 'cost', matchedProd.cost);
+                                      }
                                     }
                                   }
-                                }
-                              }}
-                              className={`w-full truncate px-1.5 py-1 border rounded text-[11px] font-semibold outline-none transition-colors ${
-                                item.matchedProductId && item.matchedProductId !== 'new'
-                                  ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 focus:ring-1 focus:ring-emerald-400'
-                                  : 'bg-indigo-50/50 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-700 text-indigo-900 dark:text-indigo-200 focus:ring-1 focus:ring-indigo-300'
-                              }`}
-                            >
-                              <option value="new" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">➕ Crear como Nuevo</option>
-                              {sameBrandProducts.length > 0 && (
-                                <optgroup label={`Existentes de ${item.brand}`}>
-                                  {sameBrandProducts.map(p => (
-                                    <option key={p.id} value={p.id} className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">
-                                      🔗 {p.name} ({p.size || 'N/A'}) - Stock: {p.stock}
-                                    </option>
-                                  ))}
+                                }}
+                                className={`w-full truncate px-1.5 py-1 border rounded text-[11px] font-semibold outline-none transition-colors ${
+                                  item.matchedProductId && item.matchedProductId !== 'new'
+                                    ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 focus:ring-1 focus:ring-emerald-400'
+                                    : 'bg-indigo-50/50 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-700 text-indigo-900 dark:text-indigo-200 focus:ring-1 focus:ring-indigo-300'
+                                }`}
+                              >
+                                <option value="new" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">➕ Crear como Nuevo</option>
+                                {sameBrandProducts.length > 0 && (
+                                  <optgroup label={`Existentes de ${item.brand}`}>
+                                    {sameBrandProducts.map(p => (
+                                      <option key={p.id} value={p.id} className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">
+                                        🔗 {p.name} ({p.size || 'N/A'}) - Stock: {p.stock}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                )}
+                                <optgroup label="Otros de todo el Inventario">
+                                  {products
+                                    .filter(p => (p.brand || '').toLowerCase().trim() !== (item.brand || '').toLowerCase().trim())
+                                    .slice(0, 100)
+                                    .map(p => (
+                                      <option key={p.id} value={p.id} className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">
+                                        🔗 {p.brand} - {p.name} ({p.size || 'N/A'})
+                                      </option>
+                                    ))
+                                  }
                                 </optgroup>
+                              </select>
+                              
+                              {item.isDifferentCost && (
+                                <div className="text-[9px] leading-tight bg-amber-50 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-bold px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800 my-0.5">
+                                  ⚡ Costo dif: L. {item.cost} vs L. {item.existingCost}
+                                </div>
                               )}
-                              <optgroup label="Otros de todo el Inventario">
-                                {products
-                                  .filter(p => (p.brand || '').toLowerCase().trim() !== (item.brand || '').toLowerCase().trim())
-                                  .slice(0, 100)
-                                  .map(p => (
-                                    <option key={p.id} value={p.id} className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">
-                                      🔗 {p.brand} - {p.name} ({p.size || 'N/A'})
-                                    </option>
-                                  ))
-                                }
-                              </optgroup>
-                            </select>
-                            
-                            {item.isDifferentCost && (
-                              <div className="text-[9px] leading-tight bg-amber-50 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-bold px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800 my-0.5">
-                                ⚡ Costo dif: L. {item.cost} vs L. {item.existingCost}
-                              </div>
-                            )}
-                            
-                            {item.matchedProductId && item.matchedProductId !== 'new' ? (
-                              <span className="text-[9px] text-emerald-700 dark:text-emerald-400 font-extrabold flex items-center gap-0.5 truncate">
-                                <Check className="h-2.5 w-2.5 text-emerald-600 dark:text-emerald-400 shrink-0" /> +{item.stock} a lote (L. {item.existingCost})
-                              </span>
-                            ) : (
-                              <span className="text-[9px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-0.5 truncate">
-                                <Plus className="h-2.5 w-2.5 text-indigo-500 dark:text-indigo-400 shrink-0" /> Nuevo lote (L. {item.cost})
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        type="text"
-                        value={item.size}
-                        onChange={(e) => handleUpdateDraftField(idx, 'size', e.target.value)}
-                        className="w-16 px-1.5 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs text-neutral-900 dark:text-neutral-100"
-                      />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        type="number"
-                        value={item.cost}
-                        onChange={(e) => handleUpdateDraftField(idx, 'cost', e.target.value)}
-                        className="w-16 px-1.5 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs font-mono text-neutral-900 dark:text-neutral-100"
-                      />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        type="number"
-                        value={item.pricePublic}
-                        onChange={(e) => handleUpdateDraftField(idx, 'pricePublic', e.target.value)}
-                        className="w-16 px-1.5 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs font-mono text-neutral-900 dark:text-neutral-100"
-                      />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        type="number"
-                        value={item.pricePromotional}
-                        onChange={(e) => handleUpdateDraftField(idx, 'pricePromotional', e.target.value)}
-                        className="w-16 px-1.5 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs font-mono text-neutral-900 dark:text-neutral-100"
-                      />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        type="number"
-                        value={item.stock}
-                        onChange={(e) => handleUpdateDraftField(idx, 'stock', e.target.value)}
-                        className="w-14 px-1.5 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs font-mono text-neutral-900 dark:text-neutral-100"
-                      />
-                    </td>
-                    <td className="px-2 py-2">
-                      <select
-                        value={item.category}
-                        onChange={(e) => handleUpdateDraftField(idx, 'category', e.target.value)}
-                        className="px-1.5 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs text-neutral-900 dark:text-neutral-100"
-                      >
-                        <option value="Damas" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Damas</option>
-                        <option value="Caballeros" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Caballeros</option>
-                        <option value="Unisex" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Unisex</option>
-                        <option value="Revisión" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Revisión</option>
-                      </select>
-                    </td>
-                    <td className="px-2 py-2 text-right">
-                      <button
-                        onClick={() => handleRemoveDraftItem(idx)}
-                        className="p-1 text-neutral-400 hover:text-red-600 dark:hover:text-rose-400 rounded cursor-pointer"
-                        title="Eliminar de la lista de carga"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                              
+                              {item.matchedProductId && item.matchedProductId !== 'new' ? (
+                                <span className="text-[9px] text-emerald-700 dark:text-emerald-400 font-extrabold flex items-center gap-0.5 truncate">
+                                  <Check className="h-2.5 w-2.5 text-emerald-600 dark:text-emerald-400 shrink-0" /> +{item.stock} a lote (L. {item.existingCost})
+                                </span>
+                              ) : (
+                                <span className="text-[9px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-0.5 truncate">
+                                  <Plus className="h-2.5 w-2.5 text-indigo-500 dark:text-indigo-400 shrink-0" /> Nuevo lote (L. {item.cost})
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          type="text"
+                          value={item.size}
+                          onChange={(e) => handleUpdateDraftField(idx, 'size', e.target.value)}
+                          className="w-16 px-1.5 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs text-neutral-900 dark:text-neutral-100"
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          type="number"
+                          value={item.cost}
+                          onChange={(e) => handleUpdateDraftField(idx, 'cost', e.target.value)}
+                          className="w-16 px-1.5 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs font-mono text-neutral-900 dark:text-neutral-100"
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          type="number"
+                          value={item.pricePublic}
+                          onChange={(e) => handleUpdateDraftField(idx, 'pricePublic', e.target.value)}
+                          className="w-16 px-1.5 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs font-mono text-neutral-900 dark:text-neutral-100"
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          type="number"
+                          value={item.pricePromotional}
+                          onChange={(e) => handleUpdateDraftField(idx, 'pricePromotional', e.target.value)}
+                          className="w-16 px-1.5 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs font-mono text-neutral-900 dark:text-neutral-100"
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          type="number"
+                          value={item.stock}
+                          onChange={(e) => handleUpdateDraftField(idx, 'stock', e.target.value)}
+                          className="w-14 px-1.5 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs font-mono text-neutral-900 dark:text-neutral-100"
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <select
+                          value={item.category}
+                          onChange={(e) => handleUpdateDraftField(idx, 'category', e.target.value)}
+                          className="px-1.5 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs text-neutral-900 dark:text-neutral-100"
+                        >
+                          <option value="Damas" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Damas</option>
+                          <option value="Caballeros" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Caballeros</option>
+                          <option value="Unisex" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Unisex</option>
+                          <option value="Revisión" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Revisión</option>
+                        </select>
+                      </td>
+                      <td className="px-2 py-2 text-right">
+                        <button
+                          onClick={() => handleRemoveDraftItem(idx)}
+                          className="p-1 text-neutral-400 hover:text-red-600 dark:hover:text-rose-400 rounded cursor-pointer"
+                          title="Eliminar de la lista de carga"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -1488,7 +1655,7 @@ export default function Inventory() {
 
         {/* Filter and Search Box */}
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-4 sm:p-5 shadow-sm space-y-4">
-          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-4">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-5">
             <div className="sm:col-span-2 relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                 <Search className="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
@@ -1528,6 +1695,58 @@ export default function Inventory() {
                 <option value="Revisión" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Revisión Manual</option>
               </select>
             </div>
+
+            <div>
+              <select
+                value={selectedImageFilter}
+                onChange={(e) => setSelectedImageFilter(e.target.value)}
+                className="block w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-700 dark:text-neutral-200 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent outline-none transition-all cursor-pointer"
+              >
+                <option value="Todas" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Estado Foto (Todas)</option>
+                <option value="con_imagen" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">🖼️ Con Foto ({imageStats.withImg})</option>
+                <option value="sin_imagen" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">⚠️ Sin Foto ({imageStats.withoutImg})</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Quick Image Status Filter Pills */}
+          <div className="flex items-center gap-2 pt-1 border-t border-neutral-100 dark:border-neutral-800/80 overflow-x-auto text-xs">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mr-1 shrink-0">
+              Filtro Imagen:
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedImageFilter('Todas')}
+              className={`px-3 py-1 rounded-full text-xs font-bold cursor-pointer transition-all ${
+                selectedImageFilter === 'Todas'
+                  ? 'bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950'
+                  : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 hover:bg-neutral-200'
+              }`}
+            >
+              Todas ({products.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedImageFilter('con_imagen')}
+              className={`px-3 py-1 rounded-full text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 ${
+                selectedImageFilter === 'con_imagen'
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
+              }`}
+            >
+              <ImageIcon className="h-3.5 w-3.5" /> Con Imagen ({imageStats.withImg})
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedImageFilter('sin_imagen')}
+              className={`px-3 py-1 rounded-full text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 ${
+                selectedImageFilter === 'sin_imagen'
+                  ? 'bg-amber-600 text-white'
+                  : 'bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100'
+              }`}
+            >
+              <AlertCircle className="h-3.5 w-3.5" /> Sin Imagen ({imageStats.withoutImg})
+            </button>
           </div>
         </div>
 
@@ -1620,44 +1839,71 @@ export default function Inventory() {
                     
                     return (
                       <tr key={p.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
-                        <td className="px-3 sm:px-6 py-3.5 space-y-1 min-w-[140px]">
-                          <span className="font-mono text-[9px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">{p.brand}</span>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-bold text-neutral-900 dark:text-neutral-100 text-xs sm:text-sm leading-tight">
-                              {p.name}
-                            </span>
-                            {isSet && (
-                              <span className="inline-flex items-center rounded-full bg-indigo-50 dark:bg-indigo-950/80 px-1.5 py-0.5 text-[8px] font-extrabold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border border-indigo-100 dark:border-indigo-800">
-                                Set
-                              </span>
-                            )}
-                            {p.category === 'Revisión' || p.category === 'Revision' ? (
-                              <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-950 px-1.5 py-0.5 text-[8px] font-extrabold text-amber-800 dark:text-amber-300 uppercase tracking-wider border border-amber-200 dark:border-amber-800">
-                                Revisión Manual
-                              </span>
-                            ) : p.category === 'Unisex' ? (
-                              <span className="inline-flex items-center rounded-full bg-purple-50 dark:bg-purple-950/80 px-1.5 py-0.5 text-[8px] font-extrabold text-purple-700 dark:text-purple-300 uppercase tracking-wider border border-purple-100 dark:border-purple-800">
-                                Unisex (U)
-                              </span>
-                            ) : p.category === 'Caballeros' || p.category === 'Masculino' ? (
-                              <span className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-950/80 px-1.5 py-0.5 text-[8px] font-extrabold text-blue-700 dark:text-blue-300 uppercase tracking-wider border border-blue-100 dark:border-blue-800">
-                                Caballeros (M)
-                              </span>
+                        <td className="px-3 sm:px-6 py-3.5 space-y-1 min-w-[180px]">
+                          <div className="flex items-start gap-2.5">
+                            {hasProductImage(p) ? (
+                              <img 
+                                src={getProductImage(p)} 
+                                alt={p.name}
+                                className="w-9 h-9 object-cover rounded-lg border border-neutral-200 dark:border-neutral-700 shrink-0 bg-neutral-100 dark:bg-neutral-800"
+                                onError={(e) => { e.target.style.display = 'none'; }}
+                              />
                             ) : (
-                              <span className="inline-flex items-center rounded-full bg-pink-50 dark:bg-pink-950/80 px-1.5 py-0.5 text-[8px] font-extrabold text-pink-700 dark:text-pink-300 uppercase tracking-wider border border-pink-100 dark:border-pink-800">
-                                Damas (W)
-                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdit(p)}
+                                className="w-9 h-9 rounded-lg border border-dashed border-amber-300 dark:border-amber-700/80 bg-amber-50/50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 flex flex-col items-center justify-center shrink-0 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors cursor-pointer group"
+                                title="Sin imagen. Haz clic para agregar imagen"
+                              >
+                                <ImageIcon className="h-4 w-4 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform" />
+                              </button>
                             )}
-                            {getProductPromoDetalle(p) && (
-                              <span className="inline-flex items-center rounded-full bg-rose-50 dark:bg-rose-950/80 px-1.5 py-0.5 text-[8px] font-black text-rose-700 dark:text-rose-300 uppercase tracking-wider border border-rose-100 dark:border-rose-800">
-                                Detalle: {getProductPromoDetalle(p)}
-                              </span>
-                            )}
-                            {getProductPromoMayorista(p) && (
-                              <span className="inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-950/80 px-1.5 py-0.5 text-[8px] font-black text-amber-700 dark:text-amber-600 uppercase tracking-wider border border-amber-100 dark:border-amber-800">
-                                Mayoreo: {getProductPromoMayorista(p)}
-                              </span>
-                            )}
+                            
+                            <div className="space-y-1">
+                              <span className="font-mono text-[9px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">{p.brand}</span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-bold text-neutral-900 dark:text-neutral-100 text-xs sm:text-sm leading-tight">
+                                  {p.name}
+                                </span>
+                                {isSet && (
+                                  <span className="inline-flex items-center rounded-full bg-indigo-50 dark:bg-indigo-950/80 px-1.5 py-0.5 text-[8px] font-extrabold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border border-indigo-100 dark:border-indigo-800">
+                                    Set
+                                  </span>
+                                )}
+                                {p.category === 'Revisión' || p.category === 'Revision' ? (
+                                  <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-950 px-1.5 py-0.5 text-[8px] font-extrabold text-amber-800 dark:text-amber-300 uppercase tracking-wider border border-amber-200 dark:border-amber-800">
+                                    Revisión Manual
+                                  </span>
+                                ) : p.category === 'Unisex' ? (
+                                  <span className="inline-flex items-center rounded-full bg-purple-50 dark:bg-purple-950/80 px-1.5 py-0.5 text-[8px] font-extrabold text-purple-700 dark:text-purple-300 uppercase tracking-wider border border-purple-100 dark:border-purple-800">
+                                    Unisex (U)
+                                  </span>
+                                ) : p.category === 'Caballeros' || p.category === 'Masculino' ? (
+                                  <span className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-950/80 px-1.5 py-0.5 text-[8px] font-extrabold text-blue-700 dark:text-blue-300 uppercase tracking-wider border border-blue-100 dark:border-blue-800">
+                                    Caballeros (M)
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center rounded-full bg-pink-50 dark:bg-pink-950/80 px-1.5 py-0.5 text-[8px] font-extrabold text-pink-700 dark:text-pink-300 uppercase tracking-wider border border-pink-100 dark:border-pink-800">
+                                    Damas (W)
+                                  </span>
+                                )}
+                                {!hasProductImage(p) && (
+                                  <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-950/90 px-1.5 py-0.5 text-[8px] font-black text-amber-800 dark:text-amber-300 uppercase tracking-wider border border-amber-200 dark:border-amber-800">
+                                    ⚠️ Sin Foto
+                                  </span>
+                                )}
+                                {getProductPromoDetalle(p) && (
+                                  <span className="inline-flex items-center rounded-full bg-rose-50 dark:bg-rose-950/80 px-1.5 py-0.5 text-[8px] font-black text-rose-700 dark:text-rose-300 uppercase tracking-wider border border-rose-100 dark:border-rose-800">
+                                    Detalle: {getProductPromoDetalle(p)}
+                                  </span>
+                                )}
+                                {getProductPromoMayorista(p) && (
+                                  <span className="inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-950/80 px-1.5 py-0.5 text-[8px] font-black text-amber-700 dark:text-amber-600 uppercase tracking-wider border border-amber-100 dark:border-amber-800">
+                                    Mayoreo: {getProductPromoMayorista(p)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </td>
                         <td className="px-3 sm:px-6 py-3.5 text-neutral-500 dark:text-neutral-400 font-semibold whitespace-nowrap">{p.size}</td>
