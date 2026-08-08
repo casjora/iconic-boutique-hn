@@ -695,7 +695,14 @@ export const useStore = create((setOriginal, get) => {
     updateProduct: async (id, productData) => {
       set({ loading: true, error: null });
       try {
-        const dbProduct = mapProductToDb({ ...productData, id });
+        const existingProduct = get().products.find(p => p.id === id);
+        const mergedData = { ...existingProduct, ...productData };
+        if (productData.cost === undefined || productData.cost === null || Number(productData.cost) <= 0) {
+          if (existingProduct && Number(existingProduct.cost) > 0) {
+            mergedData.cost = Number(existingProduct.cost);
+          }
+        }
+        const dbProduct = mapProductToDb(mergedData);
         
         const { data, error } = await supabase
           .from('products')

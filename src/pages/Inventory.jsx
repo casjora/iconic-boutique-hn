@@ -63,6 +63,8 @@ export default function Inventory() {
   const [parsingProgress, setParsingProgress] = useState('');
   const [parsedProducts, setParsedProducts] = useState([]);
   const [isDrafting, setIsDrafting] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
   
   // Retry / Fail states for fallback mechanics
   const [parsingFailed, setParsingFailed] = useState(false);
@@ -526,29 +528,57 @@ export default function Inventory() {
   };
 
   const handleSaveDraft = async () => {
+    if (isSavingDraft) return;
+    setIsSavingDraft(true);
     setError(null);
     
-    const inserts = [];
-    const updates = [];
+    try {
+      const inserts = [];
+      const updates = [];
 
-    for (const draft of parsedProducts) {
-      const finalCategory = normalizeCategory(draft.category) || draft.category || 'Damas';
-      if (draft.matchedProductId && draft.matchedProductId !== 'new') {
-        const existing = products.find(p => p.id === draft.matchedProductId);
-        if (existing) {
-          updates.push({
-            id: existing.id,
-            name: draft.name,
-            brand: draft.brand,
-            size: draft.size,
-            stock: existing.stock + draft.stock,
-            cost: (draft.cost > 0 ? draft.cost : existing.cost),
-            pricePublic: draft.pricePublic || existing.pricePublic,
-            pricePromotional: draft.pricePromotional || existing.pricePromotional,
-            category: finalCategory,
-            imageUrl: draft.imageUrl || draft.image_url || existing.imageUrl || existing.image_url || ''
-          });
+      for (const draft of parsedProducts) {
+        const finalCategory = normalizeCategory(draft.category) || draft.category || 'Damas';
+        if (draft.matchedProductId && draft.matchedProductId !== 'new') {
+          const existing = products.find(p => p.id === draft.matchedProductId);
+          if (existing) {
+            updates.push({
+              id: existing.id,
+              name: draft.name,
+              brand: draft.brand,
+              size: draft.size,
+              stock: existing.stock + draft.stock,
+              cost: (draft.cost > 0 ? draft.cost : existing.cost),
+              pricePublic: draft.pricePublic || existing.pricePublic,
+              pricePromotional: draft.pricePromotional || existing.pricePromotional,
+              category: finalCategory,
+              imageUrl: draft.imageUrl || draft.image_url || existing.imageUrl || existing.image_url || ''
+            });
+          } else {
+            inserts.push({
+              name: draft.name,
+              brand: draft.brand,
+              size: draft.size,
+              stock: draft.stock,
+              cost: draft.cost,
+              pricePublic: draft.pricePublic,
+              pricePromotional: draft.pricePromotional,
+              category: finalCategory,
+              imageUrl: draft.imageUrl || draft.image_url || ''
+            });
+          }
         } else {
+          let inheritedImg = draft.imageUrl || draft.image_url || '';
+          if (!inheritedImg) {
+            const matchedEx = products.find(p => p.id === draft.matchedExistingId) ||
+              products.find(p => 
+                (p.brand || '').toLowerCase().trim() === (draft.brand || '').toLowerCase().trim() &&
+                (p.name || '').toLowerCase().trim() === (draft.name || '').toLowerCase().trim()
+              );
+            if (matchedEx) {
+              inheritedImg = matchedEx.imageUrl || matchedEx.image_url || '';
+            }
+          }
+
           inserts.push({
             name: draft.name,
             brand: draft.brand,
@@ -558,47 +588,28 @@ export default function Inventory() {
             pricePublic: draft.pricePublic,
             pricePromotional: draft.pricePromotional,
             category: finalCategory,
-            imageUrl: draft.imageUrl || draft.image_url || ''
+            imageUrl: inheritedImg
           });
         }
-      } else {
-        let inheritedImg = draft.imageUrl || draft.image_url || '';
-        if (!inheritedImg) {
-          const matchedEx = products.find(p => p.id === draft.matchedExistingId) ||
-            products.find(p => 
-              (p.brand || '').toLowerCase().trim() === (draft.brand || '').toLowerCase().trim() &&
-              (p.name || '').toLowerCase().trim() === (draft.name || '').toLowerCase().trim()
-            );
-          if (matchedEx) {
-            inheritedImg = matchedEx.imageUrl || matchedEx.image_url || '';
-          }
-        }
-
-        inserts.push({
-          name: draft.name,
-          brand: draft.brand,
-          size: draft.size,
-          stock: draft.stock,
-          cost: draft.cost,
-          pricePublic: draft.pricePublic,
-          pricePromotional: draft.pricePromotional,
-          category: finalCategory,
-          imageUrl: inheritedImg
-        });
       }
-    }
 
-    const res = await saveProductsBulk(inserts, updates);
-    if (res.success) {
-      setParsedProducts([]);
-      setIsDrafting(false);
-      setPdfFile(null);
-      setPdfBase64('');
-      setFileName('');
-      setParsingProgress('');
-      alert(`¡Carga masiva finalizada con éxito! ${res.countNew} nuevos registros de lote agregados y ${res.countUpdated} registros existentes actualizados.`);
-    } else {
-      setError(res.error || 'Error al guardar inventario');
+      const res = await saveProductsBulk(inserts, updates);
+      if (res.success) {
+        setParsedProducts([]);
+        setIsDrafting(false);
+        setPdfFile(null);
+        setPdfBase64('');
+        setFileName('');
+        setParsingProgress('');
+        alert(`¡Carga masiva finalizada con éxito! ${res.countNew} nuevos registros de lote agregados y ${res.countUpdated} registros existentes actualizados.`);
+      } else {
+        setError(res.error || 'Error al guardar inventario');
+      }
+    } catch (err) {
+      console.error(err);
+      setError(err?.message || 'Error inesperado al procesar la carga masiva.');
+    } finally {
+      setIsSavingDraft(false);
     }
   };
 
@@ -669,46 +680,59 @@ export default function Inventory() {
 
   const handleSaveProduct = async (e) => {
     e.preventDefault();
+    if (isSavingProduct) return;
+    setIsSavingProduct(true);
     setError(null);
 
-    const original = isEditing ? products.find(p => p.id === editingId) : null;
+    try {
+      const original = isEditing ? products.find(p => p.id === editingId) : null;
 
-    const finalDescription = setProductPromotions(formDescription, formPromoDetalle, formPromoMayorista);
+      const finalDescription = setProductPromotions(formDescription, formPromoDetalle, formPromoMayorista);
 
-    const data = {
-      name: formName.trim(),
-      brand: formBrand.trim(),
-      size: formSize.trim(),
-      cost: isVendedor ? undefined : (Number(formCost) > 0 ? Number(formCost) : undefined),
-      pricePublic: isVendedor ? (original?.pricePublic || 0) : (Number(formPricePublic) || 0),
-      pricePromotional: isVendedor ? (original?.pricePromotional || 0) : Math.round((Number(formPricePublic) || 0) * 0.75),
-      stock: Number(formStock) || 0,
-      category: formCategory,
-      barcode: formBarcode.trim(),
-      description: finalDescription,
-      image_url: formImageUrl.trim()
-    };
+      const finalCost = isVendedor 
+        ? (original?.cost > 0 ? Number(original.cost) : undefined)
+        : (Number(formCost) > 0 ? Number(formCost) : (original?.cost > 0 ? Number(original.cost) : undefined));
 
-    const ok = isEditing 
-      ? await updateProduct(editingId, data)
-      : await addProduct(data);
+      const data = {
+        name: formName.trim(),
+        brand: formBrand.trim(),
+        size: formSize.trim(),
+        cost: finalCost,
+        pricePublic: isVendedor ? (original?.pricePublic || 0) : (Number(formPricePublic) || 0),
+        pricePromotional: isVendedor ? (original?.pricePromotional || 0) : Math.round((Number(formPricePublic) || 0) * 0.75),
+        stock: Number(formStock) || 0,
+        category: formCategory,
+        barcode: formBarcode.trim(),
+        description: finalDescription,
+        image_url: formImageUrl.trim()
+      };
 
-    if (ok) {
-      setIsFormModalOpen(false);
-      setIsEditing(false);
-      setEditingId(null);
-      setFormName('');
-      setFormBrand('');
-      setFormSize('100 ml');
-      setFormCost('');
-      setFormPricePublic('');
-      setFormStock('');
-      setFormCategory('Damas');
-      setFormBarcode('');
-      setFormDescription('');
-      setFormImageUrl('');
-      setFormPromoDetalle('');
-      setFormPromoMayorista('');
+      const ok = isEditing 
+        ? await updateProduct(editingId, data)
+        : await addProduct(data);
+
+      if (ok) {
+        setIsFormModalOpen(false);
+        setIsEditing(false);
+        setEditingId(null);
+        setFormName('');
+        setFormBrand('');
+        setFormSize('100 ml');
+        setFormCost('');
+        setFormPricePublic('');
+        setFormStock('');
+        setFormCategory('Damas');
+        setFormBarcode('');
+        setFormDescription('');
+        setFormImageUrl('');
+        setFormPromoDetalle('');
+        setFormPromoMayorista('');
+      }
+    } catch (err) {
+      console.error(err);
+      setError(err?.message || 'Error al guardar el producto.');
+    } finally {
+      setIsSavingProduct(false);
     }
   };
 
@@ -1208,10 +1232,18 @@ export default function Inventory() {
                 Cancelar Carga
               </button>
               <button
+                type="button"
                 onClick={handleSaveDraft}
-                className="px-5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm"
+                disabled={isSavingDraft}
+                className="px-5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                Guardar en Inventario
+                {isSavingDraft ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Guardando...
+                  </>
+                ) : (
+                  'Guardar en Inventario'
+                )}
               </button>
             </div>
           </div>
@@ -1834,7 +1866,7 @@ export default function Inventory() {
                   <th className="px-3 sm:px-6 py-3.5">Precio Público (HNL)</th>
                   <th className="px-3 sm:px-6 py-3.5">Precio Mayorista (HNL)</th>
                   <th className="px-3 sm:px-6 py-3.5">Stock</th>
-                  <th className="px-3 sm:px-6 py-3.5">Código / Barcode</th>
+                  <th className="px-3 sm:px-6 py-3.5 max-w-[120px] w-[120px] truncate">Código / Barcode</th>
                   <th className="px-3 sm:px-6 py-3.5 text-right">Acciones</th>
                 </tr>
               </thead>
@@ -1945,10 +1977,10 @@ export default function Inventory() {
                             {p.stock} u
                           </span>
                         </td>
-                        <td className="px-3 sm:px-6 py-3.5 space-y-1 min-w-[100px]">
-                          <span className="font-mono text-neutral-500 dark:text-neutral-400 text-[10px] block truncate">{p.barcode}</span>
+                        <td className="px-3 sm:px-6 py-3.5 space-y-1 max-w-[120px] w-[120px] overflow-hidden">
+                          <span className="font-mono text-neutral-500 dark:text-neutral-400 text-[10px] block truncate" title={p.barcode}>{p.barcode}</span>
                           <div 
-                            className="w-16 h-4 opacity-50 dark:invert overflow-hidden"
+                            className="w-16 max-w-full h-4 opacity-50 dark:invert overflow-hidden"
                             dangerouslySetInnerHTML={{ __html: generateBarcodeSVG(p.barcode || p.id).replace('height="70"', 'height="10"').replace('style="background:white; padding:10px; border-radius:4px;"', 'style="background:transparent; padding:0;"') }}
                           />
                         </td>
@@ -2420,10 +2452,10 @@ export default function Inventory() {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading || !formName || !formBrand || (isOwner && !formCost) || (!isVendedor && !formPricePublic) || formStock === ''}
-                  className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                  disabled={isSavingProduct || loading || !formName || !formBrand || (isOwner && !formCost) || (!isVendedor && !formPricePublic) || formStock === ''}
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loading ? (
+                  {isSavingProduct || loading ? (
                     <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                   ) : (
                     isEditing ? 'Actualizar Producto' : 'Guardar Producto'
