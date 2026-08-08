@@ -784,7 +784,7 @@ export default function Inventory() {
       }
       
       record['Stock Disponible'] = p.stock > 0 ? `${p.stock} unidades` : 'Agotado';
-      record['Categoría'] = p.category === 'Masculino' ? 'Caballeros' : p.category === 'Unisex' ? 'Unisex' : 'Damas';
+      record['Categoría'] = normalizeCategory(p.category) || p.category || 'Damas';
       
       return record;
     });
@@ -981,7 +981,7 @@ export default function Inventory() {
           doc.setTextColor(107, 114, 128);
           doc.setFont('Helvetica', 'normal');
           doc.setFontSize(6);
-          const catLabel = p.category === 'Masculino' ? 'Caballeros' : p.category === 'Unisex' ? 'Unisex' : 'Damas';
+          const catLabel = normalizeCategory(p.category) || p.category || 'Damas';
           doc.text(`Categoría: ${catLabel}`, startX + 4, startY + 74);
 
           const stockTxt = p.stock > 0 ? `Stock: ${p.stock} u.` : 'Agotado';
@@ -1478,7 +1478,6 @@ export default function Inventory() {
                           <option value="Damas" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Damas</option>
                           <option value="Caballeros" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Caballeros</option>
                           <option value="Unisex" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Unisex</option>
-                          <option value="Revisión" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Revisión</option>
                         </select>
                       </td>
                       <td className="px-2 py-2 text-right">
@@ -1706,7 +1705,6 @@ export default function Inventory() {
                 <option value="Damas" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Damas / Femenino (W)</option>
                 <option value="Caballeros" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Caballeros / Masculino (M)</option>
                 <option value="Unisex" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Unisex (U)</option>
-                <option value="Revisión" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Revisión Manual</option>
               </select>
             </div>
 
@@ -2284,7 +2282,6 @@ export default function Inventory() {
                     <option value="Damas" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Damas (W)</option>
                     <option value="Caballeros" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Caballeros (M)</option>
                     <option value="Unisex" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Unisex (U)</option>
-                    <option value="Revisión" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Revisión Manual</option>
                   </select>
                 </div>
               </div>

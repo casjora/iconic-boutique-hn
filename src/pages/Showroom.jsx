@@ -463,7 +463,6 @@ export default function Showroom() {
                     <option value="Damas">Damas / Femenino (W)</option>
                     <option value="Caballeros">Caballeros / Masculino (M)</option>
                     <option value="Unisex">Unisex (U)</option>
-                    <option value="Revisión">Revisión Manual</option>
                   </optgroup>
                   <optgroup label="Filtrar por Columna Showroom">
                     <option value="col_damas">🌸 En Columna Damas</option>

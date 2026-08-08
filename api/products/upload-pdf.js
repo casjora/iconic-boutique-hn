@@ -386,10 +386,8 @@ export default async function handler(req, res) {
         category = 'Caballeros';
       } else if (catUpper === 'W' || catUpper === 'WOMAN' || catUpper === 'WOMEN' || catUpper === 'FEMENINO' || catUpper === 'DAMA' || catUpper === 'DAMAS') {
         category = 'Damas';
-      } else if (catUpper === 'U' || catUpper === 'UNISEX') {
+      } else if (catUpper === 'U' || catUpper === 'UNISEX' || catUpper === 'REVISION' || catUpper === 'REVISIÓN') {
         category = 'Unisex';
-      } else if (catUpper === 'REVISION' || catUpper === 'REVISIÓN') {
-        category = 'Revisión';
       } else {
         // Fallback: check full product name with strict word boundaries
         if (/\b(POUR FEMME|FOR WOMEN|FOR WOMAN|FEMENINO|DAMAS|DAMA|LADIES|LADY|MUJER|WOMEN|WOMAN|GIRL)\b/.test(nameUpper)) {

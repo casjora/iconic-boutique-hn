@@ -7,17 +7,14 @@ export function normalizeCategory(cat) {
   if (c === 'W' || c === 'WOMAN' || c === 'WOMEN' || c === 'FEMENINO' || c === 'DAMA' || c === 'DAMAS' || c === 'LADY' || c === 'LADIES' || c === 'MUJER' || c === 'FEMALE') {
     return 'Damas';
   }
-  if (c === 'U' || c === 'UNISEX') {
+  if (c === 'U' || c === 'UNISEX' || c === 'REVISION' || c === 'REVISIÓN' || c === 'PENDIENTE') {
     return 'Unisex';
-  }
-  if (c === 'REVISION' || c === 'REVISIÓN' || c === 'PENDIENTE') {
-    return 'Revisión';
   }
   return null;
 }
 
 export function detectProductCategory(str) {
-  if (!str) return 'Revisión';
+  if (!str) return 'Unisex';
   const text = String(str).trim();
   const upper = text.toUpperCase();
 
@@ -60,7 +57,7 @@ export function detectProductCategory(str) {
     return 'Damas';
   }
 
-  return 'Damas';
+  return 'Unisex';
 }
 
 export function isProductSet(product) {

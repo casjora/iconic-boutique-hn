@@ -92,7 +92,7 @@ const mapProductFromDb = (p) => {
   if (cat === 'Masculino' || cat === 'M') uiCategory = 'Caballeros';
   else if (cat === 'Unisex' || cat === 'U') uiCategory = 'Unisex';
   else if (cat === 'Femenino' || cat === 'W') uiCategory = 'Damas';
-  else if (cat === 'Revision' || cat === 'Revisión' || cat === 'Pendiente') uiCategory = 'Revisión';
+  else if (cat === 'Revision' || cat === 'Revisión' || cat === 'Pendiente') uiCategory = 'Unisex';
   else if (cat === 'Caballeros') uiCategory = 'Caballeros';
   else if (cat === 'Damas') uiCategory = 'Damas';
 
