@@ -1,41 +1,66 @@
+export function normalizeCategory(cat) {
+  if (!cat) return null;
+  const c = String(cat).trim().toUpperCase();
+  if (c === 'M' || c === 'MAN' || c === 'MEN' || c === 'MASCULINO' || c === 'CABALLERO' || c === 'CABALLEROS' || c === 'HOMBRE' || c === 'MALE') {
+    return 'Caballeros';
+  }
+  if (c === 'W' || c === 'WOMAN' || c === 'WOMEN' || c === 'FEMENINO' || c === 'DAMA' || c === 'DAMAS' || c === 'LADY' || c === 'LADIES' || c === 'MUJER' || c === 'FEMALE') {
+    return 'Damas';
+  }
+  if (c === 'U' || c === 'UNISEX') {
+    return 'Unisex';
+  }
+  if (c === 'REVISION' || c === 'REVISIÓN' || c === 'PENDIENTE') {
+    return 'Revisión';
+  }
+  return null;
+}
+
 export function detectProductCategory(str) {
-  if (!str) return 'Revision';
+  if (!str) return 'Revisión';
   const text = String(str).trim();
   const upper = text.toUpperCase();
 
-  // 1. Direct explicit single letter tokens or categories
-  if (upper === 'M' || upper === 'MAN' || upper === 'MEN' || upper === 'MASCULINO' || upper === 'CABALLERO' || upper === 'CABALLEROS' || upper === 'HOMBRE') {
-    return 'Caballeros';
-  }
-  if (upper === 'W' || upper === 'WOMAN' || upper === 'WOMEN' || upper === 'FEMENINO' || upper === 'LADY' || upper === 'LADIES' || upper === 'DAMAS' || upper === 'DAMA' || upper === 'MUJER') {
+  // Direct exact match
+  const direct = normalizeCategory(upper);
+  if (direct) return direct;
+
+  // 1. Explicit multi-word phrases or full words (Higher confidence)
+  // Check women phrases/keywords first so "WOMEN" or "WOMAN" doesn't get confused with "MEN" or "MAN"
+  if (/\b(POUR FEMME|FOR WOMEN|FOR WOMAN|FEMENINO|DAMAS|DAMA|LADIES|LADY|MUJER|WOMEN|WOMAN|GIRL)\b/.test(upper)) {
     return 'Damas';
   }
-  if (upper === 'U' || upper === 'UNISEX') {
+  if (/\b(POUR HOMME|FOR MEN|FOR MAN|MASCULINO|CABALLEROS|CABALLERO|HOMBRE|MEN|MAN|BOY)\b/.test(upper)) {
+    return 'Caballeros';
+  }
+  if (/\b(UNISEX)\b/.test(upper)) {
     return 'Unisex';
   }
 
-  // 2. Token boundary / word match check in multi-word product strings or descriptions
-  // Check for standalone M, W, U tokens with word boundaries (e.g., "100 ML EDT M", "EDP W 3.4 OZ", "SPRAY U")
-  if (/\bM\b/.test(upper) || /\bMEN\b/.test(upper) || /\bMAN\b/.test(upper) || /\bPOUR HOMME\b/.test(upper) || /\bCABALLERO\b/.test(upper) || /\bHOMBRE\b/.test(upper) || /\bBOY\b/.test(upper)) {
-    return 'Caballeros';
-  }
-  if (/\bW\b/.test(upper) || /\bWOMEN\b/.test(upper) || /\bWOMAN\b/.test(upper) || /\bPOUR FEMME\b/.test(upper) || /\bLADY\b/.test(upper) || /\bLADIES\b/.test(upper) || /\bDAMA\b/.test(upper) || /\bMUJER\b/.test(upper) || /\bGIRL\b/.test(upper)) {
+  // 2. Standalone single letter codes (M, W, U) with word boundaries
+  // Note: \bM\b, \bW\b, \bU\b.
+  // Replace parentheses like (M), (W), (U) with spaces so word boundary works
+  const cleanUpper = upper.replace(/[()]/g, ' ');
+
+  if (/\bW\b/.test(cleanUpper)) {
     return 'Damas';
   }
-  if (/\bU\b/.test(upper) || /\bUNISEX\b/.test(upper)) {
+  if (/\bM\b/.test(cleanUpper)) {
+    return 'Caballeros';
+  }
+  if (/\bU\b/.test(cleanUpper)) {
     return 'Unisex';
   }
 
-  // 3. Substring search if full words exist
-  if (upper.includes('MASCULINO') || upper.includes('CABALLEROS')) {
+  // 3. Substring fallback checks if full words exist
+  if (upper.includes('CABALLERO') || upper.includes('MASCULINO')) {
     return 'Caballeros';
   }
-  if (upper.includes('FEMENINO') || upper.includes('DAMAS')) {
+  if (upper.includes('DAMA') || upper.includes('FEMENINO')) {
     return 'Damas';
   }
 
-  // Fallback: Unisex
-  return 'Unisex';
+  return 'Damas';
 }
 
 export function isProductSet(product) {
@@ -252,6 +277,19 @@ export function setProductPromotions(description, promoDetalle, promoMayorista) 
 export function getConsolidatedProducts(products) {
   if (!Array.isArray(products) || products.length === 0) return [];
 
+  // Pass 1: Gather available images indexed by brand + name
+  const imageByPerfume = new Map();
+  for (const p of products) {
+    if (!p) continue;
+    const img = p.imageUrl || p.image_url;
+    if (img) {
+      const bnKey = `${(p.brand || '').trim().toLowerCase()}|${(p.name || '').trim().toLowerCase()}`;
+      if (!imageByPerfume.has(bnKey)) {
+        imageByPerfume.set(bnKey, img);
+      }
+    }
+  }
+
   const map = new Map();
 
   for (const p of products) {
@@ -260,19 +298,35 @@ export function getConsolidatedProducts(products) {
     const nameKey = (p.name || '').trim().toLowerCase();
     const sizeKey = (p.size || '').trim().toLowerCase();
     const key = `${brandKey}|${nameKey}|${sizeKey}`;
+    const bnKey = `${brandKey}|${nameKey}`;
+
+    // Inherit image if missing
+    const inheritedImg = p.imageUrl || p.image_url || imageByPerfume.get(bnKey) || '';
+
+    const normalizedP = {
+      ...p,
+      category: normalizeCategory(p.category) || p.category || 'Damas',
+      imageUrl: inheritedImg,
+      image_url: inheritedImg
+    };
 
     if (!map.has(key)) {
       map.set(key, {
-        ...p,
+        ...normalizedP,
         stock: Number(p.stock || 0),
-        batches: [p],
+        batches: [normalizedP],
         batchIds: [p.id]
       });
     } else {
       const existing = map.get(key);
       existing.stock += Number(p.stock || 0);
-      existing.batches.push(p);
+      existing.batches.push(normalizedP);
       existing.batchIds.push(p.id);
+
+      if (!existing.imageUrl && inheritedImg) {
+        existing.imageUrl = inheritedImg;
+        existing.image_url = inheritedImg;
+      }
 
       // If existing product had 0 stock but this batch has >0 stock, take active prices & id
       if (existing.stock <= 0 && Number(p.stock || 0) > 0) {

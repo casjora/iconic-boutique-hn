@@ -376,27 +376,36 @@ export default async function handler(req, res) {
         size = size.replace(/mls?/g, 'ml');
       }
 
-      // Exact non-conflicting gender detection
+      // Exact non-conflicting category detection
       let category = (p.category || '').trim();
       const catUpper = category.toUpperCase();
       const nameUpper = (p.name || '').toUpperCase();
+      const cleanNameUpper = nameUpper.replace(/[()]/g, ' ');
 
-      if (catUpper === 'M' || catUpper === 'MAN' || catUpper === 'MEN' || catUpper === 'MASCULINO' || catUpper.includes('MASCULINO') || /\bM\b/.test(nameUpper) || /\bMEN\b/.test(nameUpper) || /\bMAN\b/.test(nameUpper)) {
-        category = 'Masculino';
-      } else if (catUpper === 'W' || catUpper === 'WOMAN' || catUpper === 'WOMEN' || catUpper === 'FEMENINO' || catUpper.includes('FEMENINO') || /\bW\b/.test(nameUpper) || /\bWOMEN\b/.test(nameUpper) || /\bWOMAN\b/.test(nameUpper)) {
-        category = 'Femenino';
-      } else if (catUpper === 'U' || catUpper === 'UNISEX' || catUpper.includes('UNISEX') || /\bU\b/.test(nameUpper) || /\bUNISEX\b/.test(nameUpper)) {
+      if (catUpper === 'M' || catUpper === 'MAN' || catUpper === 'MEN' || catUpper === 'MASCULINO' || catUpper === 'CABALLERO' || catUpper === 'CABALLEROS') {
+        category = 'Caballeros';
+      } else if (catUpper === 'W' || catUpper === 'WOMAN' || catUpper === 'WOMEN' || catUpper === 'FEMENINO' || catUpper === 'DAMA' || catUpper === 'DAMAS') {
+        category = 'Damas';
+      } else if (catUpper === 'U' || catUpper === 'UNISEX') {
         category = 'Unisex';
       } else if (catUpper === 'REVISION' || catUpper === 'REVISIÓN') {
-        category = 'Unisex';
+        category = 'Revisión';
       } else {
-        // Fallback: check full name
-        if (/\b(MASCULINO|HOMBRE|POUR HOMME|CABALLERO)\b/.test(nameUpper)) {
-          category = 'Masculino';
-        } else if (/\b(FEMENINO|MUJER|POUR FEMME|DAMA|LADY|LADIES)\b/.test(nameUpper)) {
-          category = 'Femenino';
-        } else {
+        // Fallback: check full product name with strict word boundaries
+        if (/\b(POUR FEMME|FOR WOMEN|FOR WOMAN|FEMENINO|DAMAS|DAMA|LADIES|LADY|MUJER|WOMEN|WOMAN|GIRL)\b/.test(nameUpper)) {
+          category = 'Damas';
+        } else if (/\b(POUR HOMME|FOR MEN|FOR MAN|MASCULINO|CABALLEROS|CABALLERO|HOMBRE|MEN|MAN|BOY)\b/.test(nameUpper)) {
+          category = 'Caballeros';
+        } else if (/\b(UNISEX)\b/.test(nameUpper)) {
           category = 'Unisex';
+        } else if (/\bW\b/.test(cleanNameUpper)) {
+          category = 'Damas';
+        } else if (/\bM\b/.test(cleanNameUpper)) {
+          category = 'Caballeros';
+        } else if (/\bU\b/.test(cleanNameUpper)) {
+          category = 'Unisex';
+        } else {
+          category = 'Damas';
         }
       }
 

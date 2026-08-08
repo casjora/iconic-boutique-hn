@@ -10,7 +10,7 @@ import {
   AlertCircle, Check, Percent, Download, Share2,
   FileDown, FileSpreadsheet, FileText, X, Image as ImageIcon
 } from 'lucide-react';
-import { isProductSet, getProductPromoDiscount, cleanProductDescription, getProductPromoDetalle, getProductPromoMayorista, setProductPromotions, getProductPrices, detectProductCategory } from '../utils/productHelper';
+import { isProductSet, getProductPromoDiscount, cleanProductDescription, getProductPromoDetalle, getProductPromoMayorista, setProductPromotions, getProductPrices, detectProductCategory, normalizeCategory } from '../utils/productHelper';
 import { generateBarcodeSVG } from '../utils/barcode';
 
 const getProductImage = (p) => (p?.imageUrl || p?.image_url || '').trim();
@@ -124,13 +124,9 @@ export default function Inventory() {
         }
       }
 
-      let localCategory = item.category || 'Damas';
-      if (localCategory === 'Revision' || localCategory === 'Revisión') {
-        localCategory = 'Unisex';
-      } else if (matched) {
-        if (matched.category === 'Masculino' || matched.category === 'Caballeros') localCategory = 'Caballeros';
-        else if (matched.category === 'Unisex') localCategory = 'Unisex';
-        else localCategory = 'Damas';
+      let localCategory = normalizeCategory(item.category) || detectProductCategory(item.name || '') || 'Damas';
+      if (matched && matched.category) {
+        localCategory = normalizeCategory(matched.category) || localCategory;
       }
 
       const existingCost = matched ? Number(matched.cost || 0) : 0;
@@ -536,6 +532,7 @@ export default function Inventory() {
     const updates = [];
 
     for (const draft of parsedProducts) {
+      const finalCategory = normalizeCategory(draft.category) || draft.category || 'Damas';
       if (draft.matchedProductId && draft.matchedProductId !== 'new') {
         const existing = products.find(p => p.id === draft.matchedProductId);
         if (existing) {
@@ -548,7 +545,7 @@ export default function Inventory() {
             cost: (draft.cost > 0 ? draft.cost : existing.cost),
             pricePublic: draft.pricePublic || existing.pricePublic,
             pricePromotional: draft.pricePromotional || existing.pricePromotional,
-            category: draft.category,
+            category: finalCategory,
             imageUrl: draft.imageUrl || draft.image_url || existing.imageUrl || existing.image_url || ''
           });
         } else {
@@ -560,7 +557,7 @@ export default function Inventory() {
             cost: draft.cost,
             pricePublic: draft.pricePublic,
             pricePromotional: draft.pricePromotional,
-            category: draft.category,
+            category: finalCategory,
             imageUrl: draft.imageUrl || draft.image_url || ''
           });
         }
@@ -585,7 +582,7 @@ export default function Inventory() {
           cost: draft.cost,
           pricePublic: draft.pricePublic,
           pricePromotional: draft.pricePromotional,
-          category: draft.category,
+          category: finalCategory,
           imageUrl: inheritedImg
         });
       }
@@ -1376,9 +1373,7 @@ export default function Inventory() {
                                     if (matchedProd) {
                                       handleUpdateDraftField(idx, 'pricePublic', matchedProd.pricePublic);
                                       handleUpdateDraftField(idx, 'pricePromotional', matchedProd.pricePromotional);
-                                      let localCat = 'Damas';
-                                      if (matchedProd.category === 'Masculino') localCat = 'Caballeros';
-                                      else if (matchedProd.category === 'Unisex') localCat = 'Unisex';
+                                      let localCat = normalizeCategory(matchedProd.category) || 'Damas';
                                       handleUpdateDraftField(idx, 'category', localCat);
                                       if (matchedProd.cost) {
                                         handleUpdateDraftField(idx, 'cost', matchedProd.cost);
@@ -1476,7 +1471,7 @@ export default function Inventory() {
                       </td>
                       <td className="px-2 py-2">
                         <select
-                          value={item.category}
+                          value={normalizeCategory(item.category) || 'Damas'}
                           onChange={(e) => handleUpdateDraftField(idx, 'category', e.target.value)}
                           className="px-1.5 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs text-neutral-900 dark:text-neutral-100"
                         >
