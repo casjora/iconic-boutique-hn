@@ -388,7 +388,7 @@ export default async function handler(req, res) {
       } else if (catUpper === 'U' || catUpper === 'UNISEX' || catUpper.includes('UNISEX') || /\bU\b/.test(nameUpper) || /\bUNISEX\b/.test(nameUpper)) {
         category = 'Unisex';
       } else if (catUpper === 'REVISION' || catUpper === 'REVISIÓN') {
-        category = 'Revision';
+        category = 'Unisex';
       } else {
         // Fallback: check full name
         if (/\b(MASCULINO|HOMBRE|POUR HOMME|CABALLERO)\b/.test(nameUpper)) {
@@ -396,7 +396,7 @@ export default async function handler(req, res) {
         } else if (/\b(FEMENINO|MUJER|POUR FEMME|DAMA|LADY|LADIES)\b/.test(nameUpper)) {
           category = 'Femenino';
         } else {
-          category = 'Revision';
+          category = 'Unisex';
         }
       }
 

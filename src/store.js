@@ -119,12 +119,16 @@ const mapProductToDb = (p) => {
   const generatedId = p.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'prod_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36));
   const generatedBarcode = p.barcode || Math.floor(1000000000000 + Math.random() * 9000000000000).toString();
   
-  let dbCategory = 'Femenino';
+  let dbCategory;
   const cat = (p.category || '').trim();
-  if (cat === 'Caballeros' || cat === 'Masculino' || cat === 'Niños' || cat === 'M') dbCategory = 'Masculino';
-  else if (cat === 'Unisex' || cat === 'U') dbCategory = 'Unisex';
-  else if (cat === 'Damas' || cat === 'Femenino' || cat === 'W') dbCategory = 'Femenino';
-  else if (cat === 'Revisión' || cat === 'Revision') dbCategory = 'Revision';
+  if (cat === 'Caballeros' || cat === 'Masculino' || cat === 'Niños' || cat === 'M') {
+    dbCategory = 'Masculino';
+  } else if (cat === 'Damas' || cat === 'Femenino' || cat === 'W') {
+    dbCategory = 'Femenino';
+  } else {
+    // 'Unisex', 'U', 'Revisión', 'Revision' or any unmapped -> 'Unisex'
+    dbCategory = 'Unisex';
+  }
 
   const dbRecord = {
     id: generatedId,
@@ -575,15 +579,13 @@ export const useStore = create((setOriginal, get) => {
             if (categoryToUse !== undefined) {
               const catStr = String(categoryToUse).trim();
               if (catStr === 'Caballeros' || catStr === 'Masculino' || catStr === 'Niños' || catStr === 'M') dbCategory = 'Masculino';
-              else if (catStr === 'Unisex' || catStr === 'U') dbCategory = 'Unisex';
               else if (catStr === 'Damas' || catStr === 'Femenino' || catStr === 'W') dbCategory = 'Femenino';
-              else if (catStr === 'Revisión' || catStr === 'Revision') dbCategory = 'Revision';
+              else dbCategory = 'Unisex';
             }
             if (!dbCategory && original.category) {
               const origCat = String(original.category).trim();
               if (origCat === 'Masculino' || origCat === 'Caballeros' || origCat === 'M') dbCategory = 'Masculino';
               else if (origCat === 'Unisex' || origCat === 'U') dbCategory = 'Unisex';
-              else if (origCat === 'Revision' || origCat === 'Revisión') dbCategory = 'Revision';
               else dbCategory = 'Femenino';
             }
 

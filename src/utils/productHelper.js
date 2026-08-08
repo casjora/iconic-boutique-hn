@@ -34,8 +34,8 @@ export function detectProductCategory(str) {
     return 'Damas';
   }
 
-  // Fallback: Revision Manual
-  return 'Revision';
+  // Fallback: Unisex
+  return 'Unisex';
 }
 
 export function isProductSet(product) {

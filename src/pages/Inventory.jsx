@@ -120,8 +120,10 @@ export default function Inventory() {
       }
 
       let localCategory = item.category || 'Damas';
-      if (matched) {
-        if (matched.category === 'Masculino') localCategory = 'Caballeros';
+      if (localCategory === 'Revision' || localCategory === 'Revisión') {
+        localCategory = 'Unisex';
+      } else if (matched) {
+        if (matched.category === 'Masculino' || matched.category === 'Caballeros') localCategory = 'Caballeros';
         else if (matched.category === 'Unisex') localCategory = 'Unisex';
         else localCategory = 'Damas';
       }
@@ -517,6 +519,8 @@ export default function Inventory() {
       setFileName('');
       setParsingProgress('');
       alert(`¡Carga masiva finalizada con éxito! ${res.countNew} nuevos registros de lote agregados y ${res.countUpdated} registros existentes actualizados.`);
+    } else {
+      setError(res.error || 'Error al guardar inventario');
     }
   };
 
