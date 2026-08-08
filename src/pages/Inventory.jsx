@@ -1138,45 +1138,45 @@ export default function Inventory() {
             <table className="min-w-full divide-y divide-neutral-200 dark:divide-neutral-800 text-left text-xs font-semibold text-neutral-700 dark:text-neutral-200">
               <thead className="bg-neutral-50 dark:bg-neutral-800/70 text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest font-mono">
                 <tr>
-                  <th className="px-4 py-3">Marca</th>
-                  <th className="px-4 py-3">Nombre Fragancia</th>
-                  <th className="px-4 py-3">Vinculación (Inventario)</th>
-                  <th className="px-4 py-3">Presentación</th>
-                  <th className="px-4 py-3">Costo Unit. (HNL)</th>
-                  <th className="px-4 py-3">Precio Público (HNL)</th>
-                  <th className="px-4 py-3">Precio VIP (HNL)</th>
-                  <th className="px-4 py-3">Stock Facturado</th>
-                  <th className="px-4 py-3">Categoría</th>
-                  <th className="px-4 py-3 text-right">Acciones</th>
+                  <th className="px-2 py-3">Marca</th>
+                  <th className="px-2 py-3">Nombre Fragancia</th>
+                  <th className="px-2 py-3 max-w-[180px]">Vinculación</th>
+                  <th className="px-2 py-3">Presentación</th>
+                  <th className="px-2 py-3">Costo Unit.</th>
+                  <th className="px-2 py-3">P. Público</th>
+                  <th className="px-2 py-3">P. VIP</th>
+                  <th className="px-2 py-3">Stock</th>
+                  <th className="px-2 py-3">Categoría</th>
+                  <th className="px-2 py-3 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
                 {parsedProducts.map((item, idx) => (
                   <tr key={idx} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
-                    <td className="px-4 py-2">
+                    <td className="px-2 py-2">
                       <input
                         type="text"
                         value={item.brand}
                         onChange={(e) => handleUpdateDraftField(idx, 'brand', e.target.value)}
-                        className="w-24 px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs text-neutral-900 dark:text-neutral-100"
+                        className="w-20 px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs text-neutral-900 dark:text-neutral-100"
                       />
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-2 py-2">
                       <input
                         type="text"
                         value={item.name}
                         onChange={(e) => handleUpdateDraftField(idx, 'name', e.target.value)}
-                        className="w-44 px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs text-neutral-900 dark:text-neutral-100"
+                        className="w-36 px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs text-neutral-900 dark:text-neutral-100"
                       />
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-2 py-2 max-w-[170px]">
                       {(() => {
                         const sameBrandProducts = products.filter(p => 
                           (p.brand || '').toLowerCase().trim() === (item.brand || '').toLowerCase().trim()
                         );
 
                         return (
-                          <div className="flex flex-col gap-1 min-w-[200px]">
+                          <div className="flex flex-col gap-1 max-w-[160px]">
                             <select
                               value={item.matchedProductId || 'new'}
                               onChange={(e) => {
@@ -1197,13 +1197,13 @@ export default function Inventory() {
                                   }
                                 }
                               }}
-                              className={`px-2 py-1 border rounded text-xs font-semibold outline-none transition-colors ${
+                              className={`w-full truncate px-1.5 py-1 border rounded text-[11px] font-semibold outline-none transition-colors ${
                                 item.matchedProductId && item.matchedProductId !== 'new'
                                   ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 focus:ring-1 focus:ring-emerald-400'
                                   : 'bg-indigo-50/50 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-700 text-indigo-900 dark:text-indigo-200 focus:ring-1 focus:ring-indigo-300'
                               }`}
                             >
-                              <option value="new" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">➕ Crear como Nuevo Perfume</option>
+                              <option value="new" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">➕ Crear como Nuevo</option>
                               {sameBrandProducts.length > 0 && (
                                 <optgroup label={`Existentes de ${item.brand}`}>
                                   {sameBrandProducts.map(p => (
@@ -1227,77 +1227,77 @@ export default function Inventory() {
                             </select>
                             
                             {item.isDifferentCost && (
-                              <div className="text-[10px] bg-amber-50 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-bold px-2 py-1 rounded border border-amber-200 dark:border-amber-800 my-1">
-                                ⚡ Costo diferente: Nuevo L. {item.cost.toLocaleString()} vs Existente L. {item.existingCost.toLocaleString()}
+                              <div className="text-[9px] leading-tight bg-amber-50 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-bold px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800 my-0.5">
+                                ⚡ Costo dif: L. {item.cost} vs L. {item.existingCost}
                               </div>
                             )}
                             
                             {item.matchedProductId && item.matchedProductId !== 'new' ? (
-                              <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-extrabold flex items-center gap-1">
-                                <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" /> Sumará +{item.stock} al lote existente (Costo L. {item.existingCost})
+                              <span className="text-[9px] text-emerald-700 dark:text-emerald-400 font-extrabold flex items-center gap-0.5 truncate">
+                                <Check className="h-2.5 w-2.5 text-emerald-600 dark:text-emerald-400 shrink-0" /> +{item.stock} a lote (L. {item.existingCost})
                               </span>
                             ) : (
-                              <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1">
-                                <Plus className="h-3 w-3 text-indigo-500 dark:text-indigo-400" /> Se registrará como nuevo lote con costo L. {item.cost}
+                              <span className="text-[9px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-0.5 truncate">
+                                <Plus className="h-2.5 w-2.5 text-indigo-500 dark:text-indigo-400 shrink-0" /> Nuevo lote (L. {item.cost})
                               </span>
                             )}
                           </div>
                         );
                       })()}
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-2 py-2">
                       <input
                         type="text"
                         value={item.size}
                         onChange={(e) => handleUpdateDraftField(idx, 'size', e.target.value)}
-                        className="w-20 px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs text-neutral-900 dark:text-neutral-100"
+                        className="w-16 px-1.5 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs text-neutral-900 dark:text-neutral-100"
                       />
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-2 py-2">
                       <input
                         type="number"
                         value={item.cost}
                         onChange={(e) => handleUpdateDraftField(idx, 'cost', e.target.value)}
-                        className="w-20 px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs font-mono text-neutral-900 dark:text-neutral-100"
+                        className="w-16 px-1.5 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs font-mono text-neutral-900 dark:text-neutral-100"
                       />
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-2 py-2">
                       <input
                         type="number"
                         value={item.pricePublic}
                         onChange={(e) => handleUpdateDraftField(idx, 'pricePublic', e.target.value)}
-                        className="w-20 px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs font-mono text-neutral-900 dark:text-neutral-100"
+                        className="w-16 px-1.5 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs font-mono text-neutral-900 dark:text-neutral-100"
                       />
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-2 py-2">
                       <input
                         type="number"
                         value={item.pricePromotional}
                         onChange={(e) => handleUpdateDraftField(idx, 'pricePromotional', e.target.value)}
-                        className="w-20 px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs font-mono text-neutral-900 dark:text-neutral-100"
+                        className="w-16 px-1.5 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs font-mono text-neutral-900 dark:text-neutral-100"
                       />
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-2 py-2">
                       <input
                         type="number"
                         value={item.stock}
                         onChange={(e) => handleUpdateDraftField(idx, 'stock', e.target.value)}
-                        className="w-16 px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs font-mono text-neutral-900 dark:text-neutral-100"
+                        className="w-14 px-1.5 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs font-mono text-neutral-900 dark:text-neutral-100"
                       />
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-2 py-2">
                       <select
                         value={item.category}
                         onChange={(e) => handleUpdateDraftField(idx, 'category', e.target.value)}
-                        className="px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs text-neutral-900 dark:text-neutral-100"
+                        className="px-1.5 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-xs text-neutral-900 dark:text-neutral-100"
                       >
-                        <option value="Damas" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Damas (W)</option>
-                        <option value="Caballeros" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Caballeros (M)</option>
-                        <option value="Unisex" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Unisex (U)</option>
-                        <option value="Revisión" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Revisión Manual</option>
+                        <option value="Damas" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Damas</option>
+                        <option value="Caballeros" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Caballeros</option>
+                        <option value="Unisex" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Unisex</option>
+                        <option value="Revisión" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">Revisión</option>
                       </select>
                     </td>
-                    <td className="px-4 py-2 text-right">
+                    <td className="px-2 py-2 text-right">
                       <button
                         onClick={() => handleRemoveDraftItem(idx)}
                         className="p-1 text-neutral-400 hover:text-red-600 dark:hover:text-rose-400 rounded cursor-pointer"
