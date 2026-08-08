@@ -140,8 +140,12 @@ export default function Inventory() {
       // If costs differ, default matchedProductId to 'new' so it creates a distinct cost batch record for accuracy
       const finalMatchedId = isDifferentCost ? 'new' : (matched ? matched.id : 'new');
 
+      const matchedImage = matched ? (matched.imageUrl || matched.image_url || '') : '';
+      const finalImage = item.imageUrl || item.image_url || matchedImage;
+
       return {
         ...item,
+        imageUrl: finalImage,
         matchedProductId: finalMatchedId,
         matchedExistingId: matched ? matched.id : null,
         matchType: matchType,
@@ -544,7 +548,8 @@ export default function Inventory() {
             cost: (draft.cost > 0 ? draft.cost : existing.cost),
             pricePublic: draft.pricePublic || existing.pricePublic,
             pricePromotional: draft.pricePromotional || existing.pricePromotional,
-            category: draft.category
+            category: draft.category,
+            imageUrl: draft.imageUrl || draft.image_url || existing.imageUrl || existing.image_url || ''
           });
         } else {
           inserts.push({
@@ -555,10 +560,23 @@ export default function Inventory() {
             cost: draft.cost,
             pricePublic: draft.pricePublic,
             pricePromotional: draft.pricePromotional,
-            category: draft.category
+            category: draft.category,
+            imageUrl: draft.imageUrl || draft.image_url || ''
           });
         }
       } else {
+        let inheritedImg = draft.imageUrl || draft.image_url || '';
+        if (!inheritedImg) {
+          const matchedEx = products.find(p => p.id === draft.matchedExistingId) ||
+            products.find(p => 
+              (p.brand || '').toLowerCase().trim() === (draft.brand || '').toLowerCase().trim() &&
+              (p.name || '').toLowerCase().trim() === (draft.name || '').toLowerCase().trim()
+            );
+          if (matchedEx) {
+            inheritedImg = matchedEx.imageUrl || matchedEx.image_url || '';
+          }
+        }
+
         inserts.push({
           name: draft.name,
           brand: draft.brand,
@@ -567,7 +585,8 @@ export default function Inventory() {
           cost: draft.cost,
           pricePublic: draft.pricePublic,
           pricePromotional: draft.pricePromotional,
-          category: draft.category
+          category: draft.category,
+          imageUrl: inheritedImg
         });
       }
     }
