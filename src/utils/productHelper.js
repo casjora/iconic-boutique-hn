@@ -248,3 +248,43 @@ export function setProductPromotions(description, promoDetalle, promoMayorista) 
   
   return cleanDesc;
 }
+
+export function getConsolidatedProducts(products) {
+  if (!Array.isArray(products) || products.length === 0) return [];
+
+  const map = new Map();
+
+  for (const p of products) {
+    if (!p) continue;
+    const brandKey = (p.brand || '').trim().toLowerCase();
+    const nameKey = (p.name || '').trim().toLowerCase();
+    const sizeKey = (p.size || '').trim().toLowerCase();
+    const key = `${brandKey}|${nameKey}|${sizeKey}`;
+
+    if (!map.has(key)) {
+      map.set(key, {
+        ...p,
+        stock: Number(p.stock || 0),
+        batches: [p],
+        batchIds: [p.id]
+      });
+    } else {
+      const existing = map.get(key);
+      existing.stock += Number(p.stock || 0);
+      existing.batches.push(p);
+      existing.batchIds.push(p.id);
+
+      // If existing product had 0 stock but this batch has >0 stock, take active prices & id
+      if (existing.stock <= 0 && Number(p.stock || 0) > 0) {
+        existing.id = p.id;
+        existing.pricePublic = p.pricePublic;
+        existing.pricePromotional = p.pricePromotional;
+        if (p.cost && p.cost > 0) existing.cost = p.cost;
+      } else if ((!existing.cost || existing.cost === 0) && p.cost > 0) {
+        existing.cost = p.cost;
+      }
+    }
+  }
+
+  return Array.from(map.values());
+}

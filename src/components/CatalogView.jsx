@@ -4,7 +4,7 @@ import { useStore } from '../store';
 import { Link, useLocation } from 'react-router-dom';
 import PerfumeCard from './PerfumeCard';
 import { Percent, Award, Heart, Sparkles, Search, SlidersHorizontal, RefreshCw, Flame, Download, FileDown, FileSpreadsheet, FileText, X, Loader2 } from 'lucide-react';
-import { isProductSet, getProductPromoDiscount, getProductPrices, isProductInPublicCategory } from '../utils/productHelper';
+import { isProductSet, getProductPromoDiscount, getProductPrices, isProductInPublicCategory, getConsolidatedProducts } from '../utils/productHelper';
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
 
@@ -458,7 +458,7 @@ export default function CatalogView({ favoritesOnly = false }) {
 
   // Filters base products: guest/public users only see featuredPublic items. Non-staff users (mayoristas, detalle) do not see out-of-stock items.
   const baseProducts = useMemo(() => {
-    let list = products;
+    let list = getConsolidatedProducts(products);
     // Only unregistered/guest users should be restricted to featuredPublic items
     if (!user) {
       list = list.filter(p => p.featuredPublic === true);
@@ -468,7 +468,7 @@ export default function CatalogView({ favoritesOnly = false }) {
       list = list.filter(p => (p.availableStock !== undefined ? p.availableStock : p.stock) > 0);
     }
     if (favoritesOnly) {
-      return list.filter(p => favorites.includes(p.id));
+      return list.filter(p => favorites.includes(p.id) || (p.batchIds && p.batchIds.some(id => favorites.includes(id))));
     }
     return list;
   }, [products, favorites, favoritesOnly, user, isStaff]);

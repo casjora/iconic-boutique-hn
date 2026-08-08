@@ -126,10 +126,20 @@ export default function Inventory() {
         else localCategory = 'Damas';
       }
 
+      const existingCost = matched ? Number(matched.cost || 0) : 0;
+      const itemCost = Number(item.cost || 0);
+      const isDifferentCost = Boolean(matched && existingCost > 0 && itemCost > 0 && existingCost !== itemCost);
+
+      // If costs differ, default matchedProductId to 'new' so it creates a distinct cost batch record for accuracy
+      const finalMatchedId = isDifferentCost ? 'new' : (matched ? matched.id : 'new');
+
       return {
         ...item,
-        matchedProductId: matched ? matched.id : 'new',
+        matchedProductId: finalMatchedId,
+        matchedExistingId: matched ? matched.id : null,
         matchType: matchType,
+        isDifferentCost: isDifferentCost,
+        existingCost: existingCost,
         cost: item.cost || (matched ? matched.cost : 0),
         pricePublic: item.pricePublic || (matched ? matched.pricePublic : 0),
         pricePromotional: item.pricePromotional || (matched ? matched.pricePromotional : 0),
@@ -235,6 +245,14 @@ export default function Inventory() {
     return { brand, name, size, category };
   };
 
+  const cleanNumber = (val) => {
+    if (val === null || val === undefined) return 0;
+    if (typeof val === 'number') return isNaN(val) ? 0 : val;
+    const cleaned = String(val).replace(/["'\s$L]/gi, '').replace(/,/g, '').trim();
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
   const processExtractedDataArrays = (data) => {
     if (!data || data.length === 0) {
       setError('El archivo está vacío o no contiene filas legibles.');
@@ -245,7 +263,16 @@ export default function Inventory() {
     try {
       const parsed = [];
       const firstRowStr = data[0].join(' ').toLowerCase();
-      const hasHeaders = firstRowStr.includes('marca') || firstRowStr.includes('precio') || firstRowStr.includes('costo') || firstRowStr.includes('perfume');
+      const hasHeaders = firstRowStr.includes('marca') || 
+                         firstRowStr.includes('precio') || 
+                         firstRowStr.includes('costo') || 
+                         firstRowStr.includes('cost') ||
+                         firstRowStr.includes('perfume') ||
+                         firstRowStr.includes('units') ||
+                         firstRowStr.includes('mayoreo') ||
+                         firstRowStr.includes('detalle') ||
+                         firstRowStr.includes('name');
+
       const startIndex = hasHeaders ? 1 : 0;
 
       for (let i = startIndex; i < data.length; i++) {
@@ -255,57 +282,42 @@ export default function Inventory() {
         let nameStr = String(row[0] || '').trim();
         if (!nameStr) continue;
 
-        let pStock = 1, pVip = 0, pRetail = 0, pCost = 0;
-        let fullText = "";
-        const numbers = [];
-        
-        for (const cell of row) {
-          if (cell === null || cell === undefined) continue;
-          const s = String(cell).trim();
-          const num = Number(s.replace(/,/g, ''));
-          if (isNaN(num) || s === '') {
-             fullText += s + " ";
-          } else {
-             numbers.push(num);
+        const nameLower = nameStr.toLowerCase();
+        if (nameLower === 'name' || nameLower === 'nombre' || nameLower === 'producto' || nameLower === 'descripcion') {
+          continue;
+        }
+
+        let pStock = 1, pCost = 0, pVip = 0, pRetail = 0;
+
+        // Headerless/Header order: A: Name, B: Units (Stock), C: Cost, D: Mayoreo (Wholesale), E: Detalle (Retail)
+        if (row.length >= 5) {
+          pStock = cleanNumber(row[1]);
+          pCost = cleanNumber(row[2]);
+          pVip = cleanNumber(row[3]);
+          pRetail = cleanNumber(row[4]);
+        } else if (row.length === 4) {
+          pStock = cleanNumber(row[1]);
+          pCost = cleanNumber(row[2]);
+          pRetail = cleanNumber(row[3]);
+          pVip = cleanNumber(row[3]);
+        } else if (row.length === 3) {
+          pStock = cleanNumber(row[1]);
+          pRetail = cleanNumber(row[2]);
+          pVip = cleanNumber(row[2]);
+        } else if (row.length === 2) {
+          pStock = cleanNumber(row[1]) || 1;
+        } else if (row.length === 1 && typeof row[0] === 'string') {
+          const parts = row[0].split(/[,;\t]/);
+          if (parts.length >= 5) {
+            nameStr = parts[0].trim();
+            pStock = cleanNumber(parts[1]);
+            pCost = cleanNumber(parts[2]);
+            pVip = cleanNumber(parts[3]);
+            pRetail = cleanNumber(parts[4]);
           }
         }
 
-        if (row.length === 1 && typeof row[0] === 'string') {
-          const parts = row[0].split(/[;\t]/);
-          if (parts.length > 1) {
-            fullText = "";
-            numbers.length = 0;
-            for (const cell of parts) {
-              const s = String(cell).trim();
-              const num = Number(s.replace(/,/g, ''));
-              if (isNaN(num) || s === '') {
-                 fullText += s + " ";
-              } else {
-                 numbers.push(num);
-              }
-            }
-          }
-        }
-
-        fullText = fullText.trim();
-        if (!fullText && numbers.length > 0) {
-           continue;
-        }
-        
-        const { brand, name, size, category } = parseProductString(fullText || nameStr);
-
-        if (numbers.length >= 3) {
-           const len = numbers.length;
-           pStock = numbers[len - 3];
-           pVip = numbers[len - 2];
-           pRetail = numbers[len - 1];
-        } else if (numbers.length === 2) {
-           pStock = numbers[0];
-           pRetail = numbers[1];
-        } else if (numbers.length === 1) {
-           pStock = numbers[0];
-        }
-
+        const { brand, name, size, category } = parseProductString(nameStr);
         const finalSize = convertOzToMl(size);
 
         parsed.push({
@@ -465,16 +477,34 @@ export default function Inventory() {
             brand: draft.brand,
             size: draft.size,
             stock: existing.stock + draft.stock,
+            cost: (draft.cost > 0 ? draft.cost : existing.cost),
+            pricePublic: draft.pricePublic || existing.pricePublic,
+            pricePromotional: draft.pricePromotional || existing.pricePromotional,
+            category: draft.category
+          });
+        } else {
+          inserts.push({
+            name: draft.name,
+            brand: draft.brand,
+            size: draft.size,
+            stock: draft.stock,
             cost: draft.cost,
             pricePublic: draft.pricePublic,
             pricePromotional: draft.pricePromotional,
             category: draft.category
           });
-        } else {
-          inserts.push(draft);
         }
       } else {
-        inserts.push(draft);
+        inserts.push({
+          name: draft.name,
+          brand: draft.brand,
+          size: draft.size,
+          stock: draft.stock,
+          cost: draft.cost,
+          pricePublic: draft.pricePublic,
+          pricePromotional: draft.pricePromotional,
+          category: draft.category
+        });
       }
     }
 
@@ -486,7 +516,7 @@ export default function Inventory() {
       setPdfBase64('');
       setFileName('');
       setParsingProgress('');
-      alert(`¡Carga masiva finalizada con éxito! ${res.countNew} nuevos perfumes agregados y ${res.countUpdated} registros existentes actualizados.`);
+      alert(`¡Carga masiva finalizada con éxito! ${res.countNew} nuevos registros de lote agregados y ${res.countUpdated} registros existentes actualizados.`);
     }
   };
 
@@ -1196,13 +1226,19 @@ export default function Inventory() {
                               </optgroup>
                             </select>
                             
+                            {item.isDifferentCost && (
+                              <div className="text-[10px] bg-amber-50 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-bold px-2 py-1 rounded border border-amber-200 dark:border-amber-800 my-1">
+                                ⚡ Costo diferente: Nuevo L. {item.cost.toLocaleString()} vs Existente L. {item.existingCost.toLocaleString()}
+                              </div>
+                            )}
+                            
                             {item.matchedProductId && item.matchedProductId !== 'new' ? (
                               <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-extrabold flex items-center gap-1">
-                                <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" /> Sumará +{item.stock} al stock existente
+                                <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" /> Sumará +{item.stock} al lote existente (Costo L. {item.existingCost})
                               </span>
                             ) : (
                               <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1">
-                                <Plus className="h-3 w-3 text-indigo-500 dark:text-indigo-400" /> Se registrará como nuevo
+                                <Plus className="h-3 w-3 text-indigo-500 dark:text-indigo-400" /> Se registrará como nuevo lote con costo L. {item.cost}
                               </span>
                             )}
                           </div>

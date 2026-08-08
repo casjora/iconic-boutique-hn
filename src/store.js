@@ -131,7 +131,6 @@ const mapProductToDb = (p) => {
     name: p.name ? String(p.name).trim() : 'Perfume Desconocido',
     brand: p.brand ? String(p.brand).trim() : 'Marca Desconocida',
     size: p.size ? String(p.size).trim() : '100 ml',
-    cost: Number(p.cost || 0),
     price_public: Number(p.pricePublic !== undefined ? p.pricePublic : (p.price_public || 0)),
     price_promotional: Number(p.pricePromotional !== undefined ? p.pricePromotional : (p.price_promotional || 0)),
     stock: Number(p.stock || 0),
@@ -143,8 +142,9 @@ const mapProductToDb = (p) => {
     public_discount: Number(p.publicDiscount || 0)
   };
 
-  if (p.id && (!p.cost || Number(p.cost) <= 0)) {
-    delete dbRecord.cost;
+  // Only include cost if provided as a valid positive number
+  if (p.cost !== undefined && p.cost !== null && Number(p.cost) > 0) {
+    dbRecord.cost = Number(p.cost);
   }
   
   return dbRecord;
@@ -587,13 +587,12 @@ export const useStore = create((setOriginal, get) => {
               else dbCategory = 'Femenino';
             }
 
-            return {
+            const dbItem = {
               id: u.id,
               name,
               brand,
               size,
               stock: Number(u.stock !== undefined ? u.stock : (original.stock || 0)),
-              cost: Number(u.cost !== undefined ? u.cost : (original.cost || 0)),
               price_public: Number(u.pricePublic !== undefined ? u.pricePublic : (original.pricePublic || 0)),
               price_promotional: Number(u.pricePromotional !== undefined ? u.pricePromotional : (original.pricePromotional || 0)),
               category: dbCategory || 'Femenino',
@@ -601,6 +600,17 @@ export const useStore = create((setOriginal, get) => {
               description: original.description || null,
               image_url: original.imageUrl || null
             };
+
+            const uCost = u.cost !== undefined && u.cost !== null ? Number(u.cost) : undefined;
+            const origCost = original.cost ? Number(original.cost) : undefined;
+
+            if (uCost !== undefined && uCost > 0) {
+              dbItem.cost = uCost;
+            } else if (origCost !== undefined && origCost > 0) {
+              dbItem.cost = origCost;
+            }
+
+            return dbItem;
           });
           for (const item of dbUpdates) {
             const { error: updErr } = await supabase.from('products').update(item).eq('id', item.id);
