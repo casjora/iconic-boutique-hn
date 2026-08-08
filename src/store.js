@@ -687,7 +687,11 @@ export const useStore = create((setOriginal, get) => {
         });
         return true;
       } catch (err) {
-        set({ error: err.message, loading: false });
+        let msg = err?.message || 'Error al agregar el producto';
+        if (err?.code === '23505' || String(err?.message || '').includes('23505') || String(err?.message || '').includes('unique')) {
+          msg = 'El código de barras ya pertenece a otro producto registrado en el inventario.';
+        }
+        set({ error: msg, loading: false });
         return false;
       }
     },
@@ -720,7 +724,11 @@ export const useStore = create((setOriginal, get) => {
         }));
         return true;
       } catch (err) {
-        set({ error: err.message, loading: false });
+        let msg = err?.message || 'Error al actualizar el producto';
+        if (err?.code === '23505' || String(err?.message || '').includes('23505') || String(err?.message || '').includes('unique')) {
+          msg = 'El código de barras ya pertenece a otro producto registrado en el inventario.';
+        }
+        set({ error: msg, loading: false });
         return false;
       }
     },
@@ -745,8 +753,12 @@ export const useStore = create((setOriginal, get) => {
         }));
         return { success: true, product: updatedProduct };
       } catch (err) {
-        set({ error: err.message, loading: false });
-        return { success: false, error: err.message };
+        let msg = err?.message || 'Error al actualizar el código de barras';
+        if (err?.code === '23505' || String(err?.message || '').includes('23505') || String(err?.message || '').includes('unique')) {
+          msg = `El código de barras "${newBarcode}" ya pertenece a otro producto en el inventario.`;
+        }
+        set({ error: msg, loading: false });
+        return { success: false, error: msg };
       }
     },
 

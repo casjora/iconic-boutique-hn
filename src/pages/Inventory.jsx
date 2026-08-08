@@ -685,6 +685,15 @@ export default function Inventory() {
     setError(null);
 
     try {
+      if (formBarcode.trim().length > 0) {
+        const duplicate = products.find(p => p.id !== editingId && (p.barcode || '').trim().toLowerCase() === formBarcode.trim().toLowerCase());
+        if (duplicate) {
+          setError(`El código de barras "${formBarcode.trim()}" ya pertenece a "${duplicate.brand} - ${duplicate.name}". Cada producto debe tener un código de barras único.`);
+          setIsSavingProduct(false);
+          return;
+        }
+      }
+
       const original = isEditing ? products.find(p => p.id === editingId) : null;
 
       const finalDescription = setProductPromotions(formDescription, formPromoDetalle, formPromoMayorista);
@@ -2254,6 +2263,14 @@ export default function Inventory() {
 
             <form onSubmit={handleSaveProduct} className="space-y-4">
               
+              {error && (
+                <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-xs rounded-xl flex items-center justify-between gap-2">
+                  <span>{error}</span>
+                  <button type="button" onClick={() => setError(null)} className="text-red-500 hover:text-red-700 dark:hover:text-red-300 cursor-pointer">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
               <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
                 <div>
                   <label htmlFor="prod-brand" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
@@ -2452,7 +2469,7 @@ export default function Inventory() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSavingProduct || loading || !formName || !formBrand || (isOwner && !formCost) || (!isVendedor && !formPricePublic) || formStock === ''}
+                  disabled={isSavingProduct || loading || !formName || !formBrand || (!isVendedor && (formPricePublic === '' || formPricePublic === null || formPricePublic === undefined)) || formStock === ''}
                   className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSavingProduct || loading ? (
