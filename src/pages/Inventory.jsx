@@ -141,9 +141,13 @@ export default function Inventory() {
       const matchedImage = matched ? (matched.imageUrl || matched.image_url || '') : '';
       const finalImage = item.imageUrl || item.image_url || matchedImage;
 
+      const matchedBarcode = matched ? (matched.barcode || '') : '';
+      const finalBarcode = item.barcode || matchedBarcode;
+
       return {
         ...item,
         imageUrl: finalImage,
+        barcode: finalBarcode,
         matchedProductId: finalMatchedId,
         matchedExistingId: matched ? matched.id : null,
         matchType: matchType,
@@ -568,15 +572,15 @@ export default function Inventory() {
           }
         } else {
           let inheritedImg = draft.imageUrl || draft.image_url || '';
-          if (!inheritedImg) {
-            const matchedEx = products.find(p => p.id === draft.matchedExistingId) ||
-              products.find(p => 
-                (p.brand || '').toLowerCase().trim() === (draft.brand || '').toLowerCase().trim() &&
-                (p.name || '').toLowerCase().trim() === (draft.name || '').toLowerCase().trim()
-              );
-            if (matchedEx) {
-              inheritedImg = matchedEx.imageUrl || matchedEx.image_url || '';
-            }
+          let inheritedBarcode = draft.barcode || '';
+          const matchedEx = products.find(p => p.id === draft.matchedExistingId) ||
+            products.find(p => 
+              (p.brand || '').toLowerCase().trim() === (draft.brand || '').toLowerCase().trim() &&
+              (p.name || '').toLowerCase().trim() === (draft.name || '').toLowerCase().trim()
+            );
+          if (matchedEx) {
+            if (!inheritedImg) inheritedImg = matchedEx.imageUrl || matchedEx.image_url || '';
+            if (!inheritedBarcode) inheritedBarcode = matchedEx.barcode || '';
           }
 
           inserts.push({
@@ -588,7 +592,8 @@ export default function Inventory() {
             pricePublic: draft.pricePublic,
             pricePromotional: draft.pricePromotional,
             category: finalCategory,
-            imageUrl: inheritedImg
+            imageUrl: inheritedImg,
+            barcode: inheritedBarcode
           });
         }
       }
@@ -685,12 +690,30 @@ export default function Inventory() {
     setError(null);
 
     try {
-      if (formBarcode.trim().length > 0) {
-        const duplicate = products.find(p => p.id !== editingId && (p.barcode || '').trim().toLowerCase() === formBarcode.trim().toLowerCase());
+      let barcodeToUse = formBarcode.trim();
+      if (barcodeToUse.length > 0) {
+        // Check if duplicate belongs to a DIFFERENT perfume (different brand or name)
+        const duplicate = products.find(p => 
+          p.id !== editingId && 
+          (p.barcode || '').trim().toLowerCase() === barcodeToUse.toLowerCase() &&
+          ((p.brand || '').toLowerCase().trim() !== formBrand.toLowerCase().trim() ||
+           (p.name || '').toLowerCase().trim() !== formName.toLowerCase().trim())
+        );
         if (duplicate) {
-          setError(`El código de barras "${formBarcode.trim()}" ya pertenece a "${duplicate.brand} - ${duplicate.name}". Cada producto debe tener un código de barras único.`);
+          setError(`El código de barras "${barcodeToUse}" pertenece a un perfume diferente: "${duplicate.brand} - ${duplicate.name}".`);
           setIsSavingProduct(false);
           return;
+        }
+      } else {
+        // Auto-inherit barcode if another entry exists for the same perfume
+        const samePerfume = products.find(p =>
+          p.id !== editingId &&
+          (p.brand || '').toLowerCase().trim() === formBrand.toLowerCase().trim() &&
+          (p.name || '').toLowerCase().trim() === formName.toLowerCase().trim() &&
+          (p.barcode || '').trim().length > 0
+        );
+        if (samePerfume) {
+          barcodeToUse = samePerfume.barcode.trim();
         }
       }
 
@@ -711,7 +734,7 @@ export default function Inventory() {
         pricePromotional: isVendedor ? (original?.pricePromotional || 0) : Math.round((Number(formPricePublic) || 0) * 0.75),
         stock: Number(formStock) || 0,
         category: formCategory,
-        barcode: formBarcode.trim(),
+        barcode: barcodeToUse,
         description: finalDescription,
         image_url: formImageUrl.trim()
       };
@@ -2344,7 +2367,6 @@ export default function Inventory() {
                     <input
                       id="prod-cost"
                       type="number"
-                      required={isOwner}
                       value={formCost}
                       onChange={(e) => setFormCost(e.target.value)}
                       className="block w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent transition-all outline-none font-mono"
@@ -2360,7 +2382,6 @@ export default function Inventory() {
                   <input
                     id="prod-public"
                     type="number"
-                    required
                     disabled={isVendedor}
                     readOnly={isVendedor}
                     value={formPricePublic}
@@ -2391,7 +2412,6 @@ export default function Inventory() {
                   <input
                     id="prod-stock"
                     type="number"
-                    required
                     value={formStock}
                     onChange={(e) => setFormStock(e.target.value)}
                     className="block w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent transition-all outline-none font-mono"
@@ -2469,7 +2489,7 @@ export default function Inventory() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSavingProduct || loading || !formName || !formBrand || (!isVendedor && (formPricePublic === '' || formPricePublic === null || formPricePublic === undefined)) || formStock === ''}
+                  disabled={isSavingProduct || loading || !formName.trim() || !formBrand.trim()}
                   className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSavingProduct || loading ? (

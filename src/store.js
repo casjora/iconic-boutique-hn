@@ -115,9 +115,25 @@ const mapProductFromDb = (p) => {
 };
 
 // Helper to map Frontend products to DB products
-const mapProductToDb = (p) => {
+const mapProductToDb = (p, existingProducts = []) => {
   const generatedId = p.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'prod_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36));
-  const generatedBarcode = p.barcode || Math.floor(1000000000000 + Math.random() * 9000000000000).toString();
+  
+  let barcodeToUse = (p.barcode || '').trim();
+  if (!barcodeToUse && p.brand && p.name && Array.isArray(existingProducts) && existingProducts.length > 0) {
+    const match = existingProducts.find(item => 
+      item.id !== p.id &&
+      (item.brand || '').toLowerCase().trim() === String(p.brand).toLowerCase().trim() &&
+      (item.name || '').toLowerCase().trim() === String(p.name).toLowerCase().trim() &&
+      (item.barcode || '').trim().length > 0
+    );
+    if (match) {
+      barcodeToUse = match.barcode.trim();
+    }
+  }
+
+  if (!barcodeToUse) {
+    barcodeToUse = Math.floor(1000000000000 + Math.random() * 9000000000000).toString();
+  }
   
   let dbCategory;
   const cat = (p.category || '').trim();
@@ -139,7 +155,7 @@ const mapProductToDb = (p) => {
     price_promotional: Number(p.pricePromotional !== undefined ? p.pricePromotional : (p.price_promotional || 0)),
     stock: Number(p.stock || 0),
     category: dbCategory,
-    barcode: generatedBarcode,
+    barcode: barcodeToUse,
     description: p.description || '',
     image_url: p.image_url || p.imageUrl || '',
     featured_public: p.featuredPublic !== undefined ? Boolean(p.featuredPublic) : true,
@@ -558,9 +574,20 @@ export const useStore = create((setOriginal, get) => {
       let countNew = 0;
       let countUpdated = 0;
       try {
+        const currentProds = get().products;
         if (inserts && inserts.length > 0) {
-          const dbInserts = inserts.map(mapProductToDb);
-          const { error: insErr } = await supabase.from('products').insert(dbInserts);
+          const dbInserts = inserts.map(item => mapProductToDb(item, currentProds));
+          let { error: insErr } = await supabase.from('products').insert(dbInserts);
+          
+          if (insErr && (insErr.code === '23505' || String(insErr.message || '').includes('23505') || String(insErr.message || '').includes('unique'))) {
+            // If barcode unique constraint is triggered in DB batch, adjust barcodes and retry individually or as batch
+            for (const item of dbInserts) {
+              item.barcode = item.barcode + '-' + Math.floor(1000 + Math.random() * 9000);
+            }
+            const retryRes = await supabase.from('products').insert(dbInserts);
+            insErr = retryRes.error;
+          }
+
           if (insErr) throw insErr;
           countNew = inserts.length;
         }
@@ -615,7 +642,12 @@ export const useStore = create((setOriginal, get) => {
             return dbItem;
           });
           for (const item of dbUpdates) {
-            const { error: updErr } = await supabase.from('products').update(item).eq('id', item.id);
+            let { error: updErr } = await supabase.from('products').update(item).eq('id', item.id);
+            if (updErr && (updErr.code === '23505' || String(updErr.message || '').includes('23505') || String(updErr.message || '').includes('unique'))) {
+              item.barcode = (item.barcode || Math.floor(1000000000000 + Math.random() * 9000000000000).toString()) + '-' + Math.floor(100 + Math.random() * 900);
+              const retryRes = await supabase.from('products').update(item).eq('id', item.id);
+              updErr = retryRes.error;
+            }
             if (updErr) throw updErr;
           }
           countUpdated = updates.length;
@@ -667,13 +699,26 @@ export const useStore = create((setOriginal, get) => {
     addProduct: async (productData) => {
       set({ loading: true, error: null });
       try {
-        const dbProduct = mapProductToDb(productData);
+        const currentProds = get().products;
+        const dbProduct = mapProductToDb(productData, currentProds);
         
-        const { data, error } = await supabase
+        let { data, error } = await supabase
           .from('products')
           .insert([dbProduct])
           .select(PRODUCT_SELECT_COLUMNS)
           .single();
+
+        if (error && (error.code === '23505' || String(error.message || '').includes('23505') || String(error.message || '').includes('unique'))) {
+          // Retry with unique suffix if database unique constraint on barcode is triggered
+          dbProduct.barcode = dbProduct.barcode + '-' + Math.floor(1000 + Math.random() * 9000);
+          const retryRes = await supabase
+            .from('products')
+            .insert([dbProduct])
+            .select(PRODUCT_SELECT_COLUMNS)
+            .single();
+          data = retryRes.data;
+          error = retryRes.error;
+        }
 
         if (error) throw error;
 
@@ -699,21 +744,35 @@ export const useStore = create((setOriginal, get) => {
     updateProduct: async (id, productData) => {
       set({ loading: true, error: null });
       try {
-        const existingProduct = get().products.find(p => p.id === id);
+        const currentProds = get().products;
+        const existingProduct = currentProds.find(p => p.id === id);
         const mergedData = { ...existingProduct, ...productData };
         if (productData.cost === undefined || productData.cost === null || Number(productData.cost) <= 0) {
           if (existingProduct && Number(existingProduct.cost) > 0) {
             mergedData.cost = Number(existingProduct.cost);
           }
         }
-        const dbProduct = mapProductToDb(mergedData);
+        const dbProduct = mapProductToDb(mergedData, currentProds);
         
-        const { data, error } = await supabase
+        let { data, error } = await supabase
           .from('products')
           .update(dbProduct)
           .eq('id', id)
           .select(PRODUCT_SELECT_COLUMNS)
           .single();
+
+        if (error && (error.code === '23505' || String(error.message || '').includes('23505') || String(error.message || '').includes('unique'))) {
+          // Retry with unique suffix if database unique constraint on barcode is triggered
+          dbProduct.barcode = dbProduct.barcode + '-' + Math.floor(1000 + Math.random() * 9000);
+          const retryRes = await supabase
+            .from('products')
+            .update(dbProduct)
+            .eq('id', id)
+            .select(PRODUCT_SELECT_COLUMNS)
+            .single();
+          data = retryRes.data;
+          error = retryRes.error;
+        }
 
         if (error) throw error;
 
