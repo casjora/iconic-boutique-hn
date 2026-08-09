@@ -156,7 +156,7 @@ SELECT
   brand,
   size,
   CASE
-    WHEN public.get_my_role() IN ('dueño', 'owner') THEN cost
+    WHEN public.get_my_role() IN ('dueño', 'owner', 'vendedor') THEN cost
     ELSE 0
   END AS cost,
   price_public,
@@ -329,7 +329,6 @@ BEGIN
       WHERE id = OLD.id
       RETURNING * INTO NEW;
 
-      NEW.cost := 0;
       RETURN NEW;
     END IF;
   ELSIF TG_OP = 'DELETE' THEN
@@ -832,4 +831,3 @@ BEGIN
     AND lower(trim(p.role)) IN ('vendedor', 'dueño', 'owner', 'mayorista', 'detalle')
     AND (u.raw_user_meta_data->>'role' IS NULL OR lower(trim(u.raw_user_meta_data->>'role')) != lower(trim(p.role)));
 END $func$;
-
