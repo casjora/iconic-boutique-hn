@@ -821,23 +821,33 @@ export const useStore = create((setOriginal, get) => {
       }
     },
 
-    applyBulkDiscount: async (productIds, discountPercent) => {
+    applyBulkDiscount: async (productIds, discountPercent, targetType = 'detalle') => {
       set({ loading: true, error: null });
       try {
         const { products } = get();
         const dbUpdates = [];
         for (const p of products) {
           if (productIds.includes(p.id)) {
-            const cleanDesc = p.description 
-              ? p.description
-                  .replace(/\[PROMO_DETALLE:.*?\]/g, '')
-                  .replace(/\[PROMO_MAYORISTA:.*?\]/g, '')
-                  .replace(/\[PROMO:\d+\]/g, '')
-                  .trim()
-              : '';
-            const newDesc = discountPercent > 0 ? `${cleanDesc}\n\n[PROMO_DETALLE:${discountPercent}%]`.trim() : cleanDesc;
+            let desc = p.description || '';
+            if (targetType === 'detalle') {
+              desc = desc.replace(/\[PROMO_DETALLE:.*?\]/g, '').replace(/\[PROMO:\d+\]/g, '').trim();
+              if (discountPercent > 0) {
+                desc = `${desc}\n\n[PROMO_DETALLE:${discountPercent}%]`.trim();
+              }
+            } else if (targetType === 'mayorista') {
+              desc = desc.replace(/\[PROMO_MAYORISTA:.*?\]/g, '').trim();
+              if (discountPercent > 0) {
+                desc = `${desc}\n\n[PROMO_MAYORISTA:${discountPercent}%]`.trim();
+              }
+            } else if (targetType === 'all') {
+              desc = desc
+                .replace(/\[PROMO_DETALLE:.*?\]/g, '')
+                .replace(/\[PROMO_MAYORISTA:.*?\]/g, '')
+                .replace(/\[PROMO:\d+\]/g, '')
+                .trim();
+            }
             
-            const dbProduct = mapProductToDb({ ...p, description: newDesc });
+            const dbProduct = mapProductToDb({ ...p, description: desc });
             dbUpdates.push(dbProduct);
           }
         }

@@ -172,7 +172,9 @@ export function getProductPrices(product) {
       promoMayoristaType = parsed.type;
       promoMayoristaValue = parsed.value;
       const requested = parsed.type === 'percent'
-        ? Math.round(baseWholesale * (1 - parsed.value / 100))
+        ? (parsed.value >= 25
+            ? Math.round(pricePublic * (1 - parsed.value / 100))
+            : Math.round(baseWholesale - (pricePublic * (parsed.value / 100))))
         : Math.round(baseWholesale - parsed.value);
       if (!isRemate && cost > 0) {
         finalWholesale = Math.max(cost, requested);

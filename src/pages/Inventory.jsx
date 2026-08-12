@@ -52,6 +52,7 @@ export default function Inventory() {
   const [formPromoDetalle, setFormPromoDetalle] = useState('');
   const [formPromoMayorista, setFormPromoMayorista] = useState('');
   const [formIsRemate, setFormIsRemate] = useState(false);
+  const [bulkTarget, setBulkTarget] = useState('detalle'); // 'detalle' or 'mayorista'
 
   // AI PDF upload flow states
   const [pdfFile, setPdfFile] = useState(null);
@@ -779,20 +780,34 @@ export default function Inventory() {
     }
   };
 
-  const handleApplyBulkDiscount = async (discountPercent) => {
+  const handleApplyBulkDiscount = async (discountPercent, forcedTarget = null) => {
     if (filteredProducts.length === 0) {
       alert('No hay productos filtrados para aplicar el descuento.');
       return;
     }
     
+    const target = forcedTarget || bulkTarget;
+    const targetLabel = target === 'detalle' 
+      ? 'PRECIO AL DETALLE' 
+      : target === 'mayorista' 
+        ? 'PRECIO DE MAYOREO' 
+        : 'TODOS LOS PRECIOS';
+
+    let extraNote = '';
+    if (target === 'detalle' && discountPercent > 25) {
+      extraNote = ' (Nota: El descuento al detalle está topeado al 25% máximo salvo en productos en Remate).';
+    } else if (target === 'mayorista') {
+      extraNote = ' (Nota: Los descuentos a mayoreo se calculan sobre el precio al detalle y respetan el costo del producto como piso mínimo).';
+    }
+
     const message = discountPercent === 0 
-      ? `¿Estás seguro de quitar el descuento promocional a los ${filteredProducts.length} perfumes que coinciden con los filtros activos?`
-      : `¿Estás seguro de aplicar un ${discountPercent}% de descuento promocional masivo a los ${filteredProducts.length} perfumes que coinciden con los filtros activos?`;
+      ? `¿Estás seguro de quitar los descuentos promocionales a ${targetLabel} para los ${filteredProducts.length} perfumes filtrados?`
+      : `¿Estás seguro de aplicar un ${discountPercent}% de descuento masivo a ${targetLabel} para los ${filteredProducts.length} perfumes filtrados?${extraNote}`;
       
     if (confirm(message)) {
       setError(null);
       const productIds = filteredProducts.map(p => p.id);
-      const ok = await applyBulkDiscount(productIds, discountPercent);
+      const ok = await applyBulkDiscount(productIds, discountPercent, target);
       if (ok) {
         alert('¡Descuento masivo aplicado exitosamente!');
       } else {
@@ -1833,28 +1848,69 @@ export default function Inventory() {
 
         {/* Bulk Promotions Panel (Owners Only) */}
         {(user?.role === 'owner' || user?.role === 'dueño') && (
-          <div className="bg-amber-50/40 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-3xl p-4 sm:p-5 shadow-sm space-y-3">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="space-y-0.5 text-left">
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/60 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                  <Percent className="h-2.5 w-2.5" /> Descuento Masivo (Bulk)
-                </span>
+          <div className="bg-amber-50/40 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-3xl p-4 sm:p-5 shadow-sm space-y-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="space-y-1.5 text-left">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/60 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                    <Percent className="h-2.5 w-2.5" /> Descuento Masivo (Bulk)
+                  </span>
+
+                  {/* Selector for target: Detalle vs Mayoreo */}
+                  <div className="inline-flex p-0.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xs">
+                    <button
+                      type="button"
+                      onClick={() => setBulkTarget('detalle')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        bulkTarget === 'detalle'
+                          ? 'bg-rose-500 text-white shadow-xs'
+                          : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
+                      }`}
+                    >
+                      🏷️ Aplicar a Detalle
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBulkTarget('mayorista')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        bulkTarget === 'mayorista'
+                          ? 'bg-amber-500 text-white shadow-xs'
+                          : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
+                      }`}
+                    >
+                      📦 Aplicar a Mayoreo
+                    </button>
+                  </div>
+                </div>
+
                 <h4 className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-xs sm:text-sm uppercase tracking-tight">
-                  Aplicar Oferta a Lista Filtrada ({filteredProducts.length} perfumes)
+                  Aplicar Oferta a Lista Filtrada ({filteredProducts.length} perfumes) — {bulkTarget === 'detalle' ? 'Precio al Detalle' : 'Precio de Mayoreo'}
                 </h4>
                 <p className="text-[11px] text-neutral-500 dark:text-neutral-400 font-medium leading-normal max-w-xl">
-                  Aplica o remueve un descuento promocional masivo a los perfumes de la vista actual. El descuento se aplica sobre el precio Público.
+                  {bulkTarget === 'detalle' ? (
+                    <>
+                      Los descuentos se aplican sobre el <b>Precio Público / Al Detalle</b> (máximo 25% desc. según reglas). Las ofertas a mayoreo no serán alteradas.
+                    </>
+                  ) : (
+                    <>
+                      Los descuentos se calculan siempre partiendo del <b>Precio Público / Al Detalle</b> y aplican a la tarifa de Mayoreo (respetando el costo del producto como piso mínimo).
+                    </>
+                  )}
                 </p>
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="flex items-center bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-x-auto shadow-sm h-10 px-1.5 gap-1 max-w-full">
-                  {[0, 10, 20, 30, 40].map((pct) => (
+                  {[0, 5, 10, 15, 20, 25, 30, 40].map((pct) => (
                     <button
                       key={pct}
                       type="button"
                       onClick={() => handleApplyBulkDiscount(pct)}
-                      className="px-2.5 py-1 rounded-lg text-[10px] font-black cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 whitespace-nowrap"
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-black cursor-pointer transition-colors border whitespace-nowrap ${
+                        pct === 0
+                          ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800 hover:bg-rose-100'
+                          : 'bg-neutral-50 dark:bg-neutral-900 hover:bg-neutral-100 dark:hover:bg-neutral-700 border-neutral-200 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200'
+                      }`}
                     >
                       {pct === 0 ? 'Quitar' : `${pct}%`}
                     </button>
