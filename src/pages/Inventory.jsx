@@ -10,7 +10,7 @@ import {
   AlertCircle, Check, Percent, Download, Share2,
   FileDown, FileSpreadsheet, FileText, X, Image as ImageIcon
 } from 'lucide-react';
-import { isProductSet, getProductPromoDiscount, cleanProductDescription, getProductPromoDetalle, getProductPromoMayorista, setProductPromotions, getProductPrices, detectProductCategory, normalizeCategory } from '../utils/productHelper';
+import { isProductSet, getProductPromoDiscount, cleanProductDescription, getProductPromoDetalle, getProductPromoMayorista, setProductPromotions, getProductPrices, getProductIsRemate, getProductDiscountBadges, detectProductCategory, normalizeCategory } from '../utils/productHelper';
 import { generateBarcodeSVG } from '../utils/barcode';
 
 const getProductImage = (p) => (p?.imageUrl || p?.image_url || '').trim();
@@ -51,6 +51,7 @@ export default function Inventory() {
   const [formImageUrl, setFormImageUrl] = useState('');
   const [formPromoDetalle, setFormPromoDetalle] = useState('');
   const [formPromoMayorista, setFormPromoMayorista] = useState('');
+  const [formIsRemate, setFormIsRemate] = useState(false);
 
   // AI PDF upload flow states
   const [pdfFile, setPdfFile] = useState(null);
@@ -651,6 +652,7 @@ export default function Inventory() {
     setFormImageUrl('');
     setFormPromoDetalle('');
     setFormPromoMayorista('');
+    setFormIsRemate(false);
     setIsFormModalOpen(true);
   };
 
@@ -676,8 +678,10 @@ export default function Inventory() {
     
     const promoDetalle = getProductPromoDetalle(product) || '';
     const promoMayorista = getProductPromoMayorista(product) || '';
+    const isRemate = getProductIsRemate(product);
     setFormPromoDetalle(promoDetalle);
     setFormPromoMayorista(promoMayorista);
+    setFormIsRemate(isRemate);
     setFormDescription(cleanProductDescription(product.description || ''));
     setFormImageUrl(product.image_url || '');
     setIsFormModalOpen(true);
@@ -719,7 +723,7 @@ export default function Inventory() {
 
       const original = isEditing ? products.find(p => p.id === editingId) : null;
 
-      const finalDescription = setProductPromotions(formDescription, formPromoDetalle, formPromoMayorista);
+      const finalDescription = setProductPromotions(formDescription, formPromoDetalle, formPromoMayorista, formIsRemate);
 
       const finalCost = isVendedor 
         ? (original?.cost > 0 ? Number(original.cost) : undefined)
@@ -759,6 +763,7 @@ export default function Inventory() {
         setFormImageUrl('');
         setFormPromoDetalle('');
         setFormPromoMayorista('');
+        setFormIsRemate(false);
       }
     } catch (err) {
       console.error(err);
@@ -1968,16 +1973,11 @@ export default function Inventory() {
                                     ⚠️ Sin Foto
                                   </span>
                                 )}
-                                {getProductPromoDetalle(p) && (
-                                  <span className="inline-flex items-center rounded-full bg-rose-50 dark:bg-rose-950/80 px-1.5 py-0.5 text-[8px] font-black text-rose-700 dark:text-rose-300 uppercase tracking-wider border border-rose-100 dark:border-rose-800">
-                                    Detalle: {getProductPromoDetalle(p)}
+                                {getProductDiscountBadges(p, user).map(badge => (
+                                  <span key={badge.key} className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider ${badge.bgClass}`}>
+                                    {badge.label}
                                   </span>
-                                )}
-                                {getProductPromoMayorista(p) && (
-                                  <span className="inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-950/80 px-1.5 py-0.5 text-[8px] font-black text-amber-700 dark:text-amber-600 uppercase tracking-wider border border-amber-100 dark:border-amber-800">
-                                    Mayoreo: {getProductPromoMayorista(p)}
-                                  </span>
-                                )}
+                                ))}
                               </div>
                             </div>
                           </div>
@@ -2436,7 +2436,7 @@ export default function Inventory() {
               <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 bg-neutral-50 dark:bg-neutral-905 p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800">
                 <div>
                   <label htmlFor="prod-promo-detalle" className="text-[10px] font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider block mb-1">
-                    <span>🏷️ Oferta Clientes Detalle</span>
+                    <span>🏷️ Oferta Clientes Detalle (≤25% desc.)</span>
                   </label>
                   <input
                     id="prod-promo-detalle"
@@ -2444,14 +2444,14 @@ export default function Inventory() {
                     value={formPromoDetalle}
                     onChange={(e) => setFormPromoDetalle(e.target.value)}
                     className="block w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 rounded-xl text-xs font-semibold font-mono transition-all outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400"
-                    placeholder="Eje: 20% o 100"
+                    placeholder="Ej: 20% o 100"
                   />
-                  <span className="text-[9px] text-neutral-400 block mt-1">Escribe un porcentaje (ej: <b>20%</b>) o un monto fijo (ej: <b>150</b>).</span>
+                  <span className="text-[9px] text-neutral-400 block mt-1">Límite máximo: 25% de descuento sobre precio al detalle.</span>
                 </div>
 
                 <div>
                   <label htmlFor="prod-promo-mayorista" className="text-[10px] font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider block mb-1">
-                    <span>📦 Oferta Clientes Mayoristas</span>
+                    <span>📦 Oferta Clientes Mayoristas (Piso: Costo)</span>
                   </label>
                   <input
                     id="prod-promo-mayorista"
@@ -2459,10 +2459,30 @@ export default function Inventory() {
                     value={formPromoMayorista}
                     onChange={(e) => setFormPromoMayorista(e.target.value)}
                     className="block w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 rounded-xl text-xs font-semibold font-mono transition-all outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400"
-                    placeholder="Eje: 10% o 50"
+                    placeholder="Ej: 10% o 50"
                   />
-                  <span className="text-[9px] text-neutral-400 block mt-1">Escribe un porcentaje (ej: <b>10%</b>) o un monto fijo (ej: <b>50</b>).</span>
+                  <span className="text-[9px] text-neutral-400 block mt-1">Descuento extra a mayoreo. No puede ser inferior al costo.</span>
                 </div>
+
+                {isOwner && (
+                  <div className="col-span-1 sm:col-span-2 flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-950/40 rounded-xl border border-purple-200 dark:border-purple-800/60 mt-1">
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="prod-is-remate"
+                        type="checkbox"
+                        checked={formIsRemate}
+                        onChange={(e) => setFormIsRemate(e.target.checked)}
+                        className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                      />
+                      <label htmlFor="prod-is-remate" className="text-xs font-bold text-purple-900 dark:text-purple-200 cursor-pointer">
+                        ⚡ Modo Remate / Liquidación (Solo Dueño)
+                      </label>
+                    </div>
+                    <span className="text-[10px] text-purple-700 dark:text-purple-300 font-medium">
+                      Cambia el precio sin restricciones de 25% ni piso por costo
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div>

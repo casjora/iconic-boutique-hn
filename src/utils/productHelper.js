@@ -104,6 +104,11 @@ export function parsePromoValue(valueStr) {
   }
 }
 
+export function getProductIsRemate(product) {
+  if (!product || !product.description) return false;
+  return /\[REMATE:.*?\]/.test(product.description);
+}
+
 export function getProductPromoDetalle(product) {
   if (!product || !product.description) return null;
   const matchDetalle = product.description.match(/\[PROMO_DETALLE:(.*?)\]/);
@@ -121,12 +126,15 @@ export function getProductPromoMayorista(product) {
 
 export function getProductPrices(product) {
   const pricePublic = Number(product?.pricePublic || product?.price_public || 0);
+  const cost = Number(product?.cost || 0);
+  const isRemate = getProductIsRemate(product);
+
   const explicitWholesale = Number(product?.pricePromotional || product?.price_promotional || 0);
   const baseWholesale = (explicitWholesale > 0 && explicitWholesale < pricePublic)
     ? explicitWholesale
     : Math.round(pricePublic * 0.75); // Always 25% discount off base retail price
 
-  // 1. Detalle (Retail) Promo
+  // 1. Detalle (Retail) Promo: <= 25% discount off pricePublic (unless isRemate)
   const promoDetalleStr = getProductPromoDetalle(product);
   let finalDetalle = pricePublic;
   let promoDetalleValue = null;
@@ -138,14 +146,21 @@ export function getProductPrices(product) {
       promoDetalleType = parsed.type;
       promoDetalleValue = parsed.value;
       if (parsed.type === 'percent') {
-        finalDetalle = Math.max(0, Math.round(pricePublic * (1 - parsed.value / 100)));
+        const pct = isRemate ? parsed.value : Math.min(25, parsed.value);
+        finalDetalle = Math.max(0, Math.round(pricePublic * (1 - pct / 100)));
       } else {
-        finalDetalle = Math.max(0, Math.round(pricePublic - parsed.value));
+        const maxDiscount = isRemate ? pricePublic : Math.round(pricePublic * 0.25);
+        const discount = Math.min(parsed.value, maxDiscount);
+        finalDetalle = Math.max(0, Math.round(pricePublic - discount));
       }
     }
   }
 
-  // 2. Mayorista (Wholesale) Promo
+  const effectiveDetallePct = pricePublic > 0
+    ? Math.round(((pricePublic - finalDetalle) / pricePublic) * 100)
+    : 0;
+
+  // 2. Mayorista (Wholesale) Promo: >= 25% total discount off pricePublic, price >= cost (unless isRemate)
   const promoMayoristaStr = getProductPromoMayorista(product);
   let finalWholesale = baseWholesale;
   let promoMayoristaValue = null;
@@ -156,26 +171,89 @@ export function getProductPrices(product) {
     if (parsed) {
       promoMayoristaType = parsed.type;
       promoMayoristaValue = parsed.value;
-      if (parsed.type === 'percent') {
-        finalWholesale = Math.max(0, Math.round(baseWholesale * (1 - parsed.value / 100)));
+      const requested = parsed.type === 'percent'
+        ? Math.round(baseWholesale * (1 - parsed.value / 100))
+        : Math.round(baseWholesale - parsed.value);
+      if (!isRemate && cost > 0) {
+        finalWholesale = Math.max(cost, requested);
       } else {
-        finalWholesale = Math.max(0, Math.round(baseWholesale - parsed.value));
+        finalWholesale = Math.max(0, requested);
       }
     }
+  } else {
+    // If no explicit promo, ensure baseWholesale is not below cost unless isRemate
+    if (!isRemate && cost > 0) {
+      finalWholesale = Math.max(cost, baseWholesale);
+    }
   }
+
+  const effectiveWholesalePct = pricePublic > 0
+    ? Math.round(((pricePublic - finalWholesale) / pricePublic) * 100)
+    : 25;
 
   return {
     pricePublic,        // Base Detalle
     baseWholesale,      // Base Mayorista (25% off detail)
+    cost,
     finalDetalle,       // Final Detalle (after Detalle promo if any)
     finalWholesale,     // Final Mayorista (after Mayorista promo if any)
-    hasDetallePromo: !!promoDetalleStr,
-    hasMayoristaPromo: !!promoMayoristaStr,
+    hasDetallePromo: !!promoDetalleStr || (isRemate && finalDetalle < pricePublic),
+    hasMayoristaPromo: !!promoMayoristaStr || (isRemate && finalWholesale < baseWholesale),
+    isRemate,
+    effectiveDetallePct,
+    effectiveWholesalePct,
     promoDetalleType,
     promoDetalleValue,
     promoMayoristaType,
     promoMayoristaValue
   };
+}
+
+export function getProductDiscountBadges(product, user) {
+  if (!product) return [];
+  const prices = getProductPrices(product);
+  const role = user?.role ? String(user.role).toLowerCase() : 'publico';
+  const isOwner = role === 'owner' || role === 'dueño';
+  const isStaff = role === 'vendedor' || isOwner || role === 'admin';
+  const isMayorista = role === 'mayorista';
+  const isPublic = !isStaff && !isMayorista;
+
+  const badges = [];
+
+  if (prices.isRemate) {
+    const rematePct = prices.effectiveDetallePct || prices.effectiveWholesalePct || 30;
+    badges.push({
+      key: 'remate',
+      type: 'remate',
+      label: `REMATE: ${rematePct}%`,
+      bgClass: 'bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-700'
+    });
+    return badges;
+  }
+
+  // 1. Detalle discount badge
+  // Visible ONLY to public/detalle clients OR staff
+  if ((isPublic || isStaff) && prices.hasDetallePromo && prices.effectiveDetallePct > 0) {
+    badges.push({
+      key: 'detalle',
+      type: 'detalle',
+      label: `DETALLE: ${prices.effectiveDetallePct}%`,
+      bgClass: 'bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-100 dark:border-rose-800'
+    });
+  }
+
+  // 2. Mayorista discount badge
+  // Visible ONLY to mayorista clients OR staff
+  if ((isMayorista || isStaff) && (prices.hasMayoristaPromo || (isMayorista && prices.effectiveWholesalePct > 25))) {
+    badges.push({
+      key: 'mayorista',
+      type: 'mayorista',
+      label: `MAYOREO: ${prices.effectiveWholesalePct}%`,
+      bgClass: 'bg-amber-50 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+    });
+  }
+
+  return badges;
 }
 
 export function getProductPriceForUser(product, user) {
@@ -257,11 +335,12 @@ export function cleanProductDescription(description) {
     .replace(/\[PROMO_DETALLE:.*?\]/g, '')
     .replace(/\[PROMO_MAYORISTA:.*?\]/g, '')
     .replace(/\[PROMO:\d+\]/g, '')
+    .replace(/\[REMATE:.*?\]/g, '')
     .replace(/\[PUB_CATS:.*?\]/g, '')
     .trim();
 }
 
-export function setProductPromotions(description, promoDetalle, promoMayorista) {
+export function setProductPromotions(description, promoDetalle, promoMayorista, isRemate = false) {
   let cleanDesc = cleanProductDescription(description);
   
   if (promoDetalle && String(promoDetalle).trim() !== '') {
@@ -269,6 +348,9 @@ export function setProductPromotions(description, promoDetalle, promoMayorista) 
   }
   if (promoMayorista && String(promoMayorista).trim() !== '') {
     cleanDesc = `${cleanDesc}\n\n[PROMO_MAYORISTA:${String(promoMayorista).trim()}]`.trim();
+  }
+  if (isRemate) {
+    cleanDesc = `${cleanDesc}\n\n[REMATE:true]`.trim();
   }
   
   return cleanDesc;

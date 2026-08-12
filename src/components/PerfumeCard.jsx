@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useStore } from '../store';
 import { ShoppingCart, Heart, Tag } from 'lucide-react';
-import { isProductSet, getProductPrices } from '../utils/productHelper';
+import { isProductSet, getProductPrices, getProductDiscountBadges } from '../utils/productHelper';
 import { motion } from 'motion/react';
 
 const PerfumeCard = React.memo(({ product, index = 10 }) => {
@@ -19,8 +19,8 @@ const PerfumeCard = React.memo(({ product, index = 10 }) => {
   const isFav = favorites.includes(product.id);
 
   const prices = useMemo(() => getProductPrices(product), [product]);
+  const discountBadges = useMemo(() => getProductDiscountBadges(product, user), [product, user]);
   const hasDiscount = prices.hasDetallePromo;
-  const finalPublicPrice = prices.finalDetalle;
 
   const cartItem = cart.find(item => item.product.id === product.id);
   const quantityInCart = cartItem ? cartItem.quantity : 0;
@@ -59,24 +59,19 @@ const PerfumeCard = React.memo(({ product, index = 10 }) => {
       whileHover={{ y: -4 }}
       className="group relative flex flex-col overflow-hidden rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm transition-all hover:shadow-md"
     >
-      {/* Badge stack (Set & Promo) */}
-      <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
+      {/* Badge stack (Set & Role-Based Discount Badges) */}
+      <div className="absolute top-3 left-3 z-10 flex flex-col gap-1 items-start">
         {isSet && (
           <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 dark:bg-indigo-950/80 px-2 py-0.5 text-[9px] font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider shadow-sm border border-indigo-200 dark:border-indigo-800 backdrop-blur-sm">
             <Tag className="h-2.5 w-2.5" />
             Set
           </span>
         )}
-        {hasDiscount && !isMayorista && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-red-600 dark:bg-rose-500 px-2.5 py-0.5 text-[9px] font-black text-white uppercase tracking-wider shadow-sm">
-            Oferta Detalle
+        {discountBadges.map(badge => (
+          <span key={badge.key} className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider shadow-sm ${badge.bgClass}`}>
+            {badge.label}
           </span>
-        )}
-        {prices.hasMayoristaPromo && isMayorista && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-600 px-2.5 py-0.5 text-[9px] font-black text-white uppercase tracking-wider shadow-sm">
-            Oferta Mayorista
-          </span>
-        )}
+        ))}
       </div>
 
       {/* Favorite Button (Only for registered users) */}
