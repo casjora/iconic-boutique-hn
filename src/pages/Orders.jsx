@@ -1,7 +1,110 @@
-import { useState, useMemo,useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '../store';
-import { ClipboardList, Search, Edit2, Loader2, CheckCircle2, AlertCircle, ShoppingBag, Eye, X, Plus, Trash2 } from 'lucide-react';
+import { 
+  ClipboardList, Search, Edit2, Loader2, CheckCircle2, AlertCircle, 
+  ShoppingBag, Eye, X, Plus, Trash2, Tag, Sparkles, AlertTriangle
+} from 'lucide-react';
 import { getProductPrices } from '../utils/productHelper';
+
+const DEFAULT_PROMO_RULES = [
+  { id: 'promo_3000', name: 'Compra > L. 3,000 (5% desc)', minAmount: 3000, discountType: 'percentage', discountValue: 5 },
+  { id: 'promo_5000', name: 'Compra > L. 5,000 (10% desc)', minAmount: 5000, discountType: 'percentage', discountValue: 10 },
+  { id: 'promo_10000', name: 'Compra > L. 10,000 (15% desc)', minAmount: 10000, discountType: 'percentage', discountValue: 15 },
+];
+
+const calculateDiscountDetails = (items, roleUsed, discountMode, selectedPromoId, manualType, manualValue, promoRulesList) => {
+  const rawSubtotal = items.reduce((acc, i) => acc + (Number(i.pricePaid || 0) * Number(i.quantity || 1)), 0);
+  const retailSubtotal = items.reduce((acc, i) => {
+    const qty = Number(i.quantity || 1);
+    const pPublic = Number(i.pricePublic || i.pricePaid || 0);
+    return acc + (pPublic * qty);
+  }, 0);
+  
+  // Calculate minimum allowed total floor
+  // Detalle: pricePromotional (wholesale limit)
+  // Mayorista: cost (cost limit)
+  const minAllowedTotal = items.reduce((acc, i) => {
+    const qty = Number(i.quantity || 1);
+    const minUnitPrice = roleUsed === 'mayorista' 
+      ? Number(i.cost || 0) 
+      : Number(i.pricePromotional || 0);
+    return acc + (minUnitPrice * qty);
+  }, 0);
+
+  const maxDiscountAllowed = Math.max(0, rawSubtotal - minAllowedTotal);
+
+  let requestedDiscount = 0;
+  let promoAppliedName = '';
+
+  if (discountMode === 'promo') {
+    const rule = promoRulesList.find(r => r.id === selectedPromoId);
+    if (rule) {
+      promoAppliedName = rule.name;
+      if (rule.discountType === 'percentage') {
+        requestedDiscount = retailSubtotal * (Number(rule.discountValue || 0) / 100);
+      } else {
+        requestedDiscount = Number(rule.discountValue || 0);
+      }
+    }
+  } else if (discountMode === 'manual') {
+    const val = Number(manualValue || 0);
+    if (manualType === 'percentage') {
+      requestedDiscount = retailSubtotal * (val / 100);
+    } else {
+      requestedDiscount = val;
+    }
+  }
+
+  requestedDiscount = Math.max(0, requestedDiscount);
+  const actualAppliedDiscount = Math.min(requestedDiscount, maxDiscountAllowed);
+  const isCapped = requestedDiscount > maxDiscountAllowed && maxDiscountAllowed >= 0;
+  const finalTotal = Math.max(0, rawSubtotal - actualAppliedDiscount);
+
+  // Check qualifying auto promos based on order subtotal
+  const qualifyingPromos = (promoRulesList || [])
+    .filter(r => rawSubtotal >= Number(r.minAmount || 0))
+    .sort((a, b) => Number(b.minAmount) - Number(a.minAmount));
+
+  return {
+    rawSubtotal,
+    retailSubtotal,
+    minAllowedTotal,
+    maxDiscountAllowed,
+    requestedDiscount,
+    actualAppliedDiscount,
+    isCapped,
+    finalTotal,
+    promoAppliedName,
+    qualifyingPromos
+  };
+};
+
+const applyProportionalDiscountToItems = (items, roleUsed, actualAppliedDiscount, rawSubtotal) => {
+  if (rawSubtotal <= 0 || actualAppliedDiscount <= 0) {
+    return items;
+  }
+
+  return items.map(item => {
+    const qty = Number(item.quantity || 1);
+    const itemSubtotal = Number(item.pricePaid || 0) * qty;
+    const ratio = itemSubtotal / rawSubtotal;
+    const itemDiscount = actualAppliedDiscount * ratio;
+    const discountedItemTotal = itemSubtotal - itemDiscount;
+    const rawDiscountedUnitPrice = qty > 0 ? discountedItemTotal / qty : item.pricePaid;
+
+    const minUnitPrice = roleUsed === 'mayorista' 
+      ? Number(item.cost || 0) 
+      : Number(item.pricePromotional || 0);
+
+    const safeUnitPrice = Math.max(minUnitPrice, Math.round(rawDiscountedUnitPrice * 100) / 100);
+
+    return {
+      ...item,
+      pricePaid: safeUnitPrice
+    };
+  });
+};
 
 export default function Orders() {
   const { 
@@ -12,6 +115,32 @@ export default function Orders() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('Todos');
+
+  // Promo rules state
+  const [promoRules, setPromoRules] = useState(() => {
+    try {
+      const saved = localStorage.getItem('iconic_promo_rules');
+      return saved ? JSON.parse(saved) : DEFAULT_PROMO_RULES;
+    } catch {
+      return DEFAULT_PROMO_RULES;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('iconic_promo_rules', JSON.stringify(promoRules));
+    } catch (err) {
+      console.error('Error saving promo rules:', err);
+    }
+  }, [promoRules]);
+
+  // Promo Manager modal state
+  const [showPromoManagerModal, setShowPromoManagerModal] = useState(false);
+  const [editingPromoRuleId, setEditingPromoRuleId] = useState(null);
+  const [newPromoName, setNewPromoName] = useState('');
+  const [newPromoMinAmount, setNewPromoMinAmount] = useState('');
+  const [newPromoType, setNewPromoType] = useState('percentage');
+  const [newPromoValue, setNewPromoValue] = useState('');
 
   // Barcode quick assignment modal state
   const [assignBarcodeState, setAssignBarcodeState] = useState({
@@ -32,6 +161,10 @@ export default function Orders() {
   const [editClientPhone, setEditClientPhone] = useState('');
   const [editItems, setEditItems] = useState([]);
   const [editBarcodeInput, setEditBarcodeInput] = useState('');
+  const [editDiscountMode, setEditDiscountMode] = useState('none');
+  const [editSelectedPromoId, setEditSelectedPromoId] = useState('');
+  const [editManualType, setEditManualType] = useState('percentage');
+  const [editManualValue, setEditManualValue] = useState('');
 
   // Physical Sale modal states
   const [showPhysicalSaleModal, setShowPhysicalSaleModal] = useState(false);
@@ -43,6 +176,10 @@ export default function Orders() {
   const [physicalRoleUsed, setPhysicalRoleUsed] = useState('detalle');
   const [reportingPhysicalSale, setReportingPhysicalSale] = useState(false);
   const [physicalSaleMsg, setPhysicalSaleMsg] = useState({ type: '', text: '' });
+  const [physicalDiscountMode, setPhysicalDiscountMode] = useState('none');
+  const [physicalSelectedPromoId, setPhysicalSelectedPromoId] = useState('');
+  const [physicalManualType, setPhysicalManualType] = useState('percentage');
+  const [physicalManualValue, setPhysicalManualValue] = useState('');
 
   // Add perfume to physical sale items list
   const handleAddProductToPhysicalSale = (prod) => {
@@ -126,9 +263,6 @@ export default function Orders() {
     }
   };
 
-  // Price rule validation helper (Requirement 6)
-  // Retail price MUST be >= Wholesale price (pricePromotional)
-  // Wholesale price MUST be >= Cost
   const validateItemPrice = (pricePaid, roleUsed, item) => {
     const pPaid = Number(pricePaid || 0);
     const cost = Number(item.cost || 0);
@@ -159,7 +293,6 @@ export default function Orders() {
     setPhysicalSaleItems(prev => prev.filter(i => i.productId !== productId));
   };
 
-  // Handle buyer account attachment (automatically pre-fills contact details)
   useEffect(() => {
     if (physicalBuyerId && customers) {
       const cust = customers.find(c => c.id === physicalBuyerId);
@@ -176,6 +309,19 @@ export default function Orders() {
     }
   }, [physicalBuyerId, customers]);
 
+  // Physical Sale Calculations
+  const physicalDiscountDetails = useMemo(() => {
+    return calculateDiscountDetails(
+      physicalSaleItems,
+      physicalRoleUsed,
+      physicalDiscountMode,
+      physicalSelectedPromoId,
+      physicalManualType,
+      physicalManualValue,
+      promoRules
+    );
+  }, [physicalSaleItems, physicalRoleUsed, physicalDiscountMode, physicalSelectedPromoId, physicalManualType, physicalManualValue, promoRules]);
+
   const handleReportPhysicalSaleSubmit = async (e) => {
     e.preventDefault();
     if (physicalSaleItems.length === 0) {
@@ -183,8 +329,14 @@ export default function Orders() {
       return;
     }
 
-    // Validate price boundaries for all items (Requirement 6)
-    for (const item of physicalSaleItems) {
+    const discountedItems = applyProportionalDiscountToItems(
+      physicalSaleItems,
+      physicalRoleUsed,
+      physicalDiscountDetails.actualAppliedDiscount,
+      physicalDiscountDetails.rawSubtotal
+    );
+
+    for (const item of discountedItems) {
       const err = validateItemPrice(item.pricePaid, physicalRoleUsed, item);
       if (err) {
         setPhysicalSaleMsg({ type: 'error', text: `Error en "${item.name}": ${err}` });
@@ -200,7 +352,7 @@ export default function Orders() {
     setPhysicalSaleMsg({ type: '', text: '' });
 
     const result = await reportPhysicalSale(
-      physicalSaleItems,
+      discountedItems,
       physicalClientName.trim() || 'Venta Física (Mostrador)',
       physicalClientPhone.trim() || '',
       physicalBuyerId || null,
@@ -220,9 +372,7 @@ export default function Orders() {
     }
   };
 
-  // Fetch customers if we open physical sale modal to let them attach user account if wanted
   const handleOpenPhysicalSale = async () => {
-    // Ensure customers are fetched
     if (!customers || customers.length === 0) {
       await fetchCustomers();
     }
@@ -232,11 +382,14 @@ export default function Orders() {
     setPhysicalClientPhone('');
     setPhysicalBuyerId('');
     setPhysicalRoleUsed('detalle');
+    setPhysicalDiscountMode('none');
+    setPhysicalSelectedPromoId('');
+    setPhysicalManualType('percentage');
+    setPhysicalManualValue('');
     setPhysicalSaleMsg({ type: '', text: '' });
     setShowPhysicalSaleModal(true);
   };
 
-  // Search filter list
   const filteredOrders = useMemo(() => {
     return orders.filter(o => {
       const term = searchTerm.toLowerCase();
@@ -272,6 +425,10 @@ export default function Orders() {
     setEditClientPhone(order.clientPhone);
     setEditItems(order.items.map(i => ({ ...i })));
     setEditBarcodeInput('');
+    setEditDiscountMode('none');
+    setEditSelectedPromoId('');
+    setEditManualType('percentage');
+    setEditManualValue('');
   };
 
   const handleScanEditBarcodeOrSearch = (inputVal) => {
@@ -345,12 +502,31 @@ export default function Orders() {
     }]);
   };
 
+  const editDiscountDetails = useMemo(() => {
+    return calculateDiscountDetails(
+      editItems,
+      getEditingOrderRole(),
+      editDiscountMode,
+      editSelectedPromoId,
+      editManualType,
+      editManualValue,
+      promoRules
+    );
+  }, [editItems, editingOrder, customers, editDiscountMode, editSelectedPromoId, editManualType, editManualValue, promoRules]);
+
   const handleSaveEdit = async (e) => {
     e.preventDefault();
     if (!editClientName || !editClientPhone || editItems.length === 0) return;
 
     const orderRole = getEditingOrderRole();
-    for (const item of editItems) {
+    const discountedItems = applyProportionalDiscountToItems(
+      editItems,
+      orderRole,
+      editDiscountDetails.actualAppliedDiscount,
+      editDiscountDetails.rawSubtotal
+    );
+
+    for (const item of discountedItems) {
       const err = validateItemPrice(item.pricePaid, orderRole, item);
       if (err) {
         alert(`Error en "${item.name}": ${err}`);
@@ -358,10 +534,68 @@ export default function Orders() {
       }
     }
 
-    const ok = await updateOrder(editingOrder.id, editClientName.trim(), editClientPhone.trim(), editItems);
+    const ok = await updateOrder(editingOrder.id, editClientName.trim(), editClientPhone.trim(), discountedItems);
     if (ok) {
       setEditingOrder(null);
     }
+  };
+
+  const handleSavePromoRule = (e) => {
+    e.preventDefault();
+    if (!newPromoName.trim() || !newPromoMinAmount || !newPromoValue) return;
+
+    if (editingPromoRuleId) {
+      setPromoRules(prev => prev.map(r => {
+        if (r.id === editingPromoRuleId) {
+          return {
+            ...r,
+            name: newPromoName.trim(),
+            minAmount: Number(newPromoMinAmount),
+            discountType: newPromoType,
+            discountValue: Number(newPromoValue)
+          };
+        }
+        return r;
+      }));
+      setEditingPromoRuleId(null);
+    } else {
+      const newRule = {
+        id: 'promo_' + Date.now(),
+        name: newPromoName.trim(),
+        minAmount: Number(newPromoMinAmount),
+        discountType: newPromoType,
+        discountValue: Number(newPromoValue)
+      };
+      setPromoRules(prev => [...prev, newRule]);
+    }
+
+    setNewPromoName('');
+    setNewPromoMinAmount('');
+    setNewPromoValue('');
+    setNewPromoType('percentage');
+  };
+
+  const handleStartEditPromoRule = (rule) => {
+    setEditingPromoRuleId(rule.id);
+    setNewPromoName(rule.name);
+    setNewPromoMinAmount(rule.minAmount);
+    setNewPromoType(rule.discountType || 'percentage');
+    setNewPromoValue(rule.discountValue);
+  };
+
+  const handleCancelEditPromoRule = () => {
+    setEditingPromoRuleId(null);
+    setNewPromoName('');
+    setNewPromoMinAmount('');
+    setNewPromoValue('');
+    setNewPromoType('percentage');
+  };
+
+  const handleDeletePromoRule = (ruleId) => {
+    if (editingPromoRuleId === ruleId) {
+      handleCancelEditPromoRule();
+    }
+    setPromoRules(prev => prev.filter(r => r.id !== ruleId));
   };
 
   return (
@@ -377,12 +611,23 @@ export default function Orders() {
             Revisa, edita o actualiza el estado de las órdenes. Las ventas marcadas como <strong className="text-emerald-600 dark:text-emerald-400">entregado</strong> descuentan de forma automática el stock real de perfumes.
           </p>
         </div>
-        <button
-          onClick={handleOpenPhysicalSale}
-          className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-neutral-950 dark:bg-amber-400 hover:bg-neutral-850 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-black rounded-xl shadow-xs transition-all active:scale-95 uppercase tracking-wider shrink-0 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" /> Registrar Venta Física
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowPromoManagerModal(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 text-xs font-bold rounded-xl shadow-xs transition-all active:scale-95 shrink-0 cursor-pointer"
+            title="Configurar promociones por total de compra"
+          >
+            <Tag className="w-4 h-4 text-amber-500" /> Promociones
+          </button>
+          <button
+            type="button"
+            onClick={handleOpenPhysicalSale}
+            className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-neutral-950 dark:bg-amber-400 hover:bg-neutral-850 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-black rounded-xl shadow-xs transition-all active:scale-95 uppercase tracking-wider shrink-0 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" /> Registrar Venta Física
+          </button>
+        </div>
       </div>
 
       {storeError && (
@@ -439,63 +684,66 @@ export default function Orders() {
                 <th className="px-6 py-4 text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 font-semibold text-neutral-700 dark:text-neutral-200">
+            <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60 font-medium">
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-neutral-400 dark:text-neutral-500">
-                    <ShoppingBag className="h-8 w-8 mx-auto mb-2 text-neutral-300 dark:text-neutral-600" />
-                    <span>No se encontraron órdenes registradas.</span>
+                  <td colSpan="6" className="px-6 py-12 text-center text-neutral-400">
+                    <ShoppingBag className="mx-auto h-8 w-8 mb-2 opacity-50" />
+                    No se encontraron órdenes registradas.
                   </td>
                 </tr>
               ) : (
-                filteredOrders.map((o) => (
-                  <tr key={o.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/40 transition-colors">
-                    <td className="px-6 py-4 space-y-1">
-                      <span className="font-mono text-neutral-900 dark:text-neutral-100 block font-bold">{o.id}</span>
-                      <span className="text-[10px] text-neutral-400 dark:text-neutral-500 block">{o.date}</span>
+                filteredOrders.map(order => (
+                  <tr key={order.id} className="hover:bg-neutral-50/80 dark:hover:bg-neutral-800/50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="font-mono font-bold text-neutral-900 dark:text-neutral-100 text-xs">
+                        {order.id}
+                      </div>
+                      <div className="text-[10px] text-neutral-400 dark:text-neutral-500">
+                        {order.date}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 space-y-1">
-                      <span className="text-neutral-900 dark:text-neutral-100 block font-bold">{o.clientName}</span>
-                      <span className="text-[10px] text-neutral-400 dark:text-neutral-500 block font-mono">{o.clientPhone}</span>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="font-bold text-neutral-900 dark:text-neutral-100">{order.clientName}</div>
+                      <div className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono">{order.clientPhone}</div>
                     </td>
-                    <td className="px-6 py-4 font-mono text-neutral-900 dark:text-neutral-100 text-sm font-bold">
-                      L. {o.total.toLocaleString()} HNL
+                    <td className="px-6 py-4 whitespace-nowrap font-mono font-extrabold text-neutral-900 dark:text-amber-400">
+                      L. {order.total.toLocaleString()} HNL
                     </td>
-                    <td className="px-6 py-4 text-neutral-500 dark:text-neutral-400">
-                      {(o.items || []).reduce((acc, curr) => acc + curr.quantity, 0)} pzs
+                    <td className="px-6 py-4 whitespace-nowrap text-neutral-500 dark:text-neutral-400 text-xs">
+                      {order.items?.length || 0} fragancia(s)
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <select
-                        value={o.status}
-                        onChange={(e) => handleStatusChange(o.id, e.target.value)}
-                        className={`px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide border cursor-pointer outline-none transition-all ${
-                          o.status === 'entregado'
-                            ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
-                            : o.status === 'cancelado'
-                              ? 'bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300'
-                              : 'bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300'
+                        value={order.status}
+                        onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                        className={`px-2.5 py-1 rounded-xl text-[11px] font-bold outline-none cursor-pointer border transition-all ${
+                          order.status === 'entregado'
+                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                            : order.status === 'cancelado'
+                              ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+                              : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
                         }`}
                       >
-                        <option value="pendiente">Pendiente</option>
-                        <option value="entregado">Entregado</option>
-                        <option value="cancelado">Cancelado</option>
+                        <option value="pendiente">Pendiente 🕒</option>
+                        <option value="entregado">Entregado ✓</option>
+                        <option value="cancelado">Cancelado ✕</option>
                       </select>
                     </td>
-                    <td className="px-6 py-4 text-right space-x-2">
+                    <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
                       <button
-                        onClick={() => setViewingOrder(o)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-neutral-50 hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 text-[10px] font-bold rounded-lg cursor-pointer transition-all"
-                        title="Ver detalle"
+                        onClick={() => setViewingOrder(order)}
+                        className="p-1.5 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer"
+                        title="Ver detalles"
                       >
-                        <Eye className="h-3.5 w-3.5" /> Detalle
+                        <Eye className="h-4 w-4" />
                       </button>
-
                       <button
-                        onClick={() => handleOpenEdit(o)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-neutral-900 hover:bg-neutral-800 dark:bg-amber-400 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-[10px] font-bold rounded-lg cursor-pointer transition-all"
+                        onClick={() => handleOpenEdit(order)}
+                        className="p-1.5 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer"
                         title="Editar orden"
                       >
-                        <Edit2 className="h-3.5 w-3.5" /> Editar
+                        <Edit2 className="h-4 w-4" />
                       </button>
                     </td>
                   </tr>
@@ -507,7 +755,7 @@ export default function Orders() {
       </div>
 
       {/* View Detail Modal */}
-      {viewingOrder && (
+      {viewingOrder && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto">
           <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col my-auto max-h-[90vh] fade-in-up">
             <div className="p-5 sm:p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between flex-shrink-0">
@@ -560,7 +808,7 @@ export default function Orders() {
                       <div>
                         <span className="font-extrabold text-neutral-900 dark:text-neutral-100 block">{item.brand} {item.name}</span>
                         <span className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5 block font-semibold">
-                          Tamaño: {item.size} | {item.quantity} pzs c/u
+                          Tamaño: {item.size} | {item.quantity} pzs c/u @ L. {item.pricePaid?.toLocaleString()}
                         </span>
                       </div>
                       <span className="font-mono font-bold text-neutral-900 dark:text-neutral-100">
@@ -580,11 +828,12 @@ export default function Orders() {
               </span>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Edit Order Modal */}
-      {editingOrder && (
+      {editingOrder && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 sm:p-6">
           <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-2xl w-full max-w-5xl h-[90vh] max-h-[90vh] flex flex-col fade-in-up overflow-hidden">
             <div className="p-5 sm:p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between flex-shrink-0">
@@ -596,7 +845,7 @@ export default function Orders() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveEdit} className="p-5 sm:p-6 space-y-4 sm:space-y-5 flex-1 overflow-y-auto">
+            <form onSubmit={handleSaveEdit} className="p-5 sm:p-6 space-y-4 sm:space-y-5 flex-1 overflow-y-auto text-xs">
               
               {/* Cliente info fields */}
               <div className="grid gap-4 sm:grid-cols-2">
@@ -701,130 +950,251 @@ export default function Orders() {
                       </div>
                     )}
                   </div>
-                  
                   <button
                     type="button"
                     onClick={() => handleScanEditBarcodeOrSearch(editBarcodeInput)}
-                    className="px-3.5 py-2 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-850 dark:hover:bg-amber-300 text-white dark:text-neutral-950 font-bold text-xs rounded-xl cursor-pointer"
+                    className="px-4 py-2 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 font-bold rounded-xl text-xs cursor-pointer shrink-0"
                   >
-                    Añadir
+                    Agregar
                   </button>
                 </div>
-                
-                <select
-                  onChange={(e) => {
-                    const p = products.find(prod => prod.id === e.target.value);
-                    if (p) {
-                      handleAddItemToEdit(p);
-                      e.target.value = ''; // Reset dropdown
-                    }
-                  }}
-                  className="block w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-700 dark:text-neutral-200 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent outline-none transition-all cursor-pointer"
-                >
-                  <option value="">-- O selecciona un perfume de la lista --</option>
-                  {products.map(p => (
-                    <option key={p.id} value={p.id}>
-                      [{p.brand}] {p.name} ({p.size}) {p.barcode ? `- Barcode: ${p.barcode}` : ''}
-                    </option>
-                  ))}
-                </select>
               </div>
 
-              {/* Items details table */}
-              <div className="space-y-3">
-                <h4 className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest font-mono">
-                  Items en la Orden
-                </h4>
+              {/* Items List in Edit */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block">
+                  Items en la Orden ({editItems.length})
+                </label>
 
-                <div className="border border-neutral-200 dark:border-neutral-700 rounded-2xl overflow-hidden divide-y divide-neutral-100 dark:divide-neutral-800">
-                  {editItems.map((item, idx) => {
-                    const orderRole = getEditingOrderRole();
-                    const err = validateItemPrice(item.pricePaid, orderRole, item);
+                {editItems.length === 0 ? (
+                  <div className="p-4 text-center text-neutral-400 bg-neutral-50 dark:bg-neutral-800/30 rounded-2xl border border-dashed border-neutral-200 dark:border-neutral-700">
+                    No hay ítems en esta orden. Usa la búsqueda superior para añadir fragancias.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-neutral-100 dark:divide-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl overflow-hidden bg-white dark:bg-neutral-900">
+                    {editItems.map((item, idx) => {
+                      const orderRole = getEditingOrderRole();
+                      const priceErr = validateItemPrice(item.pricePaid, orderRole, item);
 
-                    return (
-                      <div key={idx} className={`p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
-                        err ? 'bg-rose-50/50 dark:bg-rose-950/20 border border-rose-300 dark:border-rose-800 rounded-xl' : ''
-                      }`}>
-                        <div className="flex-1 min-w-0">
-                          <span className="font-extrabold text-neutral-900 dark:text-neutral-100 block truncate">{item.brand} {item.name}</span>
-                          <span className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5 block font-semibold">
-                            Tamaño: {item.size}
-                          </span>
-                          {err && (
-                            <p className="text-[10px] text-rose-600 dark:text-rose-400 font-bold mt-0.5">
-                              ⚠️ {err}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-4 ml-auto w-full sm:w-auto justify-between sm:justify-end">
-                          {/* Price edit (Sellers/Owners can edit) */}
-                          <div className="flex flex-col">
-                            <label className="text-[9px] font-bold text-neutral-400">Precio (L.)</label>
-                            <input
-                              type="number"
-                              required
-                              min="0"
-                              value={item.pricePaid}
-                              onChange={(e) => handleUpdateItemPrice(item.productId, e.target.value)}
-                              className="w-20 px-2 py-1 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-xs font-mono font-bold outline-none"
-                            />
-                          </div>
-
-                          {/* Quantity adjust */}
-                          <div className="flex flex-col items-center">
-                            <label className="text-[9px] font-bold text-neutral-400">Cant</label>
-                            <div className="flex items-center border border-neutral-200 dark:border-neutral-700 rounded-xl bg-neutral-50 dark:bg-neutral-800">
-                              <button
-                                type="button"
-                                onClick={() => handleUpdateItemQty(item.productId, item.quantity - 1)}
-                                className="px-2 py-0.5 text-xs font-bold text-neutral-500 hover:text-neutral-950 dark:hover:text-neutral-100 cursor-pointer"
-                              >
-                                -
-                              </button>
-                              <span className="px-2 text-xs font-bold text-neutral-950 dark:text-neutral-100 font-mono min-w-[1.2rem] text-center">
-                                {item.quantity}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleUpdateItemQty(item.productId, item.quantity + 1)}
-                                className="px-2 py-0.5 text-xs font-bold text-neutral-500 hover:text-neutral-950 dark:hover:text-neutral-100 cursor-pointer"
-                              >
-                                +
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Subtotal */}
-                          <div className="text-right min-w-[4rem]">
-                            <span className="text-[9px] font-bold text-neutral-400 block">Subtotal</span>
-                            <span className="font-mono font-extrabold text-neutral-900 dark:text-amber-400 text-xs">
-                              L. {(Number(item.pricePaid || 0) * Number(item.quantity || 1)).toLocaleString()}
+                      return (
+                        <div key={idx} className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
+                          <div className="space-y-0.5 flex-1 min-w-0">
+                            <span className="font-extrabold text-neutral-900 dark:text-neutral-100 block text-xs truncate">
+                              [{item.brand}] {item.name}
                             </span>
+                            <span className="text-[10px] text-neutral-400 dark:text-neutral-500 block">
+                              Tamaño: {item.size} | Costo: L. {item.cost} | Mayoreo: L. {item.pricePromotional}
+                            </span>
+                            {priceErr && (
+                              <span className="text-[10px] text-rose-500 font-bold block">
+                                ⚠️ {priceErr}
+                              </span>
+                            )}
                           </div>
 
-                          {/* Trash */}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem(item.productId)}
-                            className="p-1 text-neutral-400 hover:text-red-600 dark:text-neutral-500 dark:hover:text-rose-400 rounded-lg cursor-pointer"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
+                            {/* Price field */}
+                            <div>
+                              <label className="text-[9px] font-bold text-neutral-400 block text-center">Precio C/U</label>
+                              <div className="flex items-center">
+                                <span className="text-xs font-mono font-bold text-neutral-400 mr-1">L.</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="any"
+                                  value={item.pricePaid}
+                                  onChange={(e) => handleUpdateItemPrice(item.productId, Number(e.target.value))}
+                                  className="w-20 px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg font-mono font-bold text-xs text-right outline-none focus:ring-1 focus:ring-amber-400"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Quantity buttons */}
+                            <div>
+                              <label className="text-[9px] font-bold text-neutral-400 block text-center">Cant</label>
+                              <div className="flex items-center border border-neutral-200 dark:border-neutral-700 rounded-lg bg-neutral-50 dark:bg-neutral-800">
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateItemQty(item.productId, item.quantity - 1)}
+                                  className="px-2 py-1 text-xs font-bold text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 cursor-pointer"
+                                >
+                                  -
+                                </button>
+                                <span className="px-2 text-xs font-mono font-bold min-w-[1.2rem] text-center">
+                                  {item.quantity}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateItemQty(item.productId, item.quantity + 1)}
+                                  className="px-2 py-1 text-xs font-bold text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 cursor-pointer"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Subtotal */}
+                            <div className="text-right min-w-[4rem]">
+                              <span className="text-[9px] font-bold text-neutral-400 block">Subtotal</span>
+                              <span className="font-mono font-extrabold text-neutral-900 dark:text-amber-400 text-xs">
+                                L. {(Number(item.pricePaid || 0) * Number(item.quantity || 1)).toLocaleString()}
+                              </span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItem(item.productId)}
+                              className="p-1 text-neutral-400 hover:text-rose-600 rounded-lg cursor-pointer"
+                              title="Eliminar item"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
+
+              {/* Discount Section in Edit Order */}
+              {editItems.length > 0 && (
+                <div className="bg-neutral-50 dark:bg-neutral-800/40 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-600 dark:text-neutral-400 flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5 text-amber-500" /> Descuentos y Promociones
+                    </span>
+                    {editDiscountDetails.qualifyingPromos.length > 0 && editDiscountMode !== 'promo' && (
+                      <span className="text-[10px] bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-800 flex items-center gap-1">
+                        <Sparkles className="w-3 h-3 text-amber-500" />
+                        ¡Califica para {editDiscountDetails.qualifyingPromos[0].name}!
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditDiscountMode('none')}
+                      className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        editDiscountMode === 'none'
+                          ? 'bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950 border-transparent shadow'
+                          : 'bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300'
+                      }`}
+                    >
+                      Sin Descuento
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditDiscountMode('promo');
+                        if (editDiscountDetails.qualifyingPromos.length > 0) {
+                          setEditSelectedPromoId(editDiscountDetails.qualifyingPromos[0].id);
+                        } else if (promoRules.length > 0) {
+                          setEditSelectedPromoId(promoRules[0].id);
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        editDiscountMode === 'promo'
+                          ? 'bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950 border-transparent shadow'
+                          : 'bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300'
+                      }`}
+                    >
+                      Promoción por Compra
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditDiscountMode('manual')}
+                      className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        editDiscountMode === 'manual'
+                          ? 'bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950 border-transparent shadow'
+                          : 'bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300'
+                      }`}
+                    >
+                      Descuento Manual
+                    </button>
+                  </div>
+
+                  {editDiscountMode === 'promo' && (
+                    <div className="space-y-2 pt-1">
+                      <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
+                        Seleccionar Regla de Promoción
+                      </label>
+                      <select
+                        value={editSelectedPromoId}
+                        onChange={(e) => setEditSelectedPromoId(e.target.value)}
+                        className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-bold text-neutral-800 dark:text-neutral-100 outline-none cursor-pointer"
+                      >
+                        {promoRules.map(r => (
+                          <option key={r.id} value={r.id}>
+                            {r.name} (Min. L. {Number(r.minAmount).toLocaleString()})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {editDiscountMode === 'manual' && (
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div>
+                        <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
+                          Tipo de Descuento
+                        </label>
+                        <select
+                          value={editManualType}
+                          onChange={(e) => setEditManualType(e.target.value)}
+                          className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-bold text-neutral-800 dark:text-neutral-100 outline-none cursor-pointer"
+                        >
+                          <option value="percentage">Porcentaje (%)</option>
+                          <option value="fixed">Monto Fijo (L.)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
+                          Valor del Descuento
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={editManualValue}
+                          onChange={(e) => setEditManualValue(e.target.value)}
+                          placeholder={editManualType === 'percentage' ? 'Ej: 10 para 10%' : 'Ej: 200 para L.200'}
+                          className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-mono font-bold text-neutral-800 dark:text-neutral-100 outline-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {editDiscountDetails.isCapped && (
+                    <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-xl text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold block">Límite de Descuento Aplicado</span>
+                        <span className="text-[11px]">
+                          {getEditingOrderRole() === 'mayorista'
+                            ? `El descuento solicitado excede el margen permitido. Se limitó a L. ${editDiscountDetails.maxDiscountAllowed.toLocaleString()} para asegurar que el total no baje del costo total (L. ${editDiscountDetails.minAllowedTotal.toLocaleString()}).`
+                            : `El descuento solicitado excede el margen permitido. Se limitó a L. ${editDiscountDetails.maxDiscountAllowed.toLocaleString()} para asegurar que el total no baje del precio de mayoreo total (L. ${editDiscountDetails.minAllowedTotal.toLocaleString()}).`
+                          }
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
             </form>
 
             <div className="p-5 sm:p-6 bg-neutral-50 dark:bg-neutral-800/80 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between flex-shrink-0">
               <div className="text-left">
-                <span className="text-[10px] text-neutral-400 dark:text-neutral-500 block font-bold">Subtotal Estimado:</span>
+                <span className="text-[10px] text-neutral-400 dark:text-neutral-500 block font-bold">Subtotal Original: L. {editDiscountDetails.rawSubtotal.toLocaleString()}</span>
+                {editDiscountDetails.actualAppliedDiscount > 0 && (
+                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold block">
+                    Descuento: - L. {editDiscountDetails.actualAppliedDiscount.toLocaleString()}
+                  </span>
+                )}
                 <span className="font-mono font-black text-neutral-950 dark:text-amber-400 text-base">
-                  L. {editItems.reduce((acc, curr) => acc + (Number(curr.pricePaid || 0) * Number(curr.quantity || 1)), 0).toLocaleString()} HNL
+                  Total: L. {editDiscountDetails.finalTotal.toLocaleString()} HNL
                 </span>
               </div>
 
@@ -851,13 +1221,14 @@ export default function Orders() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Manual / Physical Counter Sale Modal */}
-      {showPhysicalSaleModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 sm:p-6">
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl w-full max-w-5xl h-[90vh] max-h-[90vh] shadow-xl flex flex-col fade-in-up overflow-hidden">
+      {showPhysicalSaleModal && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl w-full max-w-5xl h-[90vh] max-h-[90vh] shadow-xl flex flex-col fade-in-up overflow-hidden my-auto">
             {/* Header */}
             <div className="p-5 sm:p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between flex-shrink-0">
               <h3 className="text-sm font-extrabold text-neutral-900 dark:text-neutral-50 uppercase tracking-wider flex items-center gap-2">
@@ -899,80 +1270,83 @@ export default function Orders() {
                     onChange={(e) => setPhysicalBuyerId(e.target.value)}
                     className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-semibold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100 cursor-pointer"
                   >
-                    <option value="">-- Cliente de paso --</option>
-                    {(customers || []).map(cust => (
-                      <option key={cust.id} value={cust.id}>
-                        {cust.name} ({cust.phone || 'Sin tel'}) - {cust.role || 'detalle'}
+                    <option value="">Ninguno (Cliente General Mostrador)</option>
+                    {(customers || []).map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.role === 'mayorista' ? 'Mayorista' : 'Cliente Detalle'}) - {c.phone || 'Sin tel'}
                       </option>
                     ))}
                   </select>
                 </div>
 
-                <div className="space-y-1.5 flex flex-col justify-end">
-                  <span className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">
-                    Tarifa Aplicada
-                  </span>
-                  <label className="flex items-center gap-3 px-4 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-bold text-neutral-800 dark:text-neutral-200 cursor-pointer select-none hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-all h-[38px]">
-                    <input
-                      type="checkbox"
-                      checked={physicalRoleUsed === 'mayorista'}
-                      onChange={(e) => {
-                        const isWholesale = e.target.checked;
-                        const newRole = isWholesale ? 'mayorista' : 'detalle';
-                        setPhysicalRoleUsed(newRole);
-                        // Update default prices in list
-                        setPhysicalSaleItems(prev => prev.map(item => ({
-                          ...item,
-                          pricePaid: newRole === 'mayorista' ? (item.pricePromotional || item.pricePublic) : item.pricePublic
-                        })));
-                      }}
-                      className="w-4 h-4 rounded text-amber-500 accent-amber-500 cursor-pointer"
-                    />
-                    <div className="flex flex-col">
-                      <span className="text-xs font-extrabold text-neutral-800 dark:text-neutral-100">
-                        ¿Es venta al mayoreo?
-                      </span>
-                    </div>
+                <div className="space-y-1.5">
+                  <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">
+                    Tipo de Tarifa Aplicada
                   </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPhysicalRoleUsed('detalle');
+                        setPhysicalSaleItems(prev => prev.map(i => ({ ...i, pricePaid: i.pricePublic })));
+                      }}
+                      className={`flex-1 py-2 px-3 rounded-xl font-bold border transition-all cursor-pointer ${
+                        physicalRoleUsed === 'detalle'
+                          ? 'bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 border-transparent shadow-xs'
+                          : 'bg-neutral-50 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400'
+                      }`}
+                    >
+                      Detalle (Público)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPhysicalRoleUsed('mayorista');
+                        setPhysicalSaleItems(prev => prev.map(i => ({ ...i, pricePaid: i.pricePromotional })));
+                      }}
+                      className={`flex-1 py-2 px-3 rounded-xl font-bold border transition-all cursor-pointer ${
+                        physicalRoleUsed === 'mayorista'
+                          ? 'bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 border-transparent shadow-xs'
+                          : 'bg-neutral-50 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400'
+                      }`}
+                    >
+                      Mayorista (Especial)
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Client Info Grid */}
+              {/* Client Contact Info */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">
-                    Nombre del Cliente
-                  </label>
+                <div className="space-y-1">
+                  <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">Nombre del Cliente</label>
                   <input
                     type="text"
                     required
                     value={physicalClientName}
                     onChange={(e) => setPhysicalClientName(e.target.value)}
-                    placeholder="Ej. Venta de Mostrador / Juan Pérez"
                     className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-semibold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100"
                   />
                 </div>
-
-                <div className="space-y-1.5">
-                  <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">
-                    WhatsApp del Cliente
-                  </label>
+                <div className="space-y-1">
+                  <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">Teléfono (Opcional)</label>
                   <input
                     type="text"
                     value={physicalClientPhone}
                     onChange={(e) => setPhysicalClientPhone(e.target.value)}
                     placeholder="Ej. +504 9999-9999"
-                    className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-semibold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100"
+                    className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-mono font-semibold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100"
                   />
                 </div>
               </div>
 
-              {/* Barcode / Quick Add Search Section */}
-              <div className="space-y-2 relative">
-                <label className="block font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider text-[10px]">
-                  📷 Escanear Código de Barras o Buscar Perfume
+              {/* Add Perfumes Section */}
+              <div className="space-y-2 pt-2">
+                <label className="block font-extrabold text-neutral-900 dark:text-neutral-100 uppercase tracking-wider text-[10px]">
+                  Escanear o Buscar Perfumes para la Venta
                 </label>
-                <div className="flex gap-2 relative">
+                
+                <div className="relative flex gap-2">
                   <div className="flex-1 relative">
                     <input
                       type="text"
@@ -984,10 +1358,10 @@ export default function Orders() {
                           handleScanBarcodeOrSearch(barcodeInput);
                         }
                       }}
-                      placeholder="Escribir nombre o marca para buscar..."
-                      className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-mono text-xs font-semibold outline-none focus:ring-2 focus:ring-neutral-950 dark:focus:ring-amber-400"
+                      placeholder="Escanear código de barras o buscar por nombre/marca..."
+                      className="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-mono font-bold outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400"
                     />
-                    
+
                     {/* Autocomplete Dropdown overlay */}
                     {barcodeInput.trim().length > 0 && (
                       <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xl z-50 max-h-56 overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800">
@@ -1040,115 +1414,69 @@ export default function Orders() {
                       </div>
                     )}
                   </div>
-                  
                   <button
                     type="button"
                     onClick={() => handleScanBarcodeOrSearch(barcodeInput)}
-                    className="px-4 py-2 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 font-bold rounded-xl cursor-pointer"
+                    className="px-4 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-850 dark:hover:bg-amber-300 text-white dark:text-neutral-950 font-bold rounded-xl text-xs cursor-pointer shrink-0"
                   >
-                    Añadir
+                    Agregar
                   </button>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-[10px] text-neutral-400 font-semibold">
-                    O selecciona de la lista:
-                  </label>
-                  <select
-                    value=""
-                    onChange={(e) => {
-                      const selected = products.find(p => p.id === e.target.value);
-                      if (selected) {
-                        handleAddProductToPhysicalSale(selected);
-                      }
-                    }}
-                    className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-semibold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100 cursor-pointer"
-                  >
-                    <option value="">-- Hacer clic para seleccionar perfume del inventario --</option>
-                    {products.map(prod => {
-                      const stock = prod.availableStock !== undefined ? prod.availableStock : prod.stock;
-                      const prices = getProductPrices(prod);
-                      return (
-                        <option key={prod.id} value={prod.id} disabled={stock <= 0}>
-                          [{prod.brand}] {prod.name} ({prod.size}) - Stock: {stock} u - L. {prices.finalDetalle} (Púb) / L. {prices.finalWholesale} (May)
-                        </option>
-                      );
-                    })}
-                  </select>
                 </div>
               </div>
 
-              {/* Items Table */}
-              <div className="space-y-2 mt-3">
-                <label className="block font-bold text-neutral-900 dark:text-neutral-100 uppercase tracking-wider text-[11px] flex justify-between items-center">
-                  <span>Perfumes Agregados ({physicalSaleItems.length})</span>
-                  {physicalSaleItems.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setPhysicalSaleItems([])}
-                      className="text-rose-500 hover:underline text-[10px] lowercase cursor-pointer"
-                    >
-                      Vaciar lista
-                    </button>
-                  )}
+              {/* Items Table in Physical Sale */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block">
+                  Perfumes Seleccionados ({physicalSaleItems.length})
                 </label>
 
                 {physicalSaleItems.length === 0 ? (
-                  <div className="p-6 text-center border-2 border-dashed border-neutral-200 dark:border-neutral-800 rounded-2xl text-neutral-400">
-                    <p className="font-semibold">No has añadido perfumes a la venta física.</p>
-                    <p className="text-[10px] mt-1">Escanea un código de barras o selecciona un perfume de la lista superior.</p>
+                  <div className="p-6 text-center text-neutral-400 bg-neutral-50 dark:bg-neutral-950/50 rounded-2xl border border-dashed border-neutral-200 dark:border-neutral-800 space-y-1">
+                    <ShoppingBag className="mx-auto h-6 w-6 text-neutral-400 opacity-60" />
+                    <p className="font-bold text-xs">No has agregado fragancias a la venta</p>
+                    <p className="text-[10px]">Usa el buscador o escáner para añadir los perfumes del cliente.</p>
                   </div>
                 ) : (
-                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  <div className="divide-y divide-neutral-100 dark:divide-neutral-800 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden bg-white dark:bg-neutral-900">
                     {physicalSaleItems.map((item) => {
-                      const err = validateItemPrice(item.pricePaid, physicalRoleUsed, item);
-                      const isOverStock = item.quantity > item.availableStock;
+                      const priceErr = validateItemPrice(item.pricePaid, physicalRoleUsed, item);
 
                       return (
-                        <div
-                          key={item.productId}
-                          className={`p-3 border rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
-                            err || isOverStock
-                              ? 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-300 dark:border-rose-800'
-                              : 'bg-neutral-50 dark:bg-neutral-950 border-neutral-200 dark:border-neutral-800'
-                          }`}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <span className="font-extrabold text-neutral-900 dark:text-neutral-100 block truncate">
+                        <div key={item.productId} className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
+                          <div className="space-y-0.5 flex-1 min-w-0">
+                            <span className="font-extrabold text-neutral-900 dark:text-neutral-100 block text-xs truncate">
                               [{item.brand}] {item.name}
                             </span>
-                            <span className="text-[10px] text-neutral-400 block font-semibold">
-                              {item.size} {item.barcode && `| Barcode: ${item.barcode}`} | Stock disp: {item.availableStock} u
+                            <span className="text-[10px] text-neutral-400 dark:text-neutral-500 block">
+                              Tamaño: {item.size} | Stock disp: {item.availableStock} u
                             </span>
-                            {err && (
-                              <p className="text-[10px] text-rose-600 dark:text-rose-400 font-bold mt-0.5">
-                                ⚠️ {err}
-                              </p>
-                            )}
-                            {isOverStock && (
-                              <p className="text-[10px] text-rose-600 dark:text-rose-400 font-bold mt-0.5">
-                                ⚠️ Excede el stock ({item.availableStock} disponibles).
-                              </p>
+                            {priceErr && (
+                              <span className="text-[10px] text-rose-500 font-bold block">
+                                ⚠️ {priceErr}
+                              </span>
                             )}
                           </div>
 
-                          <div className="flex items-center gap-3 w-full sm:w-auto justify-between">
-                            {/* Price per item input */}
-                            <div className="flex flex-col">
-                              <label className="text-[9px] font-bold text-neutral-400">Precio (L.)</label>
-                              <input
-                                type="number"
-                                required
-                                min="0"
-                                value={item.pricePaid}
-                                onChange={(e) => handleUpdatePhysicalItemPrice(item.productId, e.target.value)}
-                                className="w-20 px-2 py-1 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg text-xs font-mono font-bold outline-none"
-                              />
+                          <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
+                            {/* Price field */}
+                            <div>
+                              <label className="text-[9px] font-bold text-neutral-400 block text-center">Precio C/U</label>
+                              <div className="flex items-center">
+                                <span className="text-xs font-mono font-bold text-neutral-400 mr-1">L.</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="any"
+                                  value={item.pricePaid}
+                                  onChange={(e) => handleUpdatePhysicalItemPrice(item.productId, Number(e.target.value))}
+                                  className="w-20 px-2 py-1 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg font-mono font-bold text-xs text-right outline-none focus:ring-1 focus:ring-amber-400"
+                                />
+                              </div>
                             </div>
 
-                            {/* Quantity control */}
-                            <div className="flex flex-col items-center">
-                              <label className="text-[9px] font-bold text-neutral-400">Cant</label>
+                            {/* Quantity buttons */}
+                            <div>
+                              <label className="text-[9px] font-bold text-neutral-400 block text-center">Cant</label>
                               <div className="flex items-center border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-900">
                                 <button
                                   type="button"
@@ -1194,17 +1522,155 @@ export default function Orders() {
                 )}
               </div>
 
+              {/* Discount Section in Physical Sale */}
+              {physicalSaleItems.length > 0 && (
+                <div className="bg-neutral-50 dark:bg-neutral-800/40 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-600 dark:text-neutral-400 flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5 text-amber-500" /> Descuentos y Promociones
+                    </span>
+                    {physicalDiscountDetails.qualifyingPromos.length > 0 && physicalDiscountMode !== 'promo' && (
+                      <span className="text-[10px] bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-800 flex items-center gap-1">
+                        <Sparkles className="w-3 h-3 text-amber-500" />
+                        ¡Califica para {physicalDiscountDetails.qualifyingPromos[0].name}!
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPhysicalDiscountMode('none')}
+                      className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        physicalDiscountMode === 'none'
+                          ? 'bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950 border-transparent shadow'
+                          : 'bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300'
+                      }`}
+                    >
+                      Sin Descuento
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPhysicalDiscountMode('promo');
+                        if (physicalDiscountDetails.qualifyingPromos.length > 0) {
+                          setPhysicalSelectedPromoId(physicalDiscountDetails.qualifyingPromos[0].id);
+                        } else if (promoRules.length > 0) {
+                          setPhysicalSelectedPromoId(promoRules[0].id);
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        physicalDiscountMode === 'promo'
+                          ? 'bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950 border-transparent shadow'
+                          : 'bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300'
+                      }`}
+                    >
+                      Promoción por Compra
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPhysicalDiscountMode('manual')}
+                      className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        physicalDiscountMode === 'manual'
+                          ? 'bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950 border-transparent shadow'
+                          : 'bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300'
+                      }`}
+                    >
+                      Descuento Manual
+                    </button>
+                  </div>
+
+                  {physicalDiscountMode === 'promo' && (
+                    <div className="space-y-2 pt-1">
+                      <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
+                        Seleccionar Regla de Promoción
+                      </label>
+                      <select
+                        value={physicalSelectedPromoId}
+                        onChange={(e) => setPhysicalSelectedPromoId(e.target.value)}
+                        className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-bold text-neutral-800 dark:text-neutral-100 outline-none cursor-pointer"
+                      >
+                        {promoRules.map(r => (
+                          <option key={r.id} value={r.id}>
+                            {r.name} (Min. L. {Number(r.minAmount).toLocaleString()})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {physicalDiscountMode === 'manual' && (
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div>
+                        <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
+                          Tipo de Descuento
+                        </label>
+                        <select
+                          value={physicalManualType}
+                          onChange={(e) => setPhysicalManualType(e.target.value)}
+                          className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-bold text-neutral-800 dark:text-neutral-100 outline-none cursor-pointer"
+                        >
+                          <option value="percentage">Porcentaje (%)</option>
+                          <option value="fixed">Monto Fijo (L.)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
+                          Valor del Descuento
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={physicalManualValue}
+                          onChange={(e) => setPhysicalManualValue(e.target.value)}
+                          placeholder={physicalManualType === 'percentage' ? 'Ej: 10 para 10%' : 'Ej: 200 para L.200'}
+                          className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-mono font-bold text-neutral-800 dark:text-neutral-100 outline-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {physicalDiscountDetails.isCapped && (
+                    <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-xl text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold block">Límite de Descuento Aplicado</span>
+                        <span className="text-[11px]">
+                          {physicalRoleUsed === 'mayorista'
+                            ? `El descuento solicitado excede el margen permitido. Se limitó a L. ${physicalDiscountDetails.maxDiscountAllowed.toLocaleString()} para asegurar que el total no baje del costo total (L. ${physicalDiscountDetails.minAllowedTotal.toLocaleString()}).`
+                            : `El descuento solicitado excede el margen permitido. Se limitó a L. ${physicalDiscountDetails.maxDiscountAllowed.toLocaleString()} para asegurar que el total no baje del precio de mayoreo total (L. ${physicalDiscountDetails.minAllowedTotal.toLocaleString()}).`
+                          }
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Total Calculation Display */}
-              <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/40 dark:border-amber-900/40 rounded-2xl flex items-center justify-between mt-2">
-                <div>
-                  <span className="block text-[10px] text-amber-800 dark:text-amber-500 font-extrabold uppercase tracking-widest font-mono">Total de la Venta</span>
-                  <span className="block text-xs text-neutral-500">
-                    {physicalSaleItems.reduce((acc, i) => acc + Number(i.quantity || 0), 0)} unidades en total
+              <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/40 dark:border-amber-900/40 rounded-2xl flex flex-col gap-1.5 mt-2">
+                <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
+                  <span>Subtotal Bruto:</span>
+                  <span className="font-mono font-bold">L. {physicalDiscountDetails.rawSubtotal.toLocaleString()} HNL</span>
+                </div>
+                {physicalDiscountDetails.actualAppliedDiscount > 0 && (
+                  <div className="flex items-center justify-between text-xs text-amber-700 dark:text-amber-400 font-bold">
+                    <span>Descuento Aplicado {physicalDiscountDetails.promoAppliedName ? `(${physicalDiscountDetails.promoAppliedName})` : ''}:</span>
+                    <span className="font-mono">- L. {physicalDiscountDetails.actualAppliedDiscount.toLocaleString()} HNL</span>
+                  </div>
+                )}
+                <div className="pt-2 border-t border-amber-200/50 dark:border-amber-900/40 flex items-center justify-between">
+                  <div>
+                    <span className="block text-[10px] text-amber-800 dark:text-amber-500 font-extrabold uppercase tracking-widest font-mono">Total de la Venta</span>
+                    <span className="block text-xs text-neutral-500">
+                      {physicalSaleItems.reduce((acc, i) => acc + Number(i.quantity || 0), 0)} unidades en total
+                    </span>
+                  </div>
+                  <span className="font-mono font-black text-amber-950 dark:text-amber-200 text-lg">
+                    L. {physicalDiscountDetails.finalTotal.toLocaleString()} HNL
                   </span>
                 </div>
-                <span className="font-mono font-black text-amber-950 dark:text-amber-200 text-lg">
-                  L. {physicalSaleItems.reduce((acc, i) => acc + (Number(i.pricePaid || 0) * Number(i.quantity || 1)), 0).toLocaleString()} HNL
-                </span>
               </div>
 
               </div>
@@ -1236,11 +1702,12 @@ export default function Orders() {
 
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Assign Barcode Modal */}
-      {assignBarcodeState.isOpen && (
+      {assignBarcodeState.isOpen && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-3">
@@ -1250,7 +1717,7 @@ export default function Orders() {
               <button
                 type="button"
                 onClick={() => setAssignBarcodeState(prev => ({ ...prev, isOpen: false }))}
-                className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg text-neutral-400"
+                className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg text-neutral-400 cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1260,7 +1727,7 @@ export default function Orders() {
               El código de barras <span className="font-mono font-bold text-amber-600 dark:text-amber-400">"{assignBarcodeState.scannedBarcode}"</span> no está asignado. Selecciónalo en la lista para asociarlo al perfume y agregarlo a la venta.
             </p>
 
-            <div className="space-y-3">
+            <div className="space-y-3 text-xs">
               <div>
                 <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1">
                   Código de Barras Escaneado
@@ -1280,7 +1747,7 @@ export default function Orders() {
                 <select
                   value={assignBarcodeState.selectedProdId}
                   onChange={(e) => setAssignBarcodeState(prev => ({ ...prev, selectedProdId: e.target.value }))}
-                  className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-xs font-semibold"
+                  className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-xs font-semibold cursor-pointer"
                 >
                   {products.map(p => (
                     <option key={p.id} value={p.id}>
@@ -1297,11 +1764,11 @@ export default function Orders() {
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
+            <div className="flex items-center justify-end gap-2 pt-2 text-xs">
               <button
                 type="button"
                 onClick={() => setAssignBarcodeState(prev => ({ ...prev, isOpen: false }))}
-                className="px-4 py-2 border border-neutral-200 dark:border-neutral-700 text-xs font-bold rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                className="px-4 py-2 border border-neutral-200 dark:border-neutral-700 text-xs font-bold rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer"
               >
                 Cancelar
               </button>
@@ -1309,13 +1776,172 @@ export default function Orders() {
                 type="button"
                 disabled={assignBarcodeState.isSaving || !assignBarcodeState.selectedProdId || !assignBarcodeState.scannedBarcode}
                 onClick={handleSaveBarcodeAssignment}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl shadow disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl shadow disabled:opacity-50 cursor-pointer"
               >
                 {assignBarcodeState.isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Guardar y Agregar'}
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Promo Rules Manager Modal */}
+      {showPromoManagerModal && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto">
+          <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col my-auto max-h-[90vh] fade-in-up">
+            <div className="p-5 sm:p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between flex-shrink-0">
+              <h3 className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-base flex items-center gap-2">
+                <Tag className="w-5 h-5 text-amber-500" /> Reglas de Promoción por Total de Compra
+              </h3>
+              <button onClick={() => setShowPromoManagerModal(false)} className="text-neutral-400 hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300 cursor-pointer">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-5 sm:p-6 space-y-6 flex-1 overflow-y-auto text-xs">
+              <p className="text-neutral-500 dark:text-neutral-400">
+                Define promociones automáticas para aplicar a ventas físicas y órdenes en función del monto total de la compra.
+              </p>
+
+              {/* Add / Edit Rule Form */}
+              <form onSubmit={handleSavePromoRule} className="bg-neutral-50 dark:bg-neutral-800/50 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-neutral-900 dark:text-neutral-100 block text-xs">
+                    {editingPromoRuleId ? 'Editar Regla Promocional' : 'Añadir Nueva Regla Promocional'}
+                  </span>
+                  {editingPromoRuleId && (
+                    <button
+                      type="button"
+                      onClick={handleCancelEditPromoRule}
+                      className="text-[10px] text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200 underline font-semibold cursor-pointer"
+                    >
+                      Cancelar Edición
+                    </button>
+                  )}
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Nombre de la Promoción</label>
+                    <input
+                      type="text"
+                      required
+                      value={newPromoName}
+                      onChange={(e) => setNewPromoName(e.target.value)}
+                      placeholder="Ej: Promo Navidad > L. 3,000"
+                      className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl font-semibold outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Monto Mínimo de Compra (L.)</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      value={newPromoMinAmount}
+                      onChange={(e) => setNewPromoMinAmount(e.target.value)}
+                      placeholder="Ej: 3000"
+                      className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl font-mono font-bold outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Tipo de Descuento</label>
+                    <select
+                      value={newPromoType}
+                      onChange={(e) => setNewPromoType(e.target.value)}
+                      className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl font-semibold outline-none cursor-pointer"
+                    >
+                      <option value="percentage">Porcentaje (%)</option>
+                      <option value="fixed">Monto Fijo (L.)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Valor del Descuento</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="any"
+                      value={newPromoValue}
+                      onChange={(e) => setNewPromoValue(e.target.value)}
+                      placeholder={newPromoType === 'percentage' ? 'Ej: 10' : 'Ej: 300'}
+                      className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl font-mono font-bold outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-1">
+                  {editingPromoRuleId && (
+                    <button
+                      type="button"
+                      onClick={handleCancelEditPromoRule}
+                      className="px-3 py-1.5 bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-200 font-bold rounded-xl text-xs cursor-pointer hover:bg-neutral-300 dark:hover:bg-neutral-600"
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    className="inline-flex items-center gap-1 px-4 py-2 bg-neutral-900 dark:bg-amber-400 text-white dark:text-neutral-950 font-bold rounded-xl cursor-pointer hover:bg-neutral-800 dark:hover:bg-amber-300"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> {editingPromoRuleId ? 'Actualizar Regla' : 'Guardar Promoción'}
+                  </button>
+                </div>
+              </form>
+
+              {/* Active Rules List */}
+              <div className="space-y-2">
+                <span className="font-bold text-neutral-500 uppercase tracking-wider text-[10px] block">Reglas Activas</span>
+                <div className="divide-y divide-neutral-100 dark:divide-neutral-800 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden bg-white dark:bg-neutral-900">
+                  {promoRules.length === 0 ? (
+                    <div className="p-4 text-center text-neutral-400">No hay reglas de promoción guardadas.</div>
+                  ) : (
+                    promoRules.map(r => (
+                      <div key={r.id} className={`p-3.5 flex items-center justify-between transition-colors ${editingPromoRuleId === r.id ? 'bg-amber-50 dark:bg-amber-950/40 border-l-4 border-amber-500' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/40'}`}>
+                        <div>
+                          <span className="font-bold text-neutral-900 dark:text-neutral-100 block">{r.name}</span>
+                          <span className="text-[10px] text-neutral-400 font-mono block">
+                            Compra Mínima: L. {Number(r.minAmount).toLocaleString()} HNL | Descuento: {r.discountValue}{r.discountType === 'percentage' ? '%' : ' L.'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditPromoRule(r)}
+                            className="p-1.5 text-neutral-400 hover:text-amber-500 rounded-lg cursor-pointer transition-colors"
+                            title="Editar regla"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePromoRule(r.id)}
+                            className="p-1.5 text-neutral-400 hover:text-rose-600 rounded-lg cursor-pointer transition-colors"
+                            title="Eliminar regla"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 sm:p-6 bg-neutral-50 dark:bg-neutral-800/80 border-t border-neutral-100 dark:border-neutral-800 flex justify-end flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowPromoManagerModal(false)}
+                className="px-5 py-2.5 bg-neutral-900 dark:bg-amber-400 text-white dark:text-neutral-950 font-bold rounded-xl cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
     </div>
