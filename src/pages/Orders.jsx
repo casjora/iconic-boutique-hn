@@ -14,35 +14,40 @@ const DEFAULT_PROMO_RULES = [
 ];
 
 const calculateDiscountDetails = (items, roleUsed, discountMode, selectedPromoId, manualType, manualValue, promoRulesList) => {
-  const rawSubtotal = items.reduce((acc, i) => acc + (Number(i.pricePaid || 0) * Number(i.quantity || 1)), 0);
   const retailSubtotal = items.reduce((acc, i) => {
     const qty = Number(i.quantity || 1);
     const pPublic = Number(i.pricePublic || i.pricePaid || 0);
     return acc + (pPublic * qty);
   }, 0);
-  
-  // Calculate minimum allowed total floor
-  // Detalle: pricePromotional (wholesale limit)
-  // Mayorista: cost (cost limit)
-  const minAllowedTotal = items.reduce((acc, i) => {
+
+  const wholesaleSubtotal = items.reduce((acc, i) => {
     const qty = Number(i.quantity || 1);
-    const minUnitPrice = roleUsed === 'mayorista' 
-      ? Number(i.cost || 0) 
-      : Number(i.pricePromotional || 0);
-    return acc + (minUnitPrice * qty);
+    const pPromotional = Number(i.pricePromotional || 0);
+    return acc + (pPromotional * qty);
   }, 0);
 
+  const costSubtotal = items.reduce((acc, i) => {
+    const qty = Number(i.quantity || 1);
+    const cost = Number(i.cost || 0);
+    return acc + (cost * qty);
+  }, 0);
+
+  const rawSubtotal = roleUsed === 'mayorista' ? wholesaleSubtotal : retailSubtotal;
+  const minAllowedTotal = roleUsed === 'mayorista' ? costSubtotal : wholesaleSubtotal;
   const maxDiscountAllowed = Math.max(0, rawSubtotal - minAllowedTotal);
 
   let requestedDiscount = 0;
   let promoAppliedName = '';
+  let extraPercentageLabel = '';
 
   if (discountMode === 'promo') {
     const rule = promoRulesList.find(r => r.id === selectedPromoId);
     if (rule) {
       promoAppliedName = rule.name;
       if (rule.discountType === 'percentage') {
-        requestedDiscount = retailSubtotal * (Number(rule.discountValue || 0) / 100);
+        const pct = Number(rule.discountValue || 0);
+        requestedDiscount = retailSubtotal * (pct / 100);
+        extraPercentageLabel = `${pct}% s/detalle`;
       } else {
         requestedDiscount = Number(rule.discountValue || 0);
       }
@@ -50,7 +55,15 @@ const calculateDiscountDetails = (items, roleUsed, discountMode, selectedPromoId
   } else if (discountMode === 'manual') {
     const val = Number(manualValue || 0);
     if (manualType === 'percentage') {
-      requestedDiscount = retailSubtotal * (val / 100);
+      if (roleUsed === 'mayorista') {
+        const addPct = val >= 25 ? (val - 25) : val;
+        requestedDiscount = retailSubtotal * (addPct / 100);
+        extraPercentageLabel = `${addPct}% adicional s/detalle (${25 + addPct}% total)`;
+      } else {
+        const detPct = Math.min(25, val);
+        requestedDiscount = retailSubtotal * (detPct / 100);
+        extraPercentageLabel = `${detPct}% s/detalle`;
+      }
     } else {
       requestedDiscount = val;
     }
@@ -59,7 +72,7 @@ const calculateDiscountDetails = (items, roleUsed, discountMode, selectedPromoId
   requestedDiscount = Math.max(0, requestedDiscount);
   const actualAppliedDiscount = Math.min(requestedDiscount, maxDiscountAllowed);
   const isCapped = requestedDiscount > maxDiscountAllowed && maxDiscountAllowed >= 0;
-  const finalTotal = Math.max(0, rawSubtotal - actualAppliedDiscount);
+  const finalTotal = Math.max(minAllowedTotal, rawSubtotal - actualAppliedDiscount);
 
   // Check qualifying auto promos based on order subtotal
   const qualifyingPromos = (promoRulesList || [])
@@ -69,6 +82,8 @@ const calculateDiscountDetails = (items, roleUsed, discountMode, selectedPromoId
   return {
     rawSubtotal,
     retailSubtotal,
+    wholesaleSubtotal,
+    costSubtotal,
     minAllowedTotal,
     maxDiscountAllowed,
     requestedDiscount,
@@ -76,6 +91,7 @@ const calculateDiscountDetails = (items, roleUsed, discountMode, selectedPromoId
     isCapped,
     finalTotal,
     promoAppliedName,
+    extraPercentageLabel,
     qualifyingPromos
   };
 };
@@ -1197,33 +1213,69 @@ export default function Orders() {
                   )}
 
                   {editDiscountMode === 'manual' && (
-                    <div className="grid grid-cols-2 gap-2 pt-1">
-                      <div>
-                        <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
-                          Tipo de Descuento
-                        </label>
-                        <select
-                          value={editManualType}
-                          onChange={(e) => setEditManualType(e.target.value)}
-                          className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-bold text-neutral-800 dark:text-neutral-100 outline-none cursor-pointer"
-                        >
-                          <option value="percentage">Porcentaje (%)</option>
-                          <option value="fixed">Monto Fijo (L.)</option>
-                        </select>
+                    <div className="space-y-2 pt-1">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
+                            Tipo de Descuento
+                          </label>
+                          <select
+                            value={editManualType}
+                            onChange={(e) => setEditManualType(e.target.value)}
+                            className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-bold text-neutral-800 dark:text-neutral-100 outline-none cursor-pointer"
+                          >
+                            <option value="percentage">Porcentaje (%)</option>
+                            <option value="fixed">Monto Fijo (L.)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
+                            {editManualType === 'percentage'
+                              ? (editRoleUsed === 'mayorista' ? 'Adicional / Total s/Detalle (%)' : 'Porcentaje s/Detalle (máx 25%)')
+                              : 'Valor del Descuento'
+                            }
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={editManualValue}
+                            onChange={(e) => setEditManualValue(e.target.value)}
+                            placeholder={editManualType === 'percentage' 
+                              ? (editRoleUsed === 'mayorista' ? 'Ej: 5 (5% extra = 30% total)' : 'Ej: 10 (10% desc. detalle)')
+                              : 'Ej: 200'
+                            }
+                            className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-mono font-bold text-neutral-800 dark:text-neutral-100 outline-none"
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
-                          Valor del Descuento
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="any"
-                          value={editManualValue}
-                          onChange={(e) => setEditManualValue(e.target.value)}
-                          placeholder={editManualType === 'percentage' ? 'Ej: 10 para 10%' : 'Ej: 200 para L.200'}
-                          className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-mono font-bold text-neutral-800 dark:text-neutral-100 outline-none"
-                        />
+
+                      <div className="p-2.5 bg-neutral-100 dark:bg-neutral-800/80 rounded-xl text-[11px] text-neutral-600 dark:text-neutral-300">
+                        {editRoleUsed === 'mayorista' ? (
+                          <span>
+                            💡 <strong>Tarifa Mayorista:</strong> La tarifa base ya incluye 25% de descuento sobre detalle. Descuentos adicionales son sobre precio al detalle (Piso: Costo total L. {editDiscountDetails.costSubtotal.toLocaleString()}).
+                            {editManualType === 'percentage' && editManualValue && (
+                              <span className="block mt-1 font-bold text-amber-600 dark:text-amber-400">
+                                {Number(editManualValue) >= 25 
+                                  ? `Equivale a 25% base + ${Number(editManualValue) - 25}% adicional s/detalle (-L. ${(editDiscountDetails.retailSubtotal * ((Number(editManualValue) - 25) / 100)).toLocaleString()}). Total desc. s/detalle: ${editManualValue}%.`
+                                  : `${editManualValue}% adicional s/detalle = -L. ${(editDiscountDetails.retailSubtotal * (Number(editManualValue) / 100)).toLocaleString()}. Total desc. s/detalle: ${25 + Number(editManualValue)}%.`
+                                }
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          <span>
+                            💡 <strong>Tarifa Detalle:</strong> Todo porcentaje de descuento es sobre precio al detalle. Máximo descuento permitido: <strong>25%</strong> (Piso: Tarifa Mayoreo L. {editDiscountDetails.wholesaleSubtotal.toLocaleString()}).
+                            {editManualType === 'percentage' && editManualValue && (
+                              <span className="block mt-1 font-bold text-amber-600 dark:text-amber-400">
+                                {Number(editManualValue) > 25 
+                                  ? `El descuento máximo a detalle es 25%. Se aplicará el 25% (-L. ${(editDiscountDetails.retailSubtotal * 0.25).toLocaleString()}).`
+                                  : `Descuento de ${editManualValue}% s/detalle = -L. ${(editDiscountDetails.retailSubtotal * (Number(editManualValue) / 100)).toLocaleString()}.`
+                                }
+                              </span>
+                            )}
+                          </span>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1664,33 +1716,69 @@ export default function Orders() {
                   )}
 
                   {physicalDiscountMode === 'manual' && (
-                    <div className="grid grid-cols-2 gap-2 pt-1">
-                      <div>
-                        <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
-                          Tipo de Descuento
-                        </label>
-                        <select
-                          value={physicalManualType}
-                          onChange={(e) => setPhysicalManualType(e.target.value)}
-                          className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-bold text-neutral-800 dark:text-neutral-100 outline-none cursor-pointer"
-                        >
-                          <option value="percentage">Porcentaje (%)</option>
-                          <option value="fixed">Monto Fijo (L.)</option>
-                        </select>
+                    <div className="space-y-2 pt-1">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
+                            Tipo de Descuento
+                          </label>
+                          <select
+                            value={physicalManualType}
+                            onChange={(e) => setPhysicalManualType(e.target.value)}
+                            className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-bold text-neutral-800 dark:text-neutral-100 outline-none cursor-pointer"
+                          >
+                            <option value="percentage">Porcentaje (%)</option>
+                            <option value="fixed">Monto Fijo (L.)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
+                            {physicalManualType === 'percentage'
+                              ? (physicalRoleUsed === 'mayorista' ? 'Adicional / Total s/Detalle (%)' : 'Porcentaje s/Detalle (máx 25%)')
+                              : 'Valor del Descuento'
+                            }
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={physicalManualValue}
+                            onChange={(e) => setPhysicalManualValue(e.target.value)}
+                            placeholder={physicalManualType === 'percentage' 
+                              ? (physicalRoleUsed === 'mayorista' ? 'Ej: 5 (5% extra = 30% total)' : 'Ej: 10 (10% desc. detalle)')
+                              : 'Ej: 200'
+                            }
+                            className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-mono font-bold text-neutral-800 dark:text-neutral-100 outline-none"
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
-                          Valor del Descuento
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="any"
-                          value={physicalManualValue}
-                          onChange={(e) => setPhysicalManualValue(e.target.value)}
-                          placeholder={physicalManualType === 'percentage' ? 'Ej: 10 para 10%' : 'Ej: 200 para L.200'}
-                          className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-mono font-bold text-neutral-800 dark:text-neutral-100 outline-none"
-                        />
+
+                      <div className="p-2.5 bg-neutral-100 dark:bg-neutral-800/80 rounded-xl text-[11px] text-neutral-600 dark:text-neutral-300">
+                        {physicalRoleUsed === 'mayorista' ? (
+                          <span>
+                            💡 <strong>Tarifa Mayorista:</strong> La tarifa base ya incluye 25% de descuento sobre detalle. Descuentos adicionales son sobre precio al detalle (Piso: Costo total L. {physicalDiscountDetails.costSubtotal.toLocaleString()}).
+                            {physicalManualType === 'percentage' && physicalManualValue && (
+                              <span className="block mt-1 font-bold text-amber-600 dark:text-amber-400">
+                                {Number(physicalManualValue) >= 25 
+                                  ? `Equivale a 25% base + ${Number(physicalManualValue) - 25}% adicional s/detalle (-L. ${(physicalDiscountDetails.retailSubtotal * ((Number(physicalManualValue) - 25) / 100)).toLocaleString()}). Total desc. s/detalle: ${physicalManualValue}%.`
+                                  : `${physicalManualValue}% adicional s/detalle = -L. ${(physicalDiscountDetails.retailSubtotal * (Number(physicalManualValue) / 100)).toLocaleString()}. Total desc. s/detalle: ${25 + Number(physicalManualValue)}%.`
+                                }
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          <span>
+                            💡 <strong>Tarifa Detalle:</strong> Todo porcentaje de descuento es sobre precio al detalle. Máximo descuento permitido: <strong>25%</strong> (Piso: Tarifa Mayoreo L. {physicalDiscountDetails.wholesaleSubtotal.toLocaleString()}).
+                            {physicalManualType === 'percentage' && physicalManualValue && (
+                              <span className="block mt-1 font-bold text-amber-600 dark:text-amber-400">
+                                {Number(physicalManualValue) > 25 
+                                  ? `El descuento máximo a detalle es 25%. Se aplicará el 25% (-L. ${(physicalDiscountDetails.retailSubtotal * 0.25).toLocaleString()}).`
+                                  : `Descuento de ${physicalManualValue}% s/detalle = -L. ${(physicalDiscountDetails.retailSubtotal * (Number(physicalManualValue) / 100)).toLocaleString()}.`
+                                }
+                              </span>
+                            )}
+                          </span>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1715,12 +1803,17 @@ export default function Orders() {
               {/* Total Calculation Display */}
               <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/40 dark:border-amber-900/40 rounded-2xl flex flex-col gap-1.5 mt-2">
                 <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
-                  <span>Subtotal Bruto:</span>
+                  <span>Subtotal {physicalRoleUsed === 'mayorista' ? 'Mayoreo (25% desc. base)' : 'Detalle'}:</span>
                   <span className="font-mono font-bold">L. {physicalDiscountDetails.rawSubtotal.toLocaleString()} HNL</span>
                 </div>
+                {physicalRoleUsed === 'mayorista' && (
+                  <div className="flex items-center justify-between text-[11px] text-neutral-400">
+                    <span>(Subtotal Base al Detalle: L. {physicalDiscountDetails.retailSubtotal.toLocaleString()} HNL)</span>
+                  </div>
+                )}
                 {physicalDiscountDetails.actualAppliedDiscount > 0 && (
                   <div className="flex items-center justify-between text-xs text-amber-700 dark:text-amber-400 font-bold">
-                    <span>Descuento Aplicado {physicalDiscountDetails.promoAppliedName ? `(${physicalDiscountDetails.promoAppliedName})` : ''}:</span>
+                    <span>Descuento {physicalRoleUsed === 'mayorista' ? 'Adicional' : ''} Aplicado {physicalDiscountDetails.promoAppliedName ? `(${physicalDiscountDetails.promoAppliedName})` : ''}:</span>
                     <span className="font-mono">- L. {physicalDiscountDetails.actualAppliedDiscount.toLocaleString()} HNL</span>
                   </div>
                 )}
@@ -1728,7 +1821,7 @@ export default function Orders() {
                   <div>
                     <span className="block text-[10px] text-amber-800 dark:text-amber-500 font-extrabold uppercase tracking-widest font-mono">Total de la Venta</span>
                     <span className="block text-xs text-neutral-500">
-                      {physicalSaleItems.reduce((acc, i) => acc + Number(i.quantity || 0), 0)} unidades en total
+                      {physicalSaleItems.reduce((acc, i) => acc + Number(i.quantity || 0), 0)} unidades | {physicalRoleUsed === 'mayorista' ? 'Tarifa Mayorista' : 'Tarifa Detalle'}
                     </span>
                   </div>
                   <span className="font-mono font-black text-amber-950 dark:text-amber-200 text-lg">
