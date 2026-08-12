@@ -159,6 +159,7 @@ export default function Orders() {
   // Edit order modal states
   const [editClientName, setEditClientName] = useState('');
   const [editClientPhone, setEditClientPhone] = useState('');
+  const [editRoleUsed, setEditRoleUsed] = useState('detalle');
   const [editItems, setEditItems] = useState([]);
   const [editBarcodeInput, setEditBarcodeInput] = useState('');
   const [editDiscountMode, setEditDiscountMode] = useState('none');
@@ -408,9 +409,9 @@ export default function Orders() {
     await updateOrderStatus(orderId, newStatus);
   };
 
-  const getEditingOrderRole = () => {
-    if (!editingOrder || !customers) return 'detalle';
-    const cust = customers.find(c => c.id === editingOrder.buyerId);
+  const getEditingOrderRole = (targetOrder = editingOrder) => {
+    if (!targetOrder || !customers) return 'detalle';
+    const cust = customers.find(c => c.id === targetOrder.buyerId);
     if (!cust) return 'detalle';
     const roleNorm = String(cust.role || '').toLowerCase();
     return roleNorm === 'mayorista' ? 'mayorista' : 'detalle';
@@ -423,7 +424,35 @@ export default function Orders() {
     setEditingOrder(order);
     setEditClientName(order.clientName);
     setEditClientPhone(order.clientPhone);
-    setEditItems(order.items.map(i => ({ ...i })));
+    const initialRole = getEditingOrderRole(order);
+    setEditRoleUsed(initialRole);
+
+    const enrichedItems = (order.items || []).map(item => {
+      const prod = products.find(p => p.id === item.productId || p.name === item.name);
+      let pPublic = item.pricePublic;
+      let pPromotional = item.pricePromotional;
+      let cost = item.cost;
+
+      if (prod) {
+        const prices = getProductPrices(prod);
+        if (!pPublic) pPublic = prices.finalDetalle;
+        if (!pPromotional) pPromotional = prices.finalWholesale;
+        if (!cost) cost = prod.cost || 0;
+      } else {
+        if (!pPublic) pPublic = item.pricePaid || 0;
+        if (!pPromotional) pPromotional = item.pricePaid || 0;
+        if (!cost) cost = 0;
+      }
+
+      return {
+        ...item,
+        pricePublic: pPublic,
+        pricePromotional: pPromotional,
+        cost: cost
+      };
+    });
+
+    setEditItems(enrichedItems);
     setEditBarcodeInput('');
     setEditDiscountMode('none');
     setEditSelectedPromoId('');
@@ -484,9 +513,8 @@ export default function Orders() {
       return;
     }
 
-    const orderRole = getEditingOrderRole();
     const prices = getProductPrices(product);
-    const defaultPrice = orderRole === 'mayorista' ? prices.finalWholesale : prices.finalDetalle;
+    const defaultPrice = editRoleUsed === 'mayorista' ? prices.finalWholesale : prices.finalDetalle;
 
     setEditItems(prev => [...prev, {
       productId: product.id,
@@ -505,29 +533,28 @@ export default function Orders() {
   const editDiscountDetails = useMemo(() => {
     return calculateDiscountDetails(
       editItems,
-      getEditingOrderRole(),
+      editRoleUsed,
       editDiscountMode,
       editSelectedPromoId,
       editManualType,
       editManualValue,
       promoRules
     );
-  }, [editItems, editingOrder, customers, editDiscountMode, editSelectedPromoId, editManualType, editManualValue, promoRules]);
+  }, [editItems, editRoleUsed, editDiscountMode, editSelectedPromoId, editManualType, editManualValue, promoRules]);
 
   const handleSaveEdit = async (e) => {
     e.preventDefault();
     if (!editClientName || !editClientPhone || editItems.length === 0) return;
 
-    const orderRole = getEditingOrderRole();
     const discountedItems = applyProportionalDiscountToItems(
       editItems,
-      orderRole,
+      editRoleUsed,
       editDiscountDetails.actualAppliedDiscount,
       editDiscountDetails.rawSubtotal
     );
 
     for (const item of discountedItems) {
-      const err = validateItemPrice(item.pricePaid, orderRole, item);
+      const err = validateItemPrice(item.pricePaid, editRoleUsed, item);
       if (err) {
         alert(`Error en "${item.name}": ${err}`);
         return;
@@ -847,8 +874,8 @@ export default function Orders() {
 
             <form onSubmit={handleSaveEdit} className="p-5 sm:p-6 space-y-4 sm:space-y-5 flex-1 overflow-y-auto text-xs">
               
-              {/* Cliente info fields */}
-              <div className="grid gap-4 sm:grid-cols-2">
+              {/* Cliente info & Tarifa fields */}
+              <div className="grid gap-4 sm:grid-cols-3">
                 <div>
                   <label htmlFor="edit-name" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5 block">
                     Nombre del Cliente
@@ -874,6 +901,41 @@ export default function Orders() {
                     onChange={(e) => setEditClientPhone(e.target.value)}
                     className="block w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent transition-all outline-none font-mono"
                   />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5 block">
+                    Tarifa Aplicada
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditRoleUsed('detalle');
+                        setEditItems(prev => prev.map(i => ({ ...i, pricePaid: i.pricePublic || i.pricePaid })));
+                      }}
+                      className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                        editRoleUsed === 'detalle'
+                          ? 'bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 border-transparent shadow-xs'
+                          : 'bg-neutral-50 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100'
+                      }`}
+                    >
+                      Detalle
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditRoleUsed('mayorista');
+                        setEditItems(prev => prev.map(i => ({ ...i, pricePaid: i.pricePromotional || i.pricePaid })));
+                      }}
+                      className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                        editRoleUsed === 'mayorista'
+                          ? 'bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 border-transparent shadow-xs'
+                          : 'bg-neutral-50 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100'
+                      }`}
+                    >
+                      Mayoreo
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -973,7 +1035,7 @@ export default function Orders() {
                 ) : (
                   <div className="divide-y divide-neutral-100 dark:divide-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl overflow-hidden bg-white dark:bg-neutral-900">
                     {editItems.map((item, idx) => {
-                      const orderRole = getEditingOrderRole();
+                      const orderRole = editRoleUsed;
                       const priceErr = validateItemPrice(item.pricePaid, orderRole, item);
 
                       return (
@@ -983,7 +1045,7 @@ export default function Orders() {
                               [{item.brand}] {item.name}
                             </span>
                             <span className="text-[10px] text-neutral-400 dark:text-neutral-500 block">
-                              Tamaño: {item.size} | Costo: L. {item.cost} | Mayoreo: L. {item.pricePromotional}
+                              Tamaño: {item.size} | Detalle: L. {item.pricePublic} | Mayoreo: L. {item.pricePromotional}
                             </span>
                             {priceErr && (
                               <span className="text-[10px] text-rose-500 font-bold block">
@@ -1172,7 +1234,7 @@ export default function Orders() {
                       <div>
                         <span className="font-bold block">Límite de Descuento Aplicado</span>
                         <span className="text-[11px]">
-                          {getEditingOrderRole() === 'mayorista'
+                          {editRoleUsed === 'mayorista'
                             ? `El descuento solicitado excede el margen permitido. Se limitó a L. ${editDiscountDetails.maxDiscountAllowed.toLocaleString()} para asegurar que el total no baje del costo total (L. ${editDiscountDetails.minAllowedTotal.toLocaleString()}).`
                             : `El descuento solicitado excede el margen permitido. Se limitó a L. ${editDiscountDetails.maxDiscountAllowed.toLocaleString()} para asegurar que el total no baje del precio de mayoreo total (L. ${editDiscountDetails.minAllowedTotal.toLocaleString()}).`
                           }
@@ -1187,10 +1249,12 @@ export default function Orders() {
 
             <div className="p-5 sm:p-6 bg-neutral-50 dark:bg-neutral-800/80 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between flex-shrink-0">
               <div className="text-left">
-                <span className="text-[10px] text-neutral-400 dark:text-neutral-500 block font-bold">Subtotal Original: L. {editDiscountDetails.rawSubtotal.toLocaleString()}</span>
+                <span className="text-[10px] text-neutral-400 dark:text-neutral-500 block font-bold">
+                  Base Detalle: L. {editDiscountDetails.retailSubtotal.toLocaleString()} | Subtotal {editRoleUsed === 'mayorista' ? 'Mayoreo' : 'Detalle'}: L. {editDiscountDetails.rawSubtotal.toLocaleString()}
+                </span>
                 {editDiscountDetails.actualAppliedDiscount > 0 && (
                   <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold block">
-                    Descuento: - L. {editDiscountDetails.actualAppliedDiscount.toLocaleString()}
+                    Descuento Aplicado (s/detalle): - L. {editDiscountDetails.actualAppliedDiscount.toLocaleString()}
                   </span>
                 )}
                 <span className="font-mono font-black text-neutral-950 dark:text-amber-400 text-base">
