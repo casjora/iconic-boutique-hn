@@ -120,8 +120,11 @@ export function getProductPromoMayorista(product) {
 }
 
 export function getProductPrices(product) {
-  const pricePublic = Number(product?.pricePublic || 0);
-  const baseWholesale = Math.round(pricePublic * 0.75); // Always 25% discount off base retail price
+  const pricePublic = Number(product?.pricePublic || product?.price_public || 0);
+  const explicitWholesale = Number(product?.pricePromotional || product?.price_promotional || 0);
+  const baseWholesale = (explicitWholesale > 0 && explicitWholesale < pricePublic)
+    ? explicitWholesale
+    : Math.round(pricePublic * 0.75); // Always 25% discount off base retail price
 
   // 1. Detalle (Retail) Promo
   const promoDetalleStr = getProductPromoDetalle(product);

@@ -426,11 +426,19 @@ export default function Orders() {
   };
 
   const getEditingOrderRole = (targetOrder = editingOrder) => {
-    if (!targetOrder || !customers) return 'detalle';
-    const cust = customers.find(c => c.id === targetOrder.buyerId);
-    if (!cust) return 'detalle';
-    const roleNorm = String(cust.role || '').toLowerCase();
-    return roleNorm === 'mayorista' ? 'mayorista' : 'detalle';
+    if (!targetOrder) return 'detalle';
+    const savedRole = String(targetOrder.roleUsed || '').toLowerCase();
+    if (savedRole === 'mayorista') return 'mayorista';
+    if (savedRole === 'detalle') return 'detalle';
+
+    if (customers && targetOrder.buyerId) {
+      const cust = customers.find(c => c.id === targetOrder.buyerId);
+      if (cust) {
+        const roleNorm = String(cust.role || '').toLowerCase();
+        if (roleNorm === 'mayorista') return 'mayorista';
+      }
+    }
+    return 'detalle';
   };
 
   const handleOpenEdit = async (order) => {
@@ -451,12 +459,21 @@ export default function Orders() {
 
       if (prod) {
         const prices = getProductPrices(prod);
-        if (!pPublic) pPublic = prices.finalDetalle;
-        if (!pPromotional) pPromotional = prices.finalWholesale;
+        pPublic = prices.pricePublic || prices.finalDetalle;
+        pPromotional = prices.baseWholesale || prices.finalWholesale;
         if (!cost) cost = prod.cost || 0;
       } else {
-        if (!pPublic) pPublic = item.pricePaid || 0;
-        if (!pPromotional) pPromotional = item.pricePaid || 0;
+        if (!pPublic || pPublic === item.pricePaid) {
+          if (initialRole === 'mayorista') {
+            pPublic = Math.round(item.pricePaid / 0.75);
+            pPromotional = item.pricePaid;
+          } else {
+            pPublic = item.pricePaid || 0;
+            pPromotional = Math.round((item.pricePaid || 0) * 0.75);
+          }
+        } else if (!pPromotional) {
+          pPromotional = Math.round(pPublic * 0.75);
+        }
         if (!cost) cost = 0;
       }
 
@@ -577,7 +594,7 @@ export default function Orders() {
       }
     }
 
-    const ok = await updateOrder(editingOrder.id, editClientName.trim(), editClientPhone.trim(), discountedItems);
+    const ok = await updateOrder(editingOrder.id, editClientName.trim(), editClientPhone.trim(), discountedItems, editRoleUsed);
     if (ok) {
       setEditingOrder(null);
     }

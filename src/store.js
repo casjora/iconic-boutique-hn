@@ -1284,7 +1284,7 @@ export const useStore = create((setOriginal, get) => {
       }
     },
 
-    updateOrder: async (orderId, clientName, clientPhone, newItems) => {
+    updateOrder: async (orderId, clientName, clientPhone, newItems, roleUsed) => {
       set({ loading: true, error: null });
       try {
         let apiSuccess = false;
@@ -1300,7 +1300,7 @@ export const useStore = create((setOriginal, get) => {
               'Content-Type': 'application/json',
               ...(token ? { 'Authorization': `Bearer ${token}` } : {})
             },
-            body: JSON.stringify({ orderId, clientName, clientPhone, newItems })
+            body: JSON.stringify({ orderId, clientName, clientPhone, newItems, roleUsed })
           });
 
           const responseText = await response.text();
@@ -1404,7 +1404,8 @@ export const useStore = create((setOriginal, get) => {
             .update({
               client_name: clientName,
               client_phone: clientPhone,
-              total: total
+              total: total,
+              ...(roleUsed ? { role_used: roleUsed } : {})
             })
             .eq('id', orderId);
 
