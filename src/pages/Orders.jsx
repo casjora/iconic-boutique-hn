@@ -281,14 +281,15 @@ export default function Orders() {
   };
 
   const validateItemPrice = (pricePaid, roleUsed, item) => {
+    if (item?.isRemate) return null;
     const pPaid = Number(pricePaid || 0);
-    const cost = Number(item.cost || 0);
-    const wholesalePrice = Number(item.pricePromotional || 0);
+    const cost = Number(item?.cost || 0);
+    const wholesalePrice = Number(item?.pricePromotional || 0);
 
-    if (roleUsed === 'detalle' && pPaid < wholesalePrice) {
+    if (roleUsed === 'detalle' && wholesalePrice > 0 && pPaid < wholesalePrice) {
       return `El precio al detalle (L. ${pPaid}) debe ser >= al precio de mayoreo (L. ${wholesalePrice}).`;
     }
-    if (roleUsed === 'mayorista' && pPaid < cost) {
+    if (roleUsed === 'mayorista' && cost > 0 && pPaid < cost) {
       return `El precio de mayoreo (L. ${pPaid}) debe ser >= al costo (L. ${cost}).`;
     }
     return null;
@@ -310,21 +311,26 @@ export default function Orders() {
     setPhysicalSaleItems(prev => prev.filter(i => i.productId !== productId));
   };
 
-  useEffect(() => {
-    if (physicalBuyerId && customers) {
-      const cust = customers.find(c => c.id === physicalBuyerId);
+  const handleSelectPhysicalBuyer = (buyerId) => {
+    setPhysicalBuyerId(buyerId);
+    if (buyerId && customers) {
+      const cust = customers.find(c => c.id === buyerId);
       if (cust) {
         setPhysicalClientName(cust.name || 'Cliente');
         setPhysicalClientPhone(cust.phone || '');
         const roleNorm = String(cust.role || '').toLowerCase();
-        if (roleNorm === 'mayorista') {
-          setPhysicalRoleUsed('mayorista');
-        } else {
-          setPhysicalRoleUsed('detalle');
-        }
+        const newRole = (roleNorm === 'mayorista') ? 'mayorista' : 'detalle';
+        setPhysicalRoleUsed(newRole);
+        setPhysicalSaleItems(prev => prev.map(i => ({
+          ...i,
+          pricePaid: newRole === 'mayorista' ? (i.pricePromotional || i.pricePaid) : (i.pricePublic || i.pricePaid)
+        })));
       }
+    } else if (!buyerId) {
+      setPhysicalClientName('Venta Física (Mostrador)');
+      setPhysicalClientPhone('');
     }
-  }, [physicalBuyerId, customers]);
+  };
 
   // Physical Sale Calculations
   const physicalDiscountDetails = useMemo(() => {
@@ -765,7 +771,16 @@ export default function Orders() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="font-bold text-neutral-900 dark:text-neutral-100">{order.clientName}</div>
-                      <div className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono">{order.clientPhone}</div>
+                      <div className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono flex items-center gap-1.5 mt-0.5">
+                        <span>{order.clientPhone}</span>
+                        <span className={`inline-block px-1.5 py-0.2 rounded text-[9px] font-extrabold ${
+                          order.roleUsed === 'mayorista'
+                            ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                            : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700'
+                        }`}>
+                          {order.roleUsed === 'mayorista' ? 'Mayoreo' : 'Detalle'}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap font-mono font-extrabold text-neutral-900 dark:text-amber-400">
                       L. {order.total.toLocaleString()} HNL
@@ -829,7 +844,7 @@ export default function Orders() {
 
             <div className="p-5 sm:p-6 space-y-4 flex-1 overflow-y-auto">
               {/* Client specifications */}
-              <div className="grid grid-cols-2 gap-4 text-xs bg-neutral-50 dark:bg-neutral-800/50 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs bg-neutral-50 dark:bg-neutral-800/50 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                 <div>
                   <span className="text-neutral-400 dark:text-neutral-500 font-bold block mb-1">Cliente</span>
                   <span className="text-neutral-900 dark:text-neutral-100 font-extrabold">{viewingOrder.clientName}</span>
@@ -837,6 +852,16 @@ export default function Orders() {
                 <div>
                   <span className="text-neutral-400 dark:text-neutral-500 font-bold block mb-1">Teléfono</span>
                   <span className="text-neutral-900 dark:text-neutral-100 font-mono font-extrabold">{viewingOrder.clientPhone}</span>
+                </div>
+                <div>
+                  <span className="text-neutral-400 dark:text-neutral-500 font-bold block mb-1">Tarifa Aplicada</span>
+                  <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                    viewingOrder.roleUsed === 'mayorista'
+                      ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                      : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700'
+                  }`}>
+                    {viewingOrder.roleUsed === 'mayorista' ? 'Mayoreo' : 'Detalle'}
+                  </span>
                 </div>
                 <div>
                   <span className="text-neutral-400 dark:text-neutral-500 font-bold block mb-1">Fecha</span>
@@ -1400,7 +1425,7 @@ export default function Orders() {
                   </label>
                   <select
                     value={physicalBuyerId}
-                    onChange={(e) => setPhysicalBuyerId(e.target.value)}
+                    onChange={(e) => handleSelectPhysicalBuyer(e.target.value)}
                     className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-semibold outline-none focus:ring-1 focus:ring-neutral-950 dark:focus:ring-amber-400 transition-all text-neutral-800 dark:text-neutral-100 cursor-pointer"
                   >
                     <option value="">Ninguno (Cliente General Mostrador)</option>

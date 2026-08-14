@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { orderId, clientName, clientPhone, newItems } = req.body;
+  const { orderId, clientName, clientPhone, newItems, roleUsed } = req.body;
   if (!orderId || !clientName || !clientPhone || !newItems) {
     return res.status(400).json({ error: 'Faltan parámetros requeridos.' });
   }
@@ -118,14 +118,19 @@ export default async function handler(req, res) {
       }
     }
 
-    // 7. Update client name, phone and total on order
+    // 7. Update client name, phone, total and role_used on order
+    const orderPayload = {
+      client_name: clientName,
+      client_phone: clientPhone,
+      total: total
+    };
+    if (roleUsed) {
+      orderPayload.role_used = roleUsed;
+    }
+
     const { error: orderUpdateErr } = await supabase
       .from('orders')
-      .update({
-        client_name: clientName,
-        client_phone: clientPhone,
-        total: total
-      })
+      .update(orderPayload)
       .eq('id', orderId);
 
     if (orderUpdateErr) {
