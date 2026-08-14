@@ -1791,10 +1791,12 @@ export const useStore = create((setOriginal, get) => {
               .select()
               .single();
             if (fallbackError) throw fallbackError;
+            await get().fetchCustomers();
             return { success: true, data: fallbackData };
           }
           throw error;
         }
+        await get().fetchCustomers();
         return { success: true, data };
       } catch (err) {
         console.error('Error creating customer manually:', err);

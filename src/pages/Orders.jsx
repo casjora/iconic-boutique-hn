@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { useStore } from '../store';
 import { 
   ClipboardList, Search, Edit2, Loader2, CheckCircle2, AlertCircle, 
-  ShoppingBag, Eye, X, Plus, Trash2, Tag, Sparkles, AlertTriangle
+  ShoppingBag, Eye, X, Plus, Trash2, Tag, Sparkles, AlertTriangle,
+  UserPlus, Users, UserCheck
 } from 'lucide-react';
 import { getProductPrices } from '../utils/productHelper';
 
@@ -126,11 +127,21 @@ export default function Orders() {
   const { 
     orders, products, updateOrderStatus, updateOrder, reportPhysicalSale, 
     loading: storeLoading, error: storeError, fetchCustomers, customers,
-    updateProductBarcode
+    updateProductBarcode, createCustomerManually
   } = useStore();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('Todos');
+
+  // Quick Create Customer Modal state
+  const [showCreateCustomerModal, setShowCreateCustomerModal] = useState(false);
+  const [quickCustomerName, setQuickCustomerName] = useState('');
+  const [quickCustomerPhone, setQuickCustomerPhone] = useState('');
+  const [quickCustomerRole, setQuickCustomerRole] = useState('detalle');
+  const [quickCustomerAddress, setQuickCustomerAddress] = useState('');
+  const [quickCustomerEmail, setQuickCustomerEmail] = useState('');
+  const [isSavingCustomer, setIsSavingCustomer] = useState(false);
+  const [createCustomerMsg, setCreateCustomerMsg] = useState({ type: '', text: '' });
 
   // Promo rules state
   const [promoRules, setPromoRules] = useState(() => {
@@ -329,6 +340,82 @@ export default function Orders() {
     } else if (!buyerId) {
       setPhysicalClientName('Venta Física (Mostrador)');
       setPhysicalClientPhone('');
+    }
+  };
+
+  const handleSaveQuickCustomer = async (e) => {
+    if (e) e.preventDefault();
+    if (!quickCustomerName.trim() || !quickCustomerPhone.trim()) {
+      setCreateCustomerMsg({ type: 'error', text: 'El nombre y número de teléfono son requeridos.' });
+      return;
+    }
+
+    setIsSavingCustomer(true);
+    setCreateCustomerMsg({ type: '', text: '' });
+
+    const res = await createCustomerManually(
+      quickCustomerName.trim(),
+      quickCustomerRole,
+      quickCustomerPhone.trim(),
+      quickCustomerAddress.trim() || null,
+      quickCustomerEmail.trim() || null
+    );
+
+    setIsSavingCustomer(false);
+
+    if (res.success) {
+      const newCust = res.data;
+      setCreateCustomerMsg({ type: 'success', text: `¡Cliente "${quickCustomerName.trim()}" guardado exitosamente!` });
+
+      // Auto-bind newly created customer if Physical Sale Modal is active
+      if (showPhysicalSaleModal && newCust) {
+        setPhysicalBuyerId(newCust.id);
+        setPhysicalClientName(newCust.name || quickCustomerName.trim());
+        setPhysicalClientPhone(newCust.phone || quickCustomerPhone.trim());
+        setPhysicalRoleUsed(newCust.role || quickCustomerRole);
+        setPhysicalSaleItems(prev => prev.map(i => ({
+          ...i,
+          pricePaid: (newCust.role || quickCustomerRole) === 'mayorista' ? (i.pricePromotional || i.pricePaid) : (i.pricePublic || i.pricePaid)
+        })));
+      }
+
+      setTimeout(() => {
+        setCreateCustomerMsg({ type: '', text: '' });
+        setShowCreateCustomerModal(false);
+      }, 1000);
+    } else {
+      setCreateCustomerMsg({ type: 'error', text: res.error || 'Error al guardar el cliente.' });
+    }
+  };
+
+  const handleSaveCurrentPhysicalClientAsCustomer = async () => {
+    if (!physicalClientName.trim() || physicalClientName === 'Venta Física (Mostrador)') {
+      setPhysicalSaleMsg({ type: 'error', text: 'Ingresa un nombre de cliente válido para registrarlo.' });
+      return;
+    }
+    if (!physicalClientPhone.trim()) {
+      setPhysicalSaleMsg({ type: 'error', text: 'Ingresa un número de teléfono válido para registrar al cliente.' });
+      return;
+    }
+
+    setReportingPhysicalSale(true);
+    const res = await createCustomerManually(
+      physicalClientName.trim(),
+      physicalRoleUsed,
+      physicalClientPhone.trim(),
+      null,
+      null
+    );
+    setReportingPhysicalSale(false);
+
+    if (res.success) {
+      if (res.data) {
+        setPhysicalBuyerId(res.data.id);
+      }
+      setPhysicalSaleMsg({ type: 'success', text: `¡Cliente "${physicalClientName.trim()}" registrado y vinculado correctamente!` });
+      setTimeout(() => setPhysicalSaleMsg({ type: '', text: '' }), 4000);
+    } else {
+      setPhysicalSaleMsg({ type: 'error', text: res.error || 'Error al registrar cliente.' });
     }
   };
 
@@ -677,7 +764,23 @@ export default function Orders() {
             Revisa, edita o actualiza el estado de las órdenes. Las ventas marcadas como <strong className="text-emerald-600 dark:text-emerald-400">entregado</strong> descuentan de forma automática el stock real de perfumes.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          <button
+            type="button"
+            onClick={() => {
+              setQuickCustomerName('');
+              setQuickCustomerPhone('');
+              setQuickCustomerRole('detalle');
+              setQuickCustomerAddress('');
+              setQuickCustomerEmail('');
+              setCreateCustomerMsg({ type: '', text: '' });
+              setShowCreateCustomerModal(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all active:scale-95 shrink-0 cursor-pointer"
+            title="Registrar un nuevo cliente manualmente"
+          >
+            <UserPlus className="w-4 h-4" /> Nuevo Cliente
+          </button>
           <button
             type="button"
             onClick={() => setShowPromoManagerModal(true)}
@@ -1420,9 +1523,27 @@ export default function Orders() {
               {/* Attach Buyer & Role */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">
-                    Vincular Perfil Registrado (Opcional)
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">
+                      Vincular Perfil Registrado (Opcional)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuickCustomerName(physicalClientName !== 'Venta Física (Mostrador)' ? physicalClientName : '');
+                        setQuickCustomerPhone(physicalClientPhone);
+                        setQuickCustomerRole(physicalRoleUsed);
+                        setQuickCustomerAddress('');
+                        setQuickCustomerEmail('');
+                        setCreateCustomerMsg({ type: '', text: '' });
+                        setShowCreateCustomerModal(true);
+                      }}
+                      className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                      title="Crear un nuevo cliente e ingresar sus datos"
+                    >
+                      <UserPlus className="w-3 h-3" /> + Crear Nuevo Cliente
+                    </button>
+                  </div>
                   <select
                     value={physicalBuyerId}
                     onChange={(e) => handleSelectPhysicalBuyer(e.target.value)}
@@ -1487,7 +1608,19 @@ export default function Orders() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">Teléfono (Opcional)</label>
+                  <div className="flex items-center justify-between">
+                    <label className="block font-bold text-neutral-400 uppercase tracking-wider text-[10px]">Teléfono (Opcional)</label>
+                    {!physicalBuyerId && physicalClientName.trim() && physicalClientName !== 'Venta Física (Mostrador)' && (
+                      <button
+                        type="button"
+                        onClick={handleSaveCurrentPhysicalClientAsCustomer}
+                        className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                        title="Guardar este cliente en el sistema"
+                      >
+                        <UserPlus className="w-2.5 h-2.5" /> Registrar en Clientes
+                      </button>
+                    )}
+                  </div>
                   <input
                     type="text"
                     value={physicalClientPhone}
@@ -2138,6 +2271,154 @@ export default function Orders() {
                 Cerrar
               </button>
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Quick Create Customer Modal */}
+      {showCreateCustomerModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-3">
+              <h3 className="text-base font-extrabold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+                <UserPlus className="h-5 w-5 text-emerald-500" />
+                Registrar Nuevo Cliente
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowCreateCustomerModal(false)}
+                className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg text-neutral-400 cursor-pointer transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              Ingresa los datos del cliente para registrarlo en el sistema. Quedará guardado en el módulo de <strong>Clientes</strong> para futuras ventas y reportes.
+            </p>
+
+            {createCustomerMsg.text && (
+              <div className={`p-3 rounded-xl border flex items-center gap-2 text-xs font-semibold ${
+                createCustomerMsg.type === 'success'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-200'
+                  : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/50 text-rose-800 dark:text-rose-200'
+              }`}>
+                {createCustomerMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+                <span>{createCustomerMsg.text}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveQuickCustomer} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+                  Nombre del Cliente *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={quickCustomerName}
+                  onChange={(e) => setQuickCustomerName(e.target.value)}
+                  placeholder="Ej: María Rodríguez"
+                  className="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-semibold text-neutral-900 dark:text-neutral-100 outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+                  Número de Teléfono / WhatsApp *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={quickCustomerPhone}
+                  onChange={(e) => setQuickCustomerPhone(e.target.value)}
+                  placeholder="Ej: +504 9876-5432"
+                  className="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-mono font-bold text-neutral-900 dark:text-neutral-100 outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+                  Tarifa / Clasificación
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setQuickCustomerRole('detalle')}
+                    className={`py-2 px-3 rounded-xl font-bold border transition-all cursor-pointer ${
+                      quickCustomerRole === 'detalle'
+                        ? 'bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 border-transparent shadow-xs'
+                        : 'bg-neutral-50 dark:bg-neutral-950 border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400'
+                    }`}
+                  >
+                    Detalle (Público)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickCustomerRole('mayorista')}
+                    className={`py-2 px-3 rounded-xl font-bold border transition-all cursor-pointer ${
+                      quickCustomerRole === 'mayorista'
+                        ? 'bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 border-transparent shadow-xs'
+                        : 'bg-neutral-50 dark:bg-neutral-950 border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400'
+                    }`}
+                  >
+                    Mayorista
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+                  Dirección (Opcional)
+                </label>
+                <input
+                  type="text"
+                  value={quickCustomerAddress}
+                  onChange={(e) => setQuickCustomerAddress(e.target.value)}
+                  placeholder="Ej: Tegucigalpa, Col. Palmira"
+                  className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-medium text-neutral-900 dark:text-neutral-100 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+                  Correo Electrónico (Opcional)
+                </label>
+                <input
+                  type="email"
+                  value={quickCustomerEmail}
+                  onChange={(e) => setQuickCustomerEmail(e.target.value)}
+                  placeholder="ejemplo@correo.com"
+                  className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-medium text-neutral-900 dark:text-neutral-100 outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateCustomerModal(false)}
+                  className="px-4 py-2 border border-neutral-200 dark:border-neutral-700 text-xs font-bold rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingCustomer || !quickCustomerName.trim() || !quickCustomerPhone.trim()}
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs disabled:opacity-50 cursor-pointer active:scale-95 transition-all"
+                >
+                  {isSavingCustomer ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> Guardando...
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="h-4 w-4" /> Guardar Cliente
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>,
         document.body
