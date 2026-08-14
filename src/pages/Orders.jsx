@@ -222,7 +222,7 @@ export default function Orders() {
           pricePaid: defaultPrice,
           cost: prod.cost || 0,
           pricePromotional: prices.finalWholesale,
-          pricePublic: prices.finalDetalle,
+          pricePublic: prices.pricePublic,
           availableStock: prod.availableStock !== undefined ? prod.availableStock : prod.stock
         }
       ]);
@@ -459,7 +459,7 @@ export default function Orders() {
 
       if (prod) {
         const prices = getProductPrices(prod);
-        pPublic = prices.pricePublic || prices.finalDetalle;
+        pPublic = prices.pricePublic;
         pPromotional = prices.baseWholesale || prices.finalWholesale;
         if (!cost) cost = prod.cost || 0;
       } else {
@@ -558,7 +558,7 @@ export default function Orders() {
       pricePaid: defaultPrice,
       cost: product.cost || 0,
       pricePromotional: prices.finalWholesale,
-      pricePublic: prices.finalDetalle,
+      pricePublic: prices.pricePublic,
       description: product.description || ''
     }]);
   };
