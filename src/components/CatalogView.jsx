@@ -4,7 +4,7 @@ import { useStore } from '../store';
 import { Link, useLocation } from 'react-router-dom';
 import PerfumeCard from './PerfumeCard';
 import { Percent, Award, Heart, Sparkles, Search, SlidersHorizontal, RefreshCw, Flame, Download, FileDown, FileSpreadsheet, FileText, X, Loader2 } from 'lucide-react';
-import { isProductSet, getProductPromoDiscount, getProductPrices, isProductInPublicCategory, getConsolidatedProducts } from '../utils/productHelper';
+import { isProductSet, getProductPromoDiscount, getProductPrices, isProductInPublicCategory, getConsolidatedProducts, normalizeCategory } from '../utils/productHelper';
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
 
@@ -233,7 +233,7 @@ export default function CatalogView({ favoritesOnly = false }) {
 
                 doc.setTextColor(220, 38, 38);
                 doc.setFont('Helvetica', 'bold');
-                doc.text(`Oferta: L. ${prices.finalDetalle.toLocaleString()}`, startX + 4, priceY + 4.5);
+                doc.text(`Oferta: L. ${prices.finalDetalle.toLocaleString()} (-${prices.effectiveDetallePct}% off)`, startX + 4, priceY + 4.5);
               } else {
                 doc.setTextColor(31, 41, 55);
                 doc.setFont('Helvetica', 'bold');
@@ -245,7 +245,7 @@ export default function CatalogView({ favoritesOnly = false }) {
             doc.setTextColor(107, 114, 128);
             doc.setFont('Helvetica', 'normal');
             doc.setFontSize(6);
-            const catLabel = p.category === 'Masculino' ? 'Caballeros' : p.category === 'Unisex' ? 'Unisex' : 'Damas';
+            const catLabel = normalizeCategory(p.category) || p.category || 'Damas';
             doc.text(`Categoría: ${catLabel}`, startX + 4, startY + 74);
 
             const stockTxt = p.stock > 0 ? `Stock: ${p.stock} u.` : 'Agotado';
@@ -304,7 +304,7 @@ export default function CatalogView({ favoritesOnly = false }) {
               doc.text('P. SUGERIDO', colX.price1, y);
               doc.text('P. MAYOREO', colX.price2, y);
             } else {
-              doc.text('DETALLE', colX.price1, y);
+              doc.text('PRECIO REG.', colX.price1, y);
               doc.text('OFERTA', colX.price2, y);
             }
             y += 7;
@@ -337,7 +337,7 @@ export default function CatalogView({ favoritesOnly = false }) {
 
             // Category
             doc.setFont('Helvetica', 'normal');
-            const catLabel = p.category === 'Masculino' ? 'Caballeros' : p.category === 'Unisex' ? 'Unisex' : 'Damas';
+            const catLabel = normalizeCategory(p.category) || p.category || 'Damas';
             doc.text(catLabel, colX.category, y);
 
             // Stock

@@ -832,7 +832,8 @@ export const useStore = create((setOriginal, get) => {
             if (targetType === 'detalle') {
               desc = desc.replace(/\[PROMO_DETALLE:.*?\]/g, '').replace(/\[PROMO:\d+\]/g, '').trim();
               if (discountPercent > 0) {
-                desc = `${desc}\n\n[PROMO_DETALLE:${discountPercent}%]`.trim();
+                const cappedPercent = Math.min(25, Math.max(0, discountPercent));
+                desc = `${desc}\n\n[PROMO_DETALLE:${cappedPercent}%]`.trim();
               }
             } else if (targetType === 'mayorista') {
               desc = desc.replace(/\[PROMO_MAYORISTA:.*?\]/g, '').trim();

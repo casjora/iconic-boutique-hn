@@ -10,7 +10,7 @@ import {
   AlertCircle, Check, Percent, Download, Share2,
   FileDown, FileSpreadsheet, FileText, X, Image as ImageIcon
 } from 'lucide-react';
-import { isProductSet, getProductPromoDiscount, cleanProductDescription, getProductPromoDetalle, getProductPromoMayorista, setProductPromotions, getProductPrices, getProductIsRemate, getProductDiscountBadges, detectProductCategory, normalizeCategory } from '../utils/productHelper';
+import { isProductSet, cleanProductDescription, getProductPromoDetalle, getProductPromoMayorista, setProductPromotions, getProductPrices, getProductIsRemate, getProductDiscountBadges, detectProductCategory, normalizeCategory } from '../utils/productHelper';
 import { generateBarcodeSVG } from '../utils/barcode';
 
 const getProductImage = (p) => (p?.imageUrl || p?.image_url || '').trim();
@@ -83,7 +83,6 @@ export default function Inventory() {
   const [exportRange, setExportRange] = useState('filtered');
   const [includeVIP, setIncludeVIP] = useState(true);
   const [includeDiscount, setIncludeDiscount] = useState(true);
-  const [additionalDiscount, setAdditionalDiscount] = useState(0);
   const [groupByBrand, setGroupByBrand] = useState(true);
   const [onlyInStock, setOnlyInStock] = useState(true);
   const [includeImages, setIncludeImages] = useState(true);
@@ -787,6 +786,7 @@ export default function Inventory() {
     }
     
     const target = forcedTarget || bulkTarget;
+    const finalPct = target === 'detalle' ? Math.min(25, Math.max(0, discountPercent)) : Math.max(0, discountPercent);
     const targetLabel = target === 'detalle' 
       ? 'PRECIO AL DETALLE' 
       : target === 'mayorista' 
@@ -794,20 +794,20 @@ export default function Inventory() {
         : 'TODOS LOS PRECIOS';
 
     let extraNote = '';
-    if (target === 'detalle' && discountPercent > 25) {
-      extraNote = ' (Nota: El descuento al detalle está topeado al 25% máximo salvo en productos en Remate).';
+    if (target === 'detalle') {
+      extraNote = ' (Nota: El descuento al detalle está topeado al 25% máximo).';
     } else if (target === 'mayorista') {
       extraNote = ' (Nota: Los descuentos a mayoreo se calculan sobre el precio al detalle y respetan el costo del producto como piso mínimo).';
     }
 
-    const message = discountPercent === 0 
+    const message = finalPct === 0 
       ? `¿Estás seguro de quitar los descuentos promocionales a ${targetLabel} para los ${filteredProducts.length} perfumes filtrados?`
-      : `¿Estás seguro de aplicar un ${discountPercent}% de descuento masivo a ${targetLabel} para los ${filteredProducts.length} perfumes filtrados?${extraNote}`;
+      : `¿Estás seguro de aplicar un ${finalPct}% de descuento masivo a ${targetLabel} para los ${filteredProducts.length} perfumes filtrados?${extraNote}`;
       
     if (confirm(message)) {
       setError(null);
       const productIds = filteredProducts.map(p => p.id);
-      const ok = await applyBulkDiscount(productIds, discountPercent, target);
+      const ok = await applyBulkDiscount(productIds, finalPct, target);
       if (ok) {
         alert('¡Descuento masivo aplicado exitosamente!');
       } else {
@@ -836,31 +836,27 @@ export default function Inventory() {
     }
     
     const exportData = items.map(p => {
-      const origPublicPrice = p.pricePublic || 0;
-      const activePromoDiscount = getProductPromoDiscount(p) || 0;
-      const finalDiscountPercent = Math.min(100, Math.max(0, activePromoDiscount + Number(additionalDiscount || 0)));
-      const discountedPrice = finalDiscountPercent > 0 
-        ? Math.round(origPublicPrice * (1 - finalDiscountPercent / 100))
-        : origPublicPrice;
-        
+      const prices = getProductPrices(p);
       const record = {
         'Marca': (p.brand || 'Genérico').toUpperCase(),
         'Fragancia': p.name || 'Sin nombre',
         'Presentación': p.size || '100 ml',
-        'Precio Detalle (HNL)': origPublicPrice,
+        'Stock Disponible': p.stock > 0 ? `${p.stock} unidades` : 'Agotado',
+        'Categoría': normalizeCategory(p.category) || p.category || 'Damas',
       };
       
-      if (includeDiscount) {
-        record['Descuento Aplicado %'] = finalDiscountPercent;
-        record['Precio con Descuento (HNL)'] = discountedPrice;
-      }
-      
       if (includeVIP) {
-        record['Precio VIP / Mayorista (HNL)'] = p.pricePromotional || 0;
+        // Wholesale export: suggested retail price + wholesale price (NO retail promos)
+        record['Precio Sugerido / Detalle (HNL)'] = prices.pricePublic;
+        record['Precio Mayorista (HNL)'] = prices.finalWholesale;
+      } else {
+        // Retail export: regular retail price + active retail offer if present
+        record['Precio Detalle (HNL)'] = prices.pricePublic;
+        if (includeDiscount && prices.hasDetallePromo && prices.effectiveDetallePct > 0) {
+          record['Descuento Aplicado %'] = prices.effectiveDetallePct;
+          record['Precio con Oferta (HNL)'] = prices.finalDetalle;
+        }
       }
-      
-      record['Stock Disponible'] = p.stock > 0 ? `${p.stock} unidades` : 'Agotado';
-      record['Categoría'] = normalizeCategory(p.category) || p.category || 'Damas';
       
       return record;
     });
@@ -870,7 +866,7 @@ export default function Inventory() {
     XLSX.utils.book_append_sheet(wb, ws, 'Catálogo');
     
     const timestamp = new Date().toISOString().slice(0, 10);
-    const filename = `Catalogo_Perfumes_Clientes_${timestamp}.${format}`;
+    const filename = `Catalogo_Perfumes_${includeVIP ? 'Mayorista' : 'Detalle'}_${timestamp}.${format}`;
     
     if (format === 'xlsx') {
       XLSX.writeFile(wb, filename);
@@ -1027,31 +1023,32 @@ export default function Inventory() {
           const priceY = startY + 56;
           doc.setFontSize(7);
 
-          const origPublicPrice = p.pricePublic || 0;
-          const activePromoDiscount = getProductPromoDiscount(p) || 0;
-          const finalDiscountPercent = Math.min(100, Math.max(0, activePromoDiscount + Number(additionalDiscount || 0)));
-
-          if (includeDiscount && finalDiscountPercent > 0) {
-            const discountedPrice = Math.round(origPublicPrice * (1 - finalDiscountPercent / 100));
-            
-            doc.setTextColor(156, 163, 175);
-            doc.setFont('Helvetica', 'normal');
-            doc.text(`Reg: L. ${origPublicPrice.toLocaleString()}`, startX + 4, priceY);
-
-            doc.setTextColor(225, 29, 72);
-            doc.setFont('Helvetica', 'bold');
-            doc.text(`Oferta: L. ${discountedPrice.toLocaleString()} (-${finalDiscountPercent}%)`, startX + 4, priceY + 4);
-          } else {
-            doc.setTextColor(31, 41, 55);
-            doc.setFont('Helvetica', 'bold');
-            doc.text(`Precio: L. ${origPublicPrice.toLocaleString()}`, startX + 4, priceY);
-          }
-
+          const prices = getProductPrices(p);
           if (includeVIP) {
-            const vipPrice = p.pricePromotional || 0;
+            // Wholesale Export: Shows Suggested Retail Price & Wholesale Price (NEVER retail promos)
+            doc.setTextColor(107, 114, 128);
+            doc.setFont('Helvetica', 'normal');
+            doc.text(`P. Sugerido: L. ${prices.pricePublic.toLocaleString()}`, startX + 4, priceY);
+
             doc.setTextColor(5, 150, 105);
             doc.setFont('Helvetica', 'bold');
-            doc.text(`Precio Mayorista: L. ${vipPrice.toLocaleString()}`, startX + 4, priceY + (includeDiscount && finalDiscountPercent > 0 ? 8 : 4));
+            doc.text(`Precio Mayorista: L. ${prices.finalWholesale.toLocaleString()}`, startX + 4, priceY + 4.5);
+          } else {
+            // Retail Export: Shows Regular Price and Retail Promo if active
+            const hasDiscount = includeDiscount && prices.hasDetallePromo && prices.effectiveDetallePct > 0;
+            if (hasDiscount) {
+              doc.setTextColor(156, 163, 175);
+              doc.setFont('Helvetica', 'normal');
+              doc.text(`Reg: L. ${prices.pricePublic.toLocaleString()}`, startX + 4, priceY);
+
+              doc.setTextColor(225, 29, 72);
+              doc.setFont('Helvetica', 'bold');
+              doc.text(`Oferta: L. ${prices.finalDetalle.toLocaleString()} (-${prices.effectiveDetallePct}% off)`, startX + 4, priceY + 4.5);
+            } else {
+              doc.setTextColor(31, 41, 55);
+              doc.setFont('Helvetica', 'bold');
+              doc.text(`Precio: L. ${prices.pricePublic.toLocaleString()}`, startX + 4, priceY);
+            }
           }
 
           doc.setTextColor(107, 114, 128);
@@ -1085,15 +1082,14 @@ export default function Inventory() {
         doc.setTextColor(107, 114, 128);
         doc.setFontSize(8);
         doc.setFont('Helvetica', 'normal');
-        doc.text('Precios vigentes al público y precios mayoristas disponibles.', 15, y);
+        doc.text(`Tarifa: ${includeVIP ? 'Mayoreo (Precios Sugeridos y Mayoristas)' : 'Detalle (Precios al Público)'}`, 15, y);
         y += 10;
 
         const colX = {
           brand: 15,
           name: groupByBrand ? 15 : 45,
-          publicPrice: 115,
-          discount: 140,
-          vipPrice: 165,
+          price1: 130,
+          price2: 158,
           stock: 188
         };
 
@@ -1111,12 +1107,14 @@ export default function Inventory() {
             doc.text('MARCA', colX.brand, y);
           }
           doc.text('FRAGANCIA', colX.name, y);
-          doc.text('DETALLE', colX.publicPrice, y);
-          if (includeDiscount) {
-            doc.text('OFERTA', colX.discount, y);
-          }
           if (includeVIP) {
-            doc.text('PRECIO MAYORISTA', colX.vipPrice, y);
+            doc.text('P. SUGERIDO', colX.price1, y);
+            doc.text('P. MAYOREO', colX.price2, y);
+          } else {
+            doc.text('PRECIO REG.', colX.price1, y);
+            if (includeDiscount) {
+              doc.text('OFERTA', colX.price2, y);
+            }
           }
           doc.text('STOCK', colX.stock, y);
           y += 7;
@@ -1164,33 +1162,30 @@ export default function Inventory() {
 
           const fullProdName = `${p.name || ''}${p.size ? ' (' + p.size + ')' : ''}`;
           doc.setFont('Helvetica', 'bold');
-          const maxNameWidth = groupByBrand ? 95 : 65;
+          const maxNameWidth = groupByBrand ? 100 : 75;
           const splitName = doc.splitTextToSize(fullProdName, maxNameWidth);
           doc.text(splitName[0], colX.name, y);
 
           doc.setFont('Helvetica', 'normal');
-          const origPublicPrice = p.pricePublic || 0;
-          doc.text(`L. ${origPublicPrice.toLocaleString()}`, colX.publicPrice, y);
+          const prices = getProductPrices(p);
+          doc.text(`L. ${prices.pricePublic.toLocaleString()}`, colX.price1, y);
 
-          if (includeDiscount) {
-            const activePromoDiscount = getProductPromoDiscount(p) || 0;
-            const finalDiscountPercent = Math.min(100, Math.max(0, activePromoDiscount + Number(additionalDiscount || 0)));
-            if (finalDiscountPercent > 0) {
-              const discountedPrice = Math.round(origPublicPrice * (1 - finalDiscountPercent / 100));
+          if (includeVIP) {
+            doc.setFont('Helvetica', 'bold');
+            doc.setTextColor(5, 150, 105); // Emerald-600
+            doc.text(`L. ${prices.finalWholesale.toLocaleString()}`, colX.price2, y);
+          } else if (includeDiscount) {
+            if (prices.hasDetallePromo && prices.effectiveDetallePct > 0) {
               doc.setFont('Helvetica', 'bold');
               doc.setTextColor(220, 38, 38);
-              doc.text(`L. ${discountedPrice.toLocaleString()} (-${finalDiscountPercent}%)`, colX.discount, y);
-              doc.setFont('Helvetica', 'normal');
-              doc.setTextColor(55, 65, 81);
+              doc.text(`L. ${prices.finalDetalle.toLocaleString()} (-${prices.effectiveDetallePct}%)`, colX.price2, y);
             } else {
-              doc.text('-', colX.discount, y);
+              doc.text('-', colX.price2, y);
             }
           }
 
-          if (includeVIP) {
-            const vipPrice = p.pricePromotional || 0;
-            doc.text(`L. ${vipPrice.toLocaleString()}`, colX.vipPrice, y);
-          }
+          doc.setFont('Helvetica', 'normal');
+          doc.setTextColor(55, 65, 81);
 
           const stockStr = p.stock > 0 ? `${p.stock} u` : 'Agotado';
           doc.text(stockStr, colX.stock, y);
@@ -1901,7 +1896,7 @@ export default function Inventory() {
 
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="flex items-center bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-x-auto shadow-sm h-10 px-1.5 gap-1 max-w-full">
-                  {[0, 5, 10, 15, 20, 25, 30, 40].map((pct) => (
+                  {(bulkTarget === 'detalle' ? [0, 5, 10, 15, 20, 25] : [0, 5, 10, 15, 20, 25, 30, 40]).map((pct) => (
                     <button
                       key={pct}
                       type="button"
@@ -1921,10 +1916,10 @@ export default function Inventory() {
                   <input
                     type="number"
                     min="0"
-                    max="100"
-                    placeholder="Otro %"
+                    max={bulkTarget === 'detalle' ? "25" : "100"}
+                    placeholder={bulkTarget === 'detalle' ? "Máx 25%" : "Otro %"}
                     id="custom-bulk-pct"
-                    className="w-16 h-10 px-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-center text-xs font-black outline-none font-mono text-neutral-900 dark:text-neutral-100 focus:ring-1 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent"
+                    className="w-20 h-10 px-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-center text-xs font-black outline-none font-mono text-neutral-900 dark:text-neutral-100 focus:ring-1 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent"
                   />
                   <button
                     type="button"
@@ -1934,7 +1929,7 @@ export default function Inventory() {
                       if (val >= 0 && val <= 100) {
                         handleApplyBulkDiscount(val);
                       } else {
-                        alert('Por favor introduce un porcentaje de descuento válido entre 0 y 100.');
+                        alert('Por favor introduce un porcentaje de descuento válido.');
                       }
                     }}
                     className="px-3 h-10 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-95 shadow-sm"
@@ -2201,10 +2196,45 @@ export default function Inventory() {
 
               <div className="space-y-3 bg-neutral-50 dark:bg-neutral-800/60 rounded-2xl p-4 border border-neutral-100 dark:border-neutral-800">
                 <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block mb-1">
-                  Configuración de Columnas y Precios
+                  Configuración de Precios y Formato
                 </span>
 
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="space-y-2.5">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 block">
+                    Tarifa a Exportar
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIncludeVIP(true)}
+                      className={`px-3 py-2 border rounded-xl text-xs font-bold cursor-pointer transition-all ${
+                        includeVIP
+                          ? 'bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 border-transparent shadow-sm'
+                          : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800'
+                      }`}
+                    >
+                      📦 Tarifa Mayorista
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIncludeVIP(false)}
+                      className={`px-3 py-2 border rounded-xl text-xs font-bold cursor-pointer transition-all ${
+                        !includeVIP
+                          ? 'bg-neutral-950 dark:bg-amber-400 text-white dark:text-neutral-950 border-transparent shadow-sm'
+                          : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800'
+                      }`}
+                    >
+                      🛒 Tarifa al Detalle
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-neutral-500 dark:text-neutral-400 font-medium leading-normal">
+                    {includeVIP 
+                      ? '💡 Incluye el Precio Sugerido y el Precio de Mayoreo. No incluye ofertas al detalle.'
+                      : '💡 Incluye el Precio Regular al detalle y ofertas activas (tope máx 25% off).'}
+                  </p>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-2 pt-2 border-t border-neutral-200/60 dark:border-neutral-700/60">
                   <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-neutral-700 dark:text-neutral-200">
                     <input
                       type="checkbox"
@@ -2215,25 +2245,17 @@ export default function Inventory() {
                     <span>Incluir imágenes (Catálogo 9 por pág.)</span>
                   </label>
 
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-neutral-700 dark:text-neutral-200">
-                    <input
-                      type="checkbox"
-                      checked={includeVIP}
-                      onChange={(e) => setIncludeVIP(e.target.checked)}
-                      className="rounded accent-neutral-950 dark:accent-amber-400 h-4 w-4"
-                    />
-                    <span>Incluir Precio Mayorista</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-neutral-700 dark:text-neutral-200">
-                    <input
-                      type="checkbox"
-                      checked={includeDiscount}
-                      onChange={(e) => setIncludeDiscount(e.target.checked)}
-                      className="rounded accent-neutral-950 dark:accent-amber-400 h-4 w-4"
-                    />
-                    <span>Incluir descuentos activos</span>
-                  </label>
+                  {!includeVIP && (
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-neutral-700 dark:text-neutral-200">
+                      <input
+                        type="checkbox"
+                        checked={includeDiscount}
+                        onChange={(e) => setIncludeDiscount(e.target.checked)}
+                        className="rounded accent-neutral-950 dark:accent-amber-400 h-4 w-4"
+                      />
+                      <span>Incluir ofertas activas (≤25% off)</span>
+                    </label>
+                  )}
 
                   <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-neutral-700 dark:text-neutral-200">
                     <input
@@ -2254,27 +2276,6 @@ export default function Inventory() {
                     />
                     <span>Ocultar agotados (Stock 0)</span>
                   </label>
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="export-add-discount" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
-                  Descuento Adicional para Cliente (%)
-                </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    id="export-add-discount"
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={additionalDiscount}
-                    onChange={(e) => setAdditionalDiscount(Math.min(100, Math.max(0, Number(e.target.value))))}
-                    className="w-24 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent outline-none transition-all font-mono"
-                    placeholder="Ej. 10"
-                  />
-                  <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-medium">
-                    Se sumará a los descuentos promocionales activos en los perfumes.
-                  </span>
                 </div>
               </div>
 

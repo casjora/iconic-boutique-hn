@@ -134,7 +134,7 @@ export function getProductPrices(product) {
     ? explicitWholesale
     : Math.round(pricePublic * 0.75); // Always 25% discount off base retail price
 
-  // 1. Detalle (Retail) Promo: <= 25% discount off pricePublic (unless isRemate)
+  // 1. Detalle (Retail) Promo: <= 25% maximum discount off pricePublic (strictly capped at 25%)
   const promoDetalleStr = getProductPromoDetalle(product);
   let finalDetalle = pricePublic;
   let promoDetalleValue = null;
@@ -146,10 +146,10 @@ export function getProductPrices(product) {
       promoDetalleType = parsed.type;
       promoDetalleValue = parsed.value;
       if (parsed.type === 'percent') {
-        const pct = isRemate ? parsed.value : Math.min(25, parsed.value);
+        const pct = Math.min(25, Math.max(0, parsed.value));
         finalDetalle = Math.max(0, Math.round(pricePublic * (1 - pct / 100)));
       } else {
-        const maxDiscount = isRemate ? pricePublic : Math.round(pricePublic * 0.25);
+        const maxDiscount = Math.round(pricePublic * 0.25);
         const discount = Math.min(parsed.value, maxDiscount);
         finalDetalle = Math.max(0, Math.round(pricePublic - discount));
       }
@@ -157,7 +157,7 @@ export function getProductPrices(product) {
   }
 
   const effectiveDetallePct = pricePublic > 0
-    ? Math.round(((pricePublic - finalDetalle) / pricePublic) * 100)
+    ? Math.min(25, Math.round(((pricePublic - finalDetalle) / pricePublic) * 100))
     : 0;
 
   // 2. Mayorista (Wholesale) Promo: >= 25% total discount off pricePublic, price >= cost (unless isRemate)
@@ -223,11 +223,11 @@ export function getProductDiscountBadges(product, user) {
   const badges = [];
 
   if (prices.isRemate) {
-    const rematePct = prices.effectiveDetallePct || prices.effectiveWholesalePct || 30;
+    const rematePct = Math.min(25, prices.effectiveDetallePct || 25);
     badges.push({
       key: 'remate',
       type: 'remate',
-      label: `REMATE: ${rematePct}%`,
+      label: `${rematePct}% off`,
       bgClass: 'bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-700'
     });
     return badges;
@@ -235,11 +235,12 @@ export function getProductDiscountBadges(product, user) {
 
   // 1. Detalle discount badge
   // Visible ONLY to public/detalle clients OR staff
+  // Format: "XX% off" (No mention of "DETALLE:")
   if ((isPublic || isStaff) && prices.hasDetallePromo && prices.effectiveDetallePct > 0) {
     badges.push({
       key: 'detalle',
       type: 'detalle',
-      label: `DETALLE: ${prices.effectiveDetallePct}%`,
+      label: `${prices.effectiveDetallePct}% off`,
       bgClass: 'bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-100 dark:border-rose-800'
     });
   }
@@ -273,8 +274,8 @@ export function getProductPriceForUser(product, user) {
 
 export function getProductPromoDiscount(product) {
   const prices = getProductPrices(product);
-  if (prices.hasDetallePromo && prices.promoDetalleType === 'percent') {
-    return prices.promoDetalleValue;
+  if (prices.hasDetallePromo) {
+    return prices.effectiveDetallePct;
   }
   return 0;
 }

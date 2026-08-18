@@ -160,7 +160,7 @@ const PerfumeCard = React.memo(({ product, index = 10 }) => {
                 </div>
                 {hasDiscount && (
                   <div className="flex items-center justify-between text-xs font-bold text-red-600 dark:text-rose-400 font-mono">
-                    <span>Detalle Oferta:</span>
+                    <span>Oferta ({prices.effectiveDetallePct}% off):</span>
                     <span>L. {prices.finalDetalle.toLocaleString()}</span>
                   </div>
                 )}
@@ -181,7 +181,7 @@ const PerfumeCard = React.memo(({ product, index = 10 }) => {
                   </div>
                   <div className="flex items-center justify-between rounded-lg bg-red-50 dark:bg-rose-950/40 p-1.5 text-xs border border-red-100 dark:border-rose-900/50">
                     <span className="flex items-center gap-1 font-extrabold text-red-700 dark:text-rose-300">
-                      🔥 Oferta Detalle:
+                      🔥 {prices.effectiveDetallePct}% off:
                     </span>
                     <span className="font-mono font-black text-red-950 dark:text-rose-200 text-sm">
                       L. {prices.finalDetalle.toLocaleString()}
