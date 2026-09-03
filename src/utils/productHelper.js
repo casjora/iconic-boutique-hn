@@ -230,29 +230,38 @@ export function getProductDiscountBadges(product, user) {
       label: `${rematePct}% off`,
       bgClass: 'bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-700'
     });
-    return badges;
+  } else {
+    // 1. Detalle discount badge
+    // Visible ONLY to public/detalle clients OR staff
+    // Format: "XX% off" (No mention of "DETALLE:")
+    if ((isPublic || isStaff) && prices.hasDetallePromo && prices.effectiveDetallePct > 0) {
+      badges.push({
+        key: 'detalle',
+        type: 'detalle',
+        label: `${prices.effectiveDetallePct}% off`,
+        bgClass: 'bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-100 dark:border-rose-800'
+      });
+    }
+
+    // 2. Mayorista discount badge
+    // Visible ONLY to mayorista clients OR staff
+    if ((isMayorista || isStaff) && (prices.hasMayoristaPromo || (isMayorista && prices.effectiveWholesalePct > 25))) {
+      badges.push({
+        key: 'mayorista',
+        type: 'mayorista',
+        label: `MAYOREO: ${prices.effectiveWholesalePct}%`,
+        bgClass: 'bg-amber-50 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+      });
+    }
   }
 
-  // 1. Detalle discount badge
-  // Visible ONLY to public/detalle clients OR staff
-  // Format: "XX% off" (No mention of "DETALLE:")
-  if ((isPublic || isStaff) && prices.hasDetallePromo && prices.effectiveDetallePct > 0) {
+  // 3. Free shipping badge for retail/public clients when retail price >= 1200
+  if ((isPublic || isStaff) && (prices.finalDetalle >= 1200 || prices.pricePublic >= 1200)) {
     badges.push({
-      key: 'detalle',
-      type: 'detalle',
-      label: `${prices.effectiveDetallePct}% off`,
-      bgClass: 'bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-100 dark:border-rose-800'
-    });
-  }
-
-  // 2. Mayorista discount badge
-  // Visible ONLY to mayorista clients OR staff
-  if ((isMayorista || isStaff) && (prices.hasMayoristaPromo || (isMayorista && prices.effectiveWholesalePct > 25))) {
-    badges.push({
-      key: 'mayorista',
-      type: 'mayorista',
-      label: `MAYOREO: ${prices.effectiveWholesalePct}%`,
-      bgClass: 'bg-amber-50 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+      key: 'free-shipping',
+      type: 'free-shipping',
+      label: '🚚 ¡Envío gratis!',
+      bgClass: 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
     });
   }
 

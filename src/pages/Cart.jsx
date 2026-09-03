@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trash2, Phone, User, ShoppingBag, ArrowLeft, Loader2, ClipboardList, Tag, AlertTriangle, ShieldCheck } from 'lucide-react';
-import { isProductSet, getProductPriceForUser } from '../utils/productHelper';
+import { Trash2, Phone, User, ShoppingBag, ArrowLeft, Loader2, ClipboardList, Tag, AlertTriangle, ShieldCheck, Truck } from 'lucide-react';
+import { isProductSet, getProductPriceForUser, getProductPrices } from '../utils/productHelper';
 
 export default function CartView() {
   const { cart, removeFromCart, updateCartQuantity, submitOrder, user, loading, error } = useStore();
@@ -14,11 +14,19 @@ export default function CartView() {
   const [sentOrder, setSentOrder] = useState(null);
   const [stockNotice, setStockNotice] = useState(null);
 
-  const hasVipPrice = !!user;
+  const isMayorista = user?.role === 'mayorista';
   const total = cart.reduce((acc, curr) => {
     const price = getProductPriceForUser(curr.product, user);
     return acc + (price * curr.quantity);
   }, 0);
+
+  const retailTotal = cart.reduce((acc, curr) => {
+    const p = getProductPrices(curr.product);
+    return acc + (p.finalDetalle * curr.quantity);
+  }, 0);
+  const qualifiesForFreeShipping = retailTotal >= 1200;
+  const missingForFreeShipping = 1200 - retailTotal;
+  const freeShippingProgress = Math.min(100, Math.round((retailTotal / 1200) * 100));
 
   const handleQtyChange = (productId, val) => {
     updateCartQuantity(productId, val);
@@ -158,9 +166,67 @@ export default function CartView() {
       
       {/* Cart items list */}
       <div className="lg:col-span-2 space-y-4">
-        <h2 className="font-display text-2xl font-black text-neutral-900 tracking-tight flex items-center gap-2">
+        <h2 className="font-display text-2xl font-black text-neutral-900 dark:text-white tracking-tight flex items-center gap-2">
           <ShoppingBag className="h-6 w-6" /> Carrito de Cotización
         </h2>
+
+        {/* Free Shipping Banner for Retail / Public Clients */}
+        {!isMayorista && (
+          qualifiesForFreeShipping ? (
+            <div className="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-3xl p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 text-emerald-950 dark:text-emerald-100 shadow-sm">
+              <div className="h-11 w-11 rounded-2xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                <Truck className="h-6 w-6" />
+              </div>
+              <div className="flex-1 space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <h3 className="font-display font-black text-sm sm:text-base text-emerald-900 dark:text-emerald-200">
+                    ¡Tu pedido aplica a ENVÍO GRATIS! 🚚
+                  </h3>
+                </div>
+                <p className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">
+                  Tu subtotal en perfumes suma <strong className="font-mono">L. {retailTotal.toLocaleString()} HNL</strong> y cumple con el mínimo de L. 1,200 HNL. Disfruta de envío gratis a todo el país.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/30 border border-amber-200/80 dark:border-amber-900/60 rounded-3xl p-4 sm:p-5 text-amber-950 dark:text-amber-100 shadow-sm space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <Truck className="h-5 w-5" />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <h3 className="font-bold text-xs sm:text-sm text-amber-950 dark:text-amber-200">
+                      Agrega <span className="font-mono font-black text-amber-700 dark:text-amber-300 text-sm">L. {missingForFreeShipping.toLocaleString()} HNL</span> más para obtener <strong className="text-amber-950 dark:text-white">¡ENVÍO GRATIS! 🚚</strong>
+                    </h3>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 bg-amber-200/70 dark:bg-amber-900/80 px-2.5 py-0.5 rounded-full self-start sm:self-auto">
+                      Mínimo L. 1,200
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-amber-800 dark:text-amber-300 font-medium">
+                    Llevas <strong className="font-mono">L. {retailTotal.toLocaleString()} HNL</strong> acumulados en fragancias al detalle.
+                  </p>
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div className="space-y-1">
+                <div className="w-full bg-amber-200/60 dark:bg-amber-900/50 rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-amber-500 to-orange-500 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${freeShippingProgress}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-[10px] font-bold text-amber-800 dark:text-amber-400 font-mono">
+                  <span>L. 0</span>
+                  <span>{freeShippingProgress}% completado</span>
+                  <span>L. 1,200</span>
+                </div>
+              </div>
+            </div>
+          )
+        )}
 
         <div className="border border-neutral-200 bg-white rounded-3xl divide-y divide-neutral-100 overflow-hidden shadow-sm">
           {cart.map((item) => {
@@ -263,17 +329,25 @@ export default function CartView() {
           <div className="space-y-2 text-xs">
             <div className="flex justify-between text-neutral-500">
               <span>Subtotal:</span>
-              <span className="font-bold text-neutral-800 font-mono">L. {total.toLocaleString()} HNL</span>
+              <span className="font-bold text-neutral-800 dark:text-neutral-200 font-mono">L. {total.toLocaleString()} HNL</span>
             </div>
+            {!isMayorista && (
+              <div className="flex justify-between text-neutral-500">
+                <span>Envío Nacional:</span>
+                <span className={`font-mono ${qualifiesForFreeShipping ? 'text-emerald-600 dark:text-emerald-400 font-black' : 'text-neutral-700 dark:text-neutral-300 font-bold'}`}>
+                  {qualifiesForFreeShipping ? '¡GRATIS! 🚚' : `Mín. L. 1,200 para gratis`}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between text-neutral-500">
               <span>Tarifa Aplicada:</span>
-              <span className="font-bold text-neutral-800">
-                {hasVipPrice ? 'Mayorista' : 'Público General'}
+              <span className="font-bold text-neutral-800 dark:text-neutral-200">
+                {isMayorista ? 'Mayorista' : 'Público General'}
               </span>
             </div>
-            <div className="flex justify-between border-t border-neutral-100 pt-3 text-sm">
-              <span className="font-extrabold text-neutral-900">Total Cotizado:</span>
-              <span className="font-mono font-black text-neutral-950">L. {total.toLocaleString()} HNL</span>
+            <div className="flex justify-between border-t border-neutral-100 dark:border-neutral-800 pt-3 text-sm">
+              <span className="font-extrabold text-neutral-900 dark:text-white">Total Cotizado:</span>
+              <span className="font-mono font-black text-neutral-950 dark:text-amber-400">L. {total.toLocaleString()} HNL</span>
             </div>
           </div>
 

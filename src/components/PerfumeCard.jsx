@@ -173,29 +173,36 @@ const PerfumeCard = React.memo(({ product, index = 10 }) => {
               </>
             ) : (
               // Guest & Detalle client pricing: Show Retail price and special discount if active, NO wholesale price shown
-              hasDiscount ? (
-                <>
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-neutral-400 dark:text-neutral-500">
-                    <span>Precio Regular:</span>
-                    <span className="line-through font-mono">L. {prices.pricePublic.toLocaleString()}</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg bg-red-50 dark:bg-rose-950/40 p-1.5 text-xs border border-red-100 dark:border-rose-900/50">
-                    <span className="flex items-center gap-1 font-extrabold text-red-700 dark:text-rose-300">
-                      🔥 {prices.effectiveDetallePct}% off:
+              <>
+                {hasDiscount ? (
+                  <>
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-neutral-400 dark:text-neutral-500">
+                      <span>Precio Regular:</span>
+                      <span className="line-through font-mono">L. {prices.pricePublic.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg bg-red-50 dark:bg-rose-950/40 p-1.5 text-xs border border-red-100 dark:border-rose-900/50">
+                      <span className="flex items-center gap-1 font-extrabold text-red-700 dark:text-rose-300">
+                        🔥 {prices.effectiveDetallePct}% off:
+                      </span>
+                      <span className="font-mono font-black text-red-950 dark:text-rose-200 text-sm">
+                        L. {prices.finalDetalle.toLocaleString()}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center justify-between text-xs py-1">
+                    <span className="font-semibold text-neutral-500 dark:text-neutral-400">Precio:</span>
+                    <span className="font-mono font-black text-neutral-900 dark:text-neutral-100 text-sm">
+                      L. {prices.pricePublic.toLocaleString()}
                     </span>
-                    <span className="font-mono font-black text-red-950 dark:text-rose-200 text-sm">
-                      L. {prices.finalDetalle.toLocaleString()}
-                    </span>
                   </div>
-                </>
-              ) : (
-                <div className="flex items-center justify-between text-xs py-1">
-                  <span className="font-semibold text-neutral-500 dark:text-neutral-400">Precio:</span>
-                  <span className="font-mono font-black text-neutral-900 dark:text-neutral-100 text-sm">
-                    L. {prices.pricePublic.toLocaleString()}
-                  </span>
-                </div>
-              )
+                )}
+                {!isMayorista && (prices.finalDetalle >= 1200 || prices.pricePublic >= 1200) && (
+                  <div className="flex items-center justify-center gap-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 p-1 text-[10px] font-extrabold text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80">
+                    <span>🚚 ¡Envío gratis!</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

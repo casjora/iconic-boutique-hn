@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useStore } from './store';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
-import { Loader2, ShieldAlert, ShoppingBag, Users, X, ExternalLink } from 'lucide-react';
+import { Loader2, ShieldAlert, ShoppingBag, Users, X, ExternalLink, Truck } from 'lucide-react';
 import ScrollToTop from './components/ScrollToTop';
 
 // Code-split route components to minimize initial bundle size
@@ -39,8 +39,19 @@ export default function App() {
     fetchTelegramConfig, checkingSession, user, initTheme, initRealtime,
     fetchCustomers, hasNewOrdersAlert, hasNewRegistrationsAlert,
     clearNewOrdersAlert, clearNewRegistrationsAlert,
+    freeShippingToast, clearFreeShippingToast,
     orders, customers
   } = useStore();
+
+  // Auto-dismiss free shipping toast after 6 seconds
+  useEffect(() => {
+    if (freeShippingToast) {
+      const timer = setTimeout(() => {
+        clearFreeShippingToast();
+      }, 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [freeShippingToast, clearFreeShippingToast]);
 
   // Keep track of the last path we synchronized to prevent infinite routing loops
   const lastPathRef = useRef(null);
@@ -242,6 +253,35 @@ export default function App() {
 
       {/* Floating Scroll To Top Button */}
       <ScrollToTop />
+
+      {/* Floating Free Shipping Toast for Retail/Public Users */}
+      {freeShippingToast && (
+        <div className="fixed top-20 right-4 sm:right-6 z-50 max-w-md w-[92vw] sm:w-auto animate-bounce-short">
+          <div className="bg-emerald-900 text-white border border-emerald-700/80 rounded-2xl p-4 shadow-[0_10px_30px_rgba(16,185,129,0.35)] flex items-start gap-3 relative overflow-hidden backdrop-blur-md">
+            <div className="p-2 bg-emerald-500/20 text-emerald-300 rounded-xl flex-shrink-0 border border-emerald-500/30">
+              <Truck className="h-6 w-6 animate-pulse text-emerald-400" />
+            </div>
+            <div className="flex-1 space-y-1 pr-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-300 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                  ¡Envío Gratis Activado!
+                </span>
+              </div>
+              <p className="text-xs font-bold leading-snug text-emerald-50">
+                {freeShippingToast.message}
+              </p>
+            </div>
+            <button
+              onClick={clearFreeShippingToast}
+              className="text-emerald-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+              title="Cerrar"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Floating Notifications Toast Stack */}
       {isStaff && (hasNewOrdersAlert || hasNewRegistrationsAlert) && (

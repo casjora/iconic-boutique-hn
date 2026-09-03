@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from './utils/supabase';
-import { getProductPriceForUser } from './utils/productHelper';
+import { getProductPriceForUser, getProductPrices } from './utils/productHelper';
 
 // Sound Alert Helpers
 export const playBackupChime = (type = 'order') => {
@@ -211,6 +211,8 @@ export const useStore = create((setOriginal, get) => {
     customers: [],
     cart: [],
     favorites: [],
+    freeShippingToast: null,
+    clearFreeShippingToast: () => set({ freeShippingToast: null }),
     telegramConfig: { token: '', chatId: '', active: false },
     hasNewRegistrationsAlert: false,
     hasNewOrdersAlert: false,
@@ -1503,21 +1505,38 @@ export const useStore = create((setOriginal, get) => {
     },
 
     addToCart: (product, quantity) => {
-      const { cart } = get();
+      const { cart, user } = get();
       const existing = cart.find(item => item.product.id === product.id);
       const maxQty = product.availableStock !== undefined ? product.availableStock : product.stock;
       if (maxQty <= 0) return;
 
+      let newCart;
       if (existing) {
         const newQty = Math.min(maxQty, existing.quantity + quantity);
-        set({
-          cart: cart.map(item => item.product.id === product.id ? { ...item, quantity: newQty } : item)
-        });
+        newCart = cart.map(item => item.product.id === product.id ? { ...item, quantity: newQty } : item);
       } else {
         const newQty = Math.min(maxQty, quantity);
-        set({
-          cart: [...cart, { product, quantity: newQty }]
-        });
+        newCart = [...cart, { product, quantity: newQty }];
+      }
+
+      set({ cart: newCart });
+
+      // Free shipping check for retail/public customers (not mayoristas)
+      const isMayorista = user?.role === 'mayorista';
+      if (!isMayorista) {
+        const retailTotal = newCart.reduce((sum, item) => {
+          const p = getProductPrices(item.product);
+          return sum + (p.finalDetalle * item.quantity);
+        }, 0);
+
+        if (retailTotal >= 1200) {
+          set({
+            freeShippingToast: {
+              id: Date.now(),
+              message: `¡Tu pedido suma L. ${retailTotal.toLocaleString()} HNL y aplica a Envío Gratis a todo el país! 🚚`
+            }
+          });
+        }
       }
     },
 
@@ -1528,16 +1547,32 @@ export const useStore = create((setOriginal, get) => {
     },
 
     updateCartQuantity: (productId, qty) => {
-      const { cart } = get();
+      const { cart, user } = get();
       const item = cart.find(i => i.product.id === productId);
       if (!item) return;
 
       const maxQty = item.product.availableStock !== undefined ? item.product.availableStock : item.product.stock;
       const finalQty = Math.max(1, Math.min(maxQty, qty));
 
-      set({
-        cart: cart.map(i => i.product.id === productId ? { ...i, quantity: finalQty } : i)
-      });
+      const newCart = cart.map(i => i.product.id === productId ? { ...i, quantity: finalQty } : i);
+      set({ cart: newCart });
+
+      const isMayorista = user?.role === 'mayorista';
+      if (!isMayorista) {
+        const retailTotal = newCart.reduce((sum, it) => {
+          const p = getProductPrices(it.product);
+          return sum + (p.finalDetalle * it.quantity);
+        }, 0);
+
+        if (retailTotal >= 1200) {
+          set({
+            freeShippingToast: {
+              id: Date.now(),
+              message: `¡Tu pedido suma L. ${retailTotal.toLocaleString()} HNL y aplica a Envío Gratis a todo el país! 🚚`
+            }
+          });
+        }
+      }
     },
 
     clearCart: () => set({ cart: [] }),
