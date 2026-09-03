@@ -359,7 +359,7 @@ export default function CartView() {
             </span>
           </div>
 
-          {!hasVipPrice && (
+          {!isMayorista && (
             <div className="p-3.5 bg-indigo-50 border border-indigo-100 rounded-2xl text-[11px] text-indigo-800 leading-relaxed font-semibold text-left">
               ✨ <strong className="text-indigo-950">¿Eres cliente mayorista?</strong> Inicia sesión para activar de forma automática la tarifa <strong className="text-indigo-950">Mayorista</strong> en todo el catálogo de perfumes en Honduras.
             </div>
