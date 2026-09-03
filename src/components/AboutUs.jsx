@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BookOpen, MapPin, History, Truck, Search, ExternalLink, Video, Navigation } from 'lucide-react';
+import { BookOpen, History, Truck, Search, ExternalLink } from 'lucide-react';
 
 export default function AboutUs() {
   const [guideNo, setGuideNo] = useState('');
@@ -25,7 +25,7 @@ export default function AboutUs() {
             Acerca de Iconic Boutique HN
           </h2>
           <p className="text-xs text-neutral-500 max-w-lg mx-auto leading-relaxed">
-            Conoce cómo comenzamos, dónde encontrarnos en Torre Metrópolis (Tegucigalpa) y cómo gestionamos nuestras entregas a todo el territorio nacional.
+            Conoce nuestra historia y cómo gestionamos nuestros envíos a todo el país desde Tegucigalpa, Honduras.
           </p>
         </div>
 
@@ -53,103 +53,35 @@ export default function AboutUs() {
             </div>
           </div>
 
-          {/* Physical Address & Boutique Card */}
+          {/* Distribution Center & Shipping Info Card */}
           <div className="border border-neutral-100 bg-neutral-50/50 rounded-2xl p-6 space-y-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-neutral-900 text-white rounded-xl">
-                <MapPin className="h-5 w-5" />
+                <Truck className="h-5 w-5" />
               </div>
               <h3 className="font-display font-black text-neutral-900 text-base">
-                Dirección Física
+                Centro de Distribución y Envíos
               </h3>
             </div>
             
             <div className="text-xs text-neutral-600 space-y-3 leading-relaxed">
               <p>
-                Nuestra moderna sala de exhibición y boutique física está estratégicamente ubicada en la zona de mayor plusvalía y seguridad de la capital:
+                Nuestras operaciones se gestionan directamente desde la capital de la república:
               </p>
-              <div className="p-3.5 bg-white border border-neutral-200 rounded-xl space-y-2.5">
-                <p className="font-bold text-neutral-900 flex items-center gap-1">
-                  📍 Torre Metrópolis
+              <div className="p-3.5 bg-white border border-neutral-200 rounded-xl space-y-2">
+                <p className="font-bold text-neutral-900 flex items-center gap-1.5">
+                  📦 Salida Principal: Tegucigalpa, Honduras
                 </p>
-                <p className="pl-5 text-neutral-500 font-medium">
-                  Bulevar Suyapa, Tegucigalpa, M.D.C., Honduras.
+                <p className="text-neutral-500 font-medium text-[11px]">
+                  Todos los pedidos son inspeccionados, empacados y despachados desde nuestro centro logístico en Tegucigalpa hacia cualquier municipio o departamento del país.
                 </p>
-                <div className="pt-1 flex flex-wrap items-center gap-2">
-                  <a
-                    href="https://maps.app.goo.gl/m6UdmzC7GgHKTCLD6?g_st=ac"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-white text-[11px] font-bold rounded-lg transition-all"
-                  >
-                    <MapPin className="h-3.5 w-3.5" /> Abrir en Google Maps
-                  </a>
-                  <a
-                    href="https://www.google.com/maps/dir/?api=1&destination=Torre+Metropolis+Bulevar+Suyapa+Tegucigalpa"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-neutral-950 text-[11px] font-bold rounded-lg transition-all"
-                  >
-                    <Navigation className="h-3.5 w-3.5" /> Cómo llegar desde tu ubicación
-                  </a>
-                </div>
               </div>
-
-              {/* Unified Embedded Google Map for Torre Metrópolis */}
-              <div className="w-full h-56 sm:h-64 rounded-xl overflow-hidden border border-neutral-200 shadow-xs relative bg-neutral-100">
-                <iframe
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3869.698048682136!2d-87.18529282485549!3d14.094911486334658!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8f6fa2c1f3ec0b93%3A0xb3cf5bb48e14bfa4!2sTorre%20Metr%C3%B3polis!5e0!3m2!1ses!2shn!4v1710000000000!5m2!1ses!2shn"
-                  title="Ubicación Torre Metrópolis Tegucigalpa"
-                  className="w-full h-full border-0"
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                  allowFullScreen
-                ></iframe>
-              </div>
-
-              <p className="text-[11px] text-neutral-400">
-                * Visítanos de lunes a sábado para conocer y probar nuestra amplia variedad de perfumes originales en stock permanente.
+              <p className="text-[11px] text-neutral-500">
+                • Procesamos despachos diarios con las principales empresas de mensajería para asegurar entregas rápidas y garantizadas.
               </p>
             </div>
           </div>
 
-        </div>
-
-        {/* Video Location Tour Card */}
-        <div className="border border-neutral-200 bg-neutral-50/50 rounded-3xl p-6 sm:p-8 space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-neutral-900 text-white rounded-2xl">
-                <Video className="h-6 w-6" />
-              </div>
-              <div>
-                <h3 className="font-display font-black text-neutral-900 text-lg">
-                  ¿Cómo encontrarnos en Torre Metrópolis?
-                </h3>
-                <p className="text-xs text-neutral-500">Mira este breve video recorrido para ubicar fácilmente nuestro local.</p>
-              </div>
-            </div>
-            <a
-              href="https://youtube.com/shorts/uZOvGJSrUtI?si=8aU5Uu2djm2SF_Yg"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-white hover:bg-neutral-100 text-neutral-900 text-xs font-bold rounded-xl border border-neutral-200 shadow-xs transition-all self-start sm:self-auto"
-            >
-              Ver en YouTube <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          </div>
-
-          <div className="flex justify-center bg-neutral-900/5 p-4 sm:p-6 rounded-2xl border border-neutral-200/60">
-            <div className="w-full max-w-[320px] aspect-[9/16] rounded-2xl overflow-hidden shadow-lg bg-black border border-neutral-800">
-              <iframe
-                src="https://www.youtube.com/embed/uZOvGJSrUtI"
-                title="Ubicación de Iconic Boutique HN en Torre Metrópolis"
-                className="w-full h-full border-0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-              ></iframe>
-            </div>
-          </div>
         </div>
 
         {/* Shipping & Delivery Section */}

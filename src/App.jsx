@@ -398,7 +398,7 @@ export default function App() {
           </div>
 
           <p className="text-[10px] text-neutral-600 dark:text-neutral-400 font-semibold max-w-xl mx-auto leading-relaxed">
-            Distribuidores de perfumería y fragancias 100% originales de diseñador en Honduras. Ubicados en Torre Metrópolis, Tegucigalpa. Envíos rápidos y garantizados a Tegucigalpa, San Pedro Sula, Olancho, Santa Bárbara, Copán, Choluteca, Cortés, Comayagua, Atlántida, El Paraíso, La Paz, Colón, Lempira, Intibucá, Ocotepeque, Valle, Yoro, Gracias a Dios e Islas de la Bahía.
+            Distribuidores de perfumería y fragancias 100% originales de diseñador en Honduras. Envíos desde Tegucigalpa a todo el país: San Pedro Sula, Olancho, Santa Bárbara, Copán, Choluteca, Cortés, Comayagua, Atlántida, El Paraíso, La Paz, Colón, Lempira, Intibucá, Ocotepeque, Valle, Yoro, Gracias a Dios e Islas de la Bahía.
           </p>
 
           <div className="border-t border-neutral-100 dark:border-neutral-800 pt-3 text-[10px] text-neutral-600 dark:text-neutral-400 font-semibold font-mono">

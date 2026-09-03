@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useStore } from '../store';
 import { Link, useLocation } from 'react-router-dom';
 import PerfumeCard from './PerfumeCard';
-import { Percent, Award, Heart, Sparkles, Search, SlidersHorizontal, RefreshCw, Flame, Download, FileDown, FileSpreadsheet, FileText, X, Loader2 } from 'lucide-react';
+import { Percent, Award, Heart, Sparkles, Search, SlidersHorizontal, RefreshCw, Flame, Download, FileDown, FileSpreadsheet, X, Loader2 } from 'lucide-react';
 import { isProductSet, getProductPromoDiscount, getProductPrices, isProductInPublicCategory, getConsolidatedProducts, normalizeCategory } from '../utils/productHelper';
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
@@ -28,6 +28,8 @@ export default function CatalogView({ favoritesOnly = false }) {
   // Export states
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportIncludeImages, setExportIncludeImages] = useState(true);
+  const [exportIncludePrice, setExportIncludePrice] = useState(true);
+  const [exportIncludeStock, setExportIncludeStock] = useState(true);
   const [exportFormat, setExportFormat] = useState('pdf'); // 'pdf' or 'xlsx'
   const [exportPriceTier, setExportPriceTier] = useState('detalle');
   const [isExporting, setIsExporting] = useState(false);
@@ -215,29 +217,31 @@ export default function CatalogView({ favoritesOnly = false }) {
             const priceY = startY + 56;
             doc.setFontSize(7);
 
-            const prices = getProductPrices(p);
-            if (isMayorista) {
-              doc.setTextColor(107, 114, 128);
-              doc.setFont('Helvetica', 'normal');
-              doc.text(`P. Sugerido: L. ${prices.pricePublic.toLocaleString()}`, startX + 4, priceY);
-
-              doc.setTextColor(16, 185, 129); // Emerald
-              doc.setFont('Helvetica', 'bold');
-              doc.text(`P. Mayoreo: L. ${prices.finalWholesale.toLocaleString()}`, startX + 4, priceY + 4.5);
-            } else {
-              const hasDiscount = prices.hasDetallePromo;
-              if (hasDiscount) {
-                doc.setTextColor(156, 163, 175);
+            if (exportIncludePrice) {
+              const prices = getProductPrices(p);
+              if (isMayorista) {
+                doc.setTextColor(107, 114, 128);
                 doc.setFont('Helvetica', 'normal');
-                doc.text(`Reg: L. ${prices.pricePublic.toLocaleString()}`, startX + 4, priceY);
+                doc.text(`P. Sugerido: L. ${prices.pricePublic.toLocaleString()}`, startX + 4, priceY);
 
-                doc.setTextColor(220, 38, 38);
+                doc.setTextColor(16, 185, 129); // Emerald
                 doc.setFont('Helvetica', 'bold');
-                doc.text(`Oferta: L. ${prices.finalDetalle.toLocaleString()} (-${prices.effectiveDetallePct}% off)`, startX + 4, priceY + 4.5);
+                doc.text(`P. Mayoreo: L. ${prices.finalWholesale.toLocaleString()}`, startX + 4, priceY + 4.5);
               } else {
-                doc.setTextColor(31, 41, 55);
-                doc.setFont('Helvetica', 'bold');
-                doc.text(`Precio: L. ${prices.pricePublic.toLocaleString()}`, startX + 4, priceY);
+                const hasDiscount = prices.hasDetallePromo;
+                if (hasDiscount) {
+                  doc.setTextColor(156, 163, 175);
+                  doc.setFont('Helvetica', 'normal');
+                  doc.text(`Reg: L. ${prices.pricePublic.toLocaleString()}`, startX + 4, priceY);
+
+                  doc.setTextColor(220, 38, 38);
+                  doc.setFont('Helvetica', 'bold');
+                  doc.text(`Oferta: L. ${prices.finalDetalle.toLocaleString()} (-${prices.effectiveDetallePct}% off)`, startX + 4, priceY + 4.5);
+                } else {
+                  doc.setTextColor(31, 41, 55);
+                  doc.setFont('Helvetica', 'bold');
+                  doc.text(`Precio: L. ${prices.pricePublic.toLocaleString()}`, startX + 4, priceY);
+                }
               }
             }
 
@@ -248,14 +252,16 @@ export default function CatalogView({ favoritesOnly = false }) {
             const catLabel = normalizeCategory(p.category) || p.category || 'Damas';
             doc.text(`Categoría: ${catLabel}`, startX + 4, startY + 74);
 
-            const stockTxt = p.stock > 0 ? `Stock: ${p.stock} u.` : 'Agotado';
-            doc.setFont('Helvetica', 'bold');
-            if (p.stock > 0) {
-              doc.setTextColor(31, 41, 55);
-            } else {
-              doc.setTextColor(220, 38, 38);
+            if (exportIncludeStock) {
+              const stockTxt = p.stock > 0 ? `Stock: ${p.stock} u.` : 'Agotado';
+              doc.setFont('Helvetica', 'bold');
+              if (p.stock > 0) {
+                doc.setTextColor(31, 41, 55);
+              } else {
+                doc.setTextColor(220, 38, 38);
+              }
+              doc.text(stockTxt, startX + cardW - 4, startY + 74, { align: 'right' });
             }
-            doc.text(stockTxt, startX + cardW - 4, startY + 74, { align: 'right' });
           });
 
           drawFooter(currentPage);
@@ -299,13 +305,17 @@ export default function CatalogView({ favoritesOnly = false }) {
             doc.text('MARCA', colX.brand, y);
             doc.text('FRAGANCIA', colX.name, y);
             doc.text('CATEGORÍA', colX.category, y);
-            doc.text('STOCK', colX.stock, y);
-            if (isMayorista) {
-              doc.text('P. SUGERIDO', colX.price1, y);
-              doc.text('P. MAYOREO', colX.price2, y);
-            } else {
-              doc.text('PRECIO REG.', colX.price1, y);
-              doc.text('OFERTA', colX.price2, y);
+            if (exportIncludeStock) {
+              doc.text('STOCK', colX.stock, y);
+            }
+            if (exportIncludePrice) {
+              if (isMayorista) {
+                doc.text('P. SUGERIDO', colX.price1, y);
+                doc.text('P. MAYOREO', colX.price2, y);
+              } else {
+                doc.text('PRECIO REG.', colX.price1, y);
+                doc.text('OFERTA', colX.price2, y);
+              }
             }
             y += 7;
           };
@@ -341,29 +351,33 @@ export default function CatalogView({ favoritesOnly = false }) {
             doc.text(catLabel, colX.category, y);
 
             // Stock
-            const stockStr = p.stock > 0 ? `${p.stock} u` : 'Agotado';
-            if (p.stock <= 0) {
-              doc.setTextColor(220, 38, 38);
+            if (exportIncludeStock) {
+              const stockStr = p.stock > 0 ? `${p.stock} u` : 'Agotado';
+              if (p.stock <= 0) {
+                doc.setTextColor(220, 38, 38);
+              }
+              doc.text(stockStr, colX.stock, y);
+              doc.setTextColor(55, 65, 81);
             }
-            doc.text(stockStr, colX.stock, y);
-            doc.setTextColor(55, 65, 81);
 
             // Pricing
-            const prices = getProductPrices(p);
-            doc.text(`L. ${prices.pricePublic.toLocaleString()}`, colX.price1, y);
+            if (exportIncludePrice) {
+              const prices = getProductPrices(p);
+              doc.text(`L. ${prices.pricePublic.toLocaleString()}`, colX.price1, y);
 
-            if (isMayorista) {
-              doc.setFont('Helvetica', 'bold');
-              doc.setTextColor(16, 185, 129); // Emerald-500
-              doc.text(`L. ${prices.finalWholesale.toLocaleString()}`, colX.price2, y);
-            } else {
-              const hasDiscount = prices.hasDetallePromo;
-              if (hasDiscount) {
+              if (isMayorista) {
                 doc.setFont('Helvetica', 'bold');
-                doc.setTextColor(220, 38, 38);
-                doc.text(`L. ${prices.finalDetalle.toLocaleString()}`, colX.price2, y);
+                doc.setTextColor(16, 185, 129); // Emerald-500
+                doc.text(`L. ${prices.finalWholesale.toLocaleString()}`, colX.price2, y);
               } else {
-                doc.text('-', colX.price2, y);
+                const hasDiscount = prices.hasDetallePromo;
+                if (hasDiscount) {
+                  doc.setFont('Helvetica', 'bold');
+                  doc.setTextColor(220, 38, 38);
+                  doc.text(`L. ${prices.finalDetalle.toLocaleString()}`, colX.price2, y);
+                } else {
+                  doc.text('-', colX.price2, y);
+                }
               }
             }
 
@@ -385,31 +399,27 @@ export default function CatalogView({ favoritesOnly = false }) {
         // Excel format
         const exportData = exportProductsList.map(p => {
           const prices = getProductPrices(p);
-          if (isMayorista) {
-            return {
-              'Código/ID': p.id,
-              'Marca': p.brand,
-              'Perfume': p.name,
-              'Tamaño': p.size,
-              'Categoría': p.category,
-              'Stock': p.stock > 0 ? `${p.stock} uds` : 'Agotado',
-              'Precio Sugerido / Detalle (L.)': prices.pricePublic,
-              'Precio Mayorista (L.)': prices.finalWholesale,
-              'Enlace de Imagen': p.image_url || ''
-            };
-          } else {
-            return {
-              'Código/ID': p.id,
-              'Marca': p.brand,
-              'Perfume': p.name,
-              'Tamaño': p.size,
-              'Categoría': p.category,
-              'Stock': p.stock > 0 ? `${p.stock} uds` : 'Agotado',
-              'Precio Detalle (L.)': prices.pricePublic,
-              'Precio Promocional (L.)': prices.hasDetallePromo ? prices.finalDetalle : 'Sin Oferta',
-              'Enlace de Imagen': p.image_url || ''
-            };
+          const record = {
+            'Código/ID': p.id,
+            'Marca': p.brand,
+            'Perfume': p.name,
+            'Tamaño': p.size,
+            'Categoría': p.category,
+          };
+          if (exportIncludeStock) {
+            record['Stock'] = p.stock > 0 ? `${p.stock} uds` : 'Agotado';
           }
+          if (exportIncludePrice) {
+            if (isMayorista) {
+              record['Precio Sugerido / Detalle (L.)'] = prices.pricePublic;
+              record['Precio Mayorista (L.)'] = prices.finalWholesale;
+            } else {
+              record['Precio Detalle (L.)'] = prices.pricePublic;
+              record['Precio Promocional (L.)'] = prices.hasDetallePromo ? prices.finalDetalle : 'Sin Oferta';
+            }
+          }
+          record['Enlace de Imagen'] = p.image_url || '';
+          return record;
         });
 
         const ws = XLSX.utils.json_to_sheet(exportData);
@@ -931,10 +941,40 @@ export default function CatalogView({ favoritesOnly = false }) {
                   </div>
                 )}
 
-                {/* PDF options: Image checklist */}
-                {exportFormat === 'pdf' && (
-                  <div className="p-4 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800/80 rounded-2xl space-y-3">
-                    <div className="flex items-start gap-2.5">
+                {/* File Options: Price, Stock & Images checklist */}
+                <div className="p-4 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800/80 rounded-2xl space-y-3">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-1">
+                    Opciones de Contenido
+                  </div>
+                  
+                  <div className="flex items-center gap-2.5">
+                    <input
+                      type="checkbox"
+                      id="export_price"
+                      checked={exportIncludePrice}
+                      onChange={(e) => setExportIncludePrice(e.target.checked)}
+                      className="h-4 w-4 rounded border-neutral-300 dark:border-neutral-700 text-neutral-950 dark:text-amber-400 focus:ring-neutral-900 dark:focus:ring-amber-400 cursor-pointer"
+                    />
+                    <label htmlFor="export_price" className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 cursor-pointer select-none">
+                      Incluir precios en el archivo
+                    </label>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <input
+                      type="checkbox"
+                      id="export_stock"
+                      checked={exportIncludeStock}
+                      onChange={(e) => setExportIncludeStock(e.target.checked)}
+                      className="h-4 w-4 rounded border-neutral-300 dark:border-neutral-700 text-neutral-950 dark:text-amber-400 focus:ring-neutral-900 dark:focus:ring-amber-400 cursor-pointer"
+                    />
+                    <label htmlFor="export_stock" className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 cursor-pointer select-none">
+                      Incluir existencias (stock) en el archivo
+                    </label>
+                  </div>
+
+                  {exportFormat === 'pdf' && (
+                    <div className="flex items-start gap-2.5 pt-1 border-t border-neutral-200/60 dark:border-neutral-800">
                       <input
                         type="checkbox"
                         id="export_images"
@@ -945,12 +985,12 @@ export default function CatalogView({ favoritesOnly = false }) {
                       <label htmlFor="export_images" className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 cursor-pointer select-none">
                         Incluir fotos de productos en el PDF
                         <span className="block text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5 font-normal leading-normal">
-                          Las fotos reales se incluirán alineadas en la primera columna con un tamaño legible y visible que preserva el orden del contenido.
+                          Las fotos reales se incluirán organizadas en tarjetas legibles que preservan el diseño.
                         </span>
                       </label>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* Action Buttons */}
                 <div className="flex items-center gap-3 pt-2">
