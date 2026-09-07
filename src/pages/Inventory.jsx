@@ -8,13 +8,24 @@ import {
   Plus, Edit2, Trash2, FileUp, Loader2, RefreshCw, 
   Search, AlertTriangle, PlayCircle, 
   AlertCircle, Check, Percent, Download, Share2,
-  FileDown, FileSpreadsheet, FileText, X, Image as ImageIcon
+  FileDown, FileSpreadsheet, FileText, X, Image as ImageIcon,
+  Upload
 } from 'lucide-react';
+import { supabase } from '../utils/supabase';
 import { isProductSet, cleanProductDescription, getProductPromoDetalle, getProductPromoMayorista, setProductPromotions, getProductPrices, getProductIsRemate, getProductDiscountBadges, detectProductCategory, normalizeCategory } from '../utils/productHelper';
 import { generateBarcodeSVG } from '../utils/barcode';
 
 const getProductImage = (p) => (p?.imageUrl || p?.image_url || '').trim();
 const hasProductImage = (p) => Boolean(getProductImage(p));
+
+const sanitizePerfumeFileName = (name) => {
+  return (name || '')
+    .trim()
+    .replace(/[\\?#%*:|"<>]/g, '')
+    .replaceAll('/', '')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
 
 export default function Inventory() {
   const { 
@@ -49,6 +60,10 @@ export default function Inventory() {
   const [formBarcode, setFormBarcode] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formImageUrl, setFormImageUrl] = useState('');
+  const [formImageFile, setFormImageFile] = useState(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState('');
+  const [imageUploadMethod, setImageUploadMethod] = useState('file'); // 'file' | 'url'
+  const fileInputRef = useRef(null);
   const [formPromoDetalle, setFormPromoDetalle] = useState('');
   const [formPromoMayorista, setFormPromoMayorista] = useState('');
   const [formIsRemate, setFormIsRemate] = useState(false);
@@ -652,6 +667,10 @@ export default function Inventory() {
     setFormBarcode('');
     setFormDescription('');
     setFormImageUrl('');
+    setFormImageFile(null);
+    setImagePreviewUrl('');
+    setImageUploadMethod('file');
+    if (fileInputRef.current) fileInputRef.current.value = '';
     setFormPromoDetalle('');
     setFormPromoMayorista('');
     setFormIsRemate(false);
@@ -662,6 +681,9 @@ export default function Inventory() {
     setIsFormModalOpen(false);
     setIsEditing(false);
     setEditingId(null);
+    setFormImageFile(null);
+    setImagePreviewUrl('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
     setError(null);
   };
 
@@ -686,7 +708,38 @@ export default function Inventory() {
     setFormIsRemate(isRemate);
     setFormDescription(cleanProductDescription(product.description || ''));
     setFormImageUrl(product.image_url || '');
+    setFormImageFile(null);
+    setImagePreviewUrl(product.image_url || '');
+    setImageUploadMethod(product.image_url ? 'url' : 'file');
+    if (fileInputRef.current) fileInputRef.current.value = '';
     setIsFormModalOpen(true);
+  };
+
+  const handleImageFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setError('Por favor selecciona un archivo de imagen válido (JPG, PNG, WEBP).');
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      setError('La imagen es demasiado pesada (máximo 8MB).');
+      return;
+    }
+
+    setFormImageFile(file);
+    const preview = URL.createObjectURL(file);
+    setImagePreviewUrl(preview);
+    setError(null);
+  };
+
+  const handleClearImage = () => {
+    setFormImageFile(null);
+    setImagePreviewUrl('');
+    setFormImageUrl('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleSaveProduct = async (e) => {
@@ -731,6 +784,41 @@ export default function Inventory() {
         ? (original?.cost > 0 ? Number(original.cost) : undefined)
         : (Number(formCost) > 0 ? Number(formCost) : (original?.cost > 0 ? Number(original.cost) : undefined));
 
+      // Image upload handling to bucket iconicPerfumes with the perfume name
+      let finalImageUrl = formImageUrl.trim();
+
+      if (formImageFile) {
+        if (!formName.trim()) {
+          setError('Ingresa el nombre del perfume antes de guardar para nombrar el archivo de imagen.');
+          setIsSavingProduct(false);
+          return;
+        }
+
+        const ext = (formImageFile.name.split('.').pop() || 'jpg').toLowerCase();
+        const cleanPerfumeName = sanitizePerfumeFileName(formName);
+        const fileName = `${cleanPerfumeName}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('iconicPerfumes')
+          .upload(fileName, formImageFile, {
+            cacheControl: '3600',
+            upsert: true
+          });
+
+        if (uploadError) {
+          console.error('Error uploading image to iconicPerfumes:', uploadError);
+          setError(`Error al subir imagen al bucket iconicPerfumes: ${uploadError.message}`);
+          setIsSavingProduct(false);
+          return;
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from('iconicPerfumes')
+          .getPublicUrl(fileName);
+
+        finalImageUrl = publicUrlData?.publicUrl || '';
+      }
+
       const data = {
         name: formName.trim(),
         brand: formBrand.trim(),
@@ -742,7 +830,7 @@ export default function Inventory() {
         category: formCategory,
         barcode: barcodeToUse,
         description: finalDescription,
-        image_url: formImageUrl.trim()
+        image_url: finalImageUrl
       };
 
       const ok = isEditing 
@@ -763,6 +851,9 @@ export default function Inventory() {
         setFormBarcode('');
         setFormDescription('');
         setFormImageUrl('');
+        setFormImageFile(null);
+        setImagePreviewUrl('');
+        if (fileInputRef.current) fileInputRef.current.value = '';
         setFormPromoDetalle('');
         setFormPromoMayorista('');
         setFormIsRemate(false);
@@ -2580,18 +2671,125 @@ export default function Inventory() {
                 )}
               </div>
 
-              <div>
-                <label htmlFor="prod-image" className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1.5">
-                  URL de la Imagen
-                </label>
-                <input
-                  id="prod-image"
-                  type="url"
-                  value={formImageUrl}
-                  onChange={(e) => setFormImageUrl(e.target.value)}
-                  className="block w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent transition-all outline-none"
-                  placeholder="https://images.unsplash.com/..."
-                />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block">
+                    Imagen del Perfume
+                  </label>
+                  <div className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 p-0.5 rounded-lg text-[10px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setImageUploadMethod('file')}
+                      className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                        imageUploadMethod === 'file'
+                          ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-xs'
+                          : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-300'
+                      }`}
+                    >
+                      Subir archivo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImageUploadMethod('url')}
+                      className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                        imageUploadMethod === 'url'
+                          ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-xs'
+                          : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-300'
+                      }`}
+                    >
+                      Pegar URL
+                    </button>
+                  </div>
+                </div>
+
+                {/* Preview of current image if any */}
+                {(imagePreviewUrl || formImageUrl) && (
+                  <div className="flex items-center gap-3 p-2.5 bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200 dark:border-neutral-700 rounded-xl">
+                    <div className="h-14 w-14 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 overflow-hidden flex items-center justify-center flex-shrink-0 p-1">
+                      <img
+                        src={imagePreviewUrl || formImageUrl}
+                        alt="Vista previa"
+                        className="h-full w-full object-contain mix-blend-multiply dark:mix-blend-normal"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 block uppercase tracking-wider">
+                        {formImageFile ? 'Archivo seleccionado' : 'Imagen actual'}
+                      </span>
+                      <p className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 truncate">
+                        {formImageFile ? formImageFile.name : (formImageUrl || 'Sin URL')}
+                      </p>
+                      {formImageFile && (
+                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block mt-0.5 truncate">
+                          Se guardará como: <code className="font-mono bg-emerald-50 dark:bg-emerald-950/60 px-1 py-0.5 rounded">{formName.trim() ? `${sanitizePerfumeFileName(formName)}.${formImageFile.name.split('.').pop()?.toLowerCase() || 'jpg'}` : '(completa el nombre del perfume)'}</code>
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleClearImage}
+                      className="p-1.5 text-neutral-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
+                      title="Quitar imagen"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+
+                {imageUploadMethod === 'file' ? (
+                  <div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      id="prod-image-file"
+                      className="hidden"
+                      onChange={handleImageFileChange}
+                    />
+                    <label
+                      htmlFor="prod-image-file"
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const file = e.dataTransfer.files?.[0];
+                        if (file) {
+                          handleImageFileChange({ target: { files: [file] } });
+                        }
+                      }}
+                      className="flex flex-col items-center justify-center gap-1.5 p-4 border-2 border-dashed border-neutral-300 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-600 rounded-2xl bg-neutral-50 dark:bg-neutral-800/40 hover:bg-neutral-100/50 dark:hover:bg-neutral-800 transition-all cursor-pointer text-center group"
+                    >
+                      <div className="h-9 w-9 rounded-xl bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 flex items-center justify-center text-neutral-600 dark:text-neutral-300 group-hover:scale-105 transition-transform shadow-xs">
+                        <Upload className="h-4 w-4" />
+                      </div>
+                      <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
+                        {formImageFile ? 'Cambiar archivo de imagen' : 'Seleccionar o arrastrar imagen desde tu dispositivo'}
+                      </span>
+                      <span className="text-[10px] text-neutral-500 dark:text-neutral-400">
+                        JPG, PNG o WEBP &bull; Se subirá a Supabase (<code className="font-mono text-neutral-700 dark:text-neutral-300">iconicPerfumes</code>)
+                      </span>
+                    </label>
+                  </div>
+                ) : (
+                  <div>
+                    <input
+                      id="prod-image"
+                      type="url"
+                      value={formImageUrl}
+                      onChange={(e) => {
+                        setFormImageUrl(e.target.value);
+                        setImagePreviewUrl(e.target.value);
+                      }}
+                      className="block w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent transition-all outline-none"
+                      placeholder="https://images.unsplash.com/..."
+                    />
+                    <span className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-1 block">
+                      Ingresa una URL directa si la imagen ya está en internet.
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-end gap-3 border-t border-neutral-100 dark:border-neutral-800 pt-4">
@@ -2608,7 +2806,10 @@ export default function Inventory() {
                   className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSavingProduct || loading ? (
-                    <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {formImageFile ? 'Subiendo imagen...' : 'Guardando...'}
+                    </span>
                   ) : (
                     isEditing ? 'Actualizar Producto' : 'Guardar Producto'
                   )}
