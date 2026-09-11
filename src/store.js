@@ -288,17 +288,39 @@ export const useStore = create((setOriginal, get) => {
           return false;
         }
 
-        const { data: profile, error: profileErr } = await supabase
+        const { data: profile } = await supabase
           .from('profiles')
           .select('name, role, phone, address')
           .eq('id', session.user.id)
-          .single();
+          .maybeSingle();
 
-        if (profileErr) throw profileErr;
+        let activeProfile = profile;
+        if (!activeProfile && session.user) {
+          const userMeta = session.user.user_metadata || {};
+          const fallbackName = userMeta.name || session.user.email?.split('@')[0] || 'Cliente';
+          const fallbackRole = userMeta.role || 'pendiente';
+          const { data: createdProfile } = await supabase
+            .from('profiles')
+            .insert({
+              id: session.user.id,
+              name: fallbackName,
+              role: fallbackRole,
+              phone: userMeta.phone || null,
+              address: userMeta.address || null
+            })
+            .select('name, role, phone, address')
+            .maybeSingle();
+          activeProfile = createdProfile || {
+            name: fallbackName,
+            role: fallbackRole,
+            phone: userMeta.phone || '',
+            address: userMeta.address || ''
+          };
+        }
 
         let mappedRole = 'pendiente';
-        if (profile) {
-          const r = String(profile.role || '').toLowerCase();
+        if (activeProfile) {
+          const r = String(activeProfile.role || '').toLowerCase();
           if (r === 'dueño' || r === 'owner') mappedRole = 'dueño';
           else if (r === 'vendedor') mappedRole = 'vendedor';
           else if (r === 'mayorista') mappedRole = 'mayorista';
@@ -316,13 +338,13 @@ export const useStore = create((setOriginal, get) => {
           return false;
         }
 
-        if (session.user.user_metadata?.role !== profile.role) {
+        if (session.user.user_metadata?.role !== activeProfile.role) {
           try {
             await supabase.auth.updateUser({
               data: {
                 ...session.user.user_metadata,
-                role: profile.role,
-                name: profile.name
+                role: activeProfile.role,
+                name: activeProfile.name
               }
             });
           } catch (e) {
@@ -332,13 +354,13 @@ export const useStore = create((setOriginal, get) => {
 
         const loggedUser = {
           id: id.toLowerCase().trim(),
-          name: profile.name,
+          name: activeProfile.name,
           role: mappedRole,
           uid: session.user.id,
           email,
           emailConfirmed,
-          phone: profile.phone || '',
-          address: profile.address || ''
+          phone: activeProfile.phone || '',
+          address: activeProfile.address || ''
         };
 
         set({ user: loggedUser, checkingSession: false });
@@ -367,17 +389,40 @@ export const useStore = create((setOriginal, get) => {
 
         if (error) throw error;
 
-        const { data: profile, error: profileErr } = await supabase
+        const { data: profile } = await supabase
           .from('profiles')
           .select('name, role, phone, address')
           .eq('id', data.user.id)
-          .single();
+          .maybeSingle();
 
-        if (profileErr) throw profileErr;
+        let activeProfile = profile;
+        if (!activeProfile && data.user) {
+          const userMeta = data.user.user_metadata || {};
+          const fallbackName = userMeta.name || data.user.email?.split('@')[0] || 'Cliente';
+          const fallbackRole = userMeta.role || 'pendiente';
+          const { data: createdProfile } = await supabase
+            .from('profiles')
+            .insert({
+              id: data.user.id,
+              name: fallbackName,
+              role: fallbackRole,
+              phone: userMeta.phone || null,
+              address: userMeta.address || null
+            })
+            .select('name, role, phone, address')
+            .maybeSingle();
+
+          activeProfile = createdProfile || {
+            name: fallbackName,
+            role: fallbackRole,
+            phone: userMeta.phone || '',
+            address: userMeta.address || ''
+          };
+        }
 
         let mappedRole = 'pendiente';
         const userMetaRole = data.user.user_metadata?.role;
-        const profileRole = profile?.role;
+        const profileRole = activeProfile?.role;
         const primaryRole = (profileRole && ['dueño', 'owner', 'vendedor', 'mayorista', 'detalle'].includes(String(profileRole).toLowerCase()))
           ? profileRole
           : (userMetaRole || profileRole || '');
@@ -401,13 +446,13 @@ export const useStore = create((setOriginal, get) => {
           throw new Error('Tu cuenta está pendiente de aprobación por un administrador. Deben asignarte un rol (Detalle o Mayorista) para poder ingresar.');
         }
 
-        if (data.user.user_metadata?.role !== profile.role) {
+        if (data.user.user_metadata?.role !== activeProfile.role) {
           try {
             await supabase.auth.updateUser({
               data: {
                 ...data.user.user_metadata,
-                role: profile.role,
-                name: profile.name
+                role: activeProfile.role,
+                name: activeProfile.name
               }
             });
           } catch (e) {
@@ -417,13 +462,13 @@ export const useStore = create((setOriginal, get) => {
 
         const loggedUser = {
           id: id.toLowerCase().trim(),
-          name: profile.name,
+          name: activeProfile.name,
           role: mappedRole,
           uid: data.user.id,
           email: userEmail,
           emailConfirmed,
-          phone: profile.phone || '',
-          address: profile.address || ''
+          phone: activeProfile.phone || '',
+          address: activeProfile.address || ''
         };
 
         set({ user: loggedUser, currentView: 'catalog', loading: false });
