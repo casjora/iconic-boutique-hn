@@ -2059,7 +2059,7 @@ export const useStore = create((setOriginal, get) => {
           total += Number(item.pricePaid) * Number(item.quantity);
         }
 
-        // 2. Insert order
+        // 2. Insert order in 'pendiente' status (as required by DB integrity trigger)
         const { error: orderErr } = await supabase
           .from('orders')
           .insert({
@@ -2067,7 +2067,7 @@ export const useStore = create((setOriginal, get) => {
             client_name: clientName || 'Venta Física (Mostrador)',
             client_phone: clientPhone || '',
             total: total,
-            status: 'entregado',
+            status: 'pendiente',
             role_used: roleUsed || 'detalle',
             buyer_id: buyerId || null,
             date: orderDate
@@ -2101,6 +2101,16 @@ export const useStore = create((setOriginal, get) => {
               .update({ stock: newStock })
               .eq('id', item.productId);
           }
+        }
+
+        // 4. Update order to 'entregado' (physical sale delivered on the spot)
+        try {
+          await supabase
+            .from('orders')
+            .update({ status: 'entregado' })
+            .eq('id', orderId);
+        } catch (updateErr) {
+          console.warn('Order created as pendiente, status update to entregado had notice:', updateErr);
         }
 
         await get().fetchProducts();
