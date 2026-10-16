@@ -1126,6 +1126,8 @@ export default function Orders() {
                       <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xl z-50 max-h-56 overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800">
                         {products
                           .filter(p => {
+                            const stock = p.availableStock !== undefined ? p.availableStock : p.stock;
+                            if (Number(stock || 0) <= 0) return false;
                             const term = editBarcodeInput.toLowerCase();
                             return (p.name || '').toLowerCase().includes(term) ||
                                    (p.brand || '').toLowerCase().includes(term) ||
@@ -1658,6 +1660,8 @@ export default function Orders() {
                       <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xl z-50 max-h-56 overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800">
                         {products
                           .filter(p => {
+                            const stock = p.availableStock !== undefined ? p.availableStock : p.stock;
+                            if (Number(stock || 0) <= 0) return false;
                             const term = barcodeInput.toLowerCase();
                             return (p.name || '').toLowerCase().includes(term) ||
                                    (p.brand || '').toLowerCase().includes(term) ||
