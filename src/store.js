@@ -971,7 +971,8 @@ export const useStore = create((setOriginal, get) => {
     fetchOrders: async () => {
       set({ loading: true, error: null });
       try {
-        const { data, error } = await supabase
+        let data, error;
+        const resWithCost = await supabase
           .from('orders')
           .select(`
             *,
@@ -979,6 +980,7 @@ export const useStore = create((setOriginal, get) => {
               product_id,
               quantity,
               price_paid,
+              cost_at_sale,
               products (
                 name,
                 brand,
@@ -992,9 +994,38 @@ export const useStore = create((setOriginal, get) => {
           `)
           .order('created_at', { ascending: false });
 
+        if (resWithCost.error && (resWithCost.error.code === '42703' || resWithCost.error.message?.includes('cost_at_sale'))) {
+          // Resilient fallback if cost_at_sale column is not yet migrated in Supabase
+          const resFallback = await supabase
+            .from('orders')
+            .select(`
+              *,
+              order_items (
+                product_id,
+                quantity,
+                price_paid,
+                products (
+                  name,
+                  brand,
+                  size,
+                  cost,
+                  price_promotional,
+                  price_public,
+                  description
+                )
+              )
+            `)
+            .order('created_at', { ascending: false });
+          data = resFallback.data;
+          error = resFallback.error;
+        } else {
+          data = resWithCost.data;
+          error = resWithCost.error;
+        }
+
         if (error) throw error;
 
-        const mappedOrders = data.map(o => ({
+        const mappedOrders = (data || []).map(o => ({
           id: o.id,
           clientName: o.client_name,
           clientPhone: o.client_phone,
@@ -1011,7 +1042,10 @@ export const useStore = create((setOriginal, get) => {
             size: item.products?.size || '',
             quantity: item.quantity,
             pricePaid: Number(item.price_paid),
-            cost: Number(item.products?.cost || 0),
+            cost: (item.cost_at_sale !== undefined && item.cost_at_sale !== null && Number(item.cost_at_sale) > 0)
+              ? Number(item.cost_at_sale)
+              : Number(item.products?.cost || 0),
+            costAtSale: item.cost_at_sale !== undefined && item.cost_at_sale !== null ? Number(item.cost_at_sale) : null,
             pricePromotional: Number(item.products?.price_promotional || 0),
             pricePublic: Number(item.products?.price_public || 0),
             description: item.products?.description || ''
@@ -1145,12 +1179,19 @@ export const useStore = create((setOriginal, get) => {
           order_id: orderId,
           product_id: item.product.id,
           quantity: item.quantity,
-          price_paid: getProductPriceForUser(item.product, user)
+          price_paid: getProductPriceForUser(item.product, user),
+          cost_at_sale: Number(item.product.cost || 0)
         }));
 
-        const { error: itemsErr } = await supabase
+        let { error: itemsErr } = await supabase
           .from('order_items')
           .insert(itemsToInsert);
+
+        if (itemsErr && (itemsErr.code === 'PGRST204' || itemsErr.message?.includes('cost_at_sale'))) {
+          const stripped = itemsToInsert.map(({ cost_at_sale: _cost_at_sale, ...rest }) => rest);
+          const retryRes = await supabase.from('order_items').insert(stripped);
+          itemsErr = retryRes.error;
+        }
 
         if (itemsErr) throw itemsErr;
 
@@ -1172,7 +1213,9 @@ export const useStore = create((setOriginal, get) => {
             brand: item.product.brand,
             size: item.product.size,
             quantity: item.quantity,
-            pricePaid: getProductPriceForUser(item.product, user)
+            pricePaid: getProductPriceForUser(item.product, user),
+            cost: Number(item.product.cost || 0),
+            costAtSale: Number(item.product.cost || 0)
           }))
         };
 
@@ -1427,16 +1470,31 @@ export const useStore = create((setOriginal, get) => {
 
           const total = newItems.reduce((acc, curr) => acc + (curr.pricePaid * curr.quantity), 0);
 
-          const itemsToInsert = newItems.map(item => ({
-            order_id: orderId,
-            product_id: item.productId,
-            quantity: item.quantity,
-            price_paid: item.pricePaid
-          }));
+          const itemsToInsert = newItems.map(item => {
+            const itemProd = get().products?.find(p => p.id === item.productId);
+            const itemCost = item.cost !== undefined && Number(item.cost) > 0
+              ? Number(item.cost)
+              : (item.costAtSale !== undefined && item.costAtSale !== null && Number(item.costAtSale) > 0
+                ? Number(item.costAtSale)
+                : Number(itemProd?.cost || 0));
+            return {
+              order_id: orderId,
+              product_id: item.productId,
+              quantity: item.quantity,
+              price_paid: item.pricePaid,
+              cost_at_sale: itemCost
+            };
+          });
 
-          const { error: insertErr } = await supabase
+          let { error: insertErr } = await supabase
             .from('order_items')
             .insert(itemsToInsert);
+
+          if (insertErr && (insertErr.code === 'PGRST204' || insertErr.message?.includes('cost_at_sale'))) {
+            const stripped = itemsToInsert.map(({ cost_at_sale: _cost_at_sale, ...rest }) => rest);
+            const retryRes = await supabase.from('order_items').insert(stripped);
+            insertErr = retryRes.error;
+          }
 
           if (insertErr) throw insertErr;
 
@@ -2077,14 +2135,28 @@ export const useStore = create((setOriginal, get) => {
 
         // 3. Insert items and subtract stock
         for (const item of items) {
-          const { error: itemsErr } = await supabase
+          const itemProd = get().products?.find(p => p.id === item.productId);
+          const itemCost = item.cost !== undefined && Number(item.cost) > 0
+            ? Number(item.cost)
+            : Number(itemProd?.cost || 0);
+
+          const itemPayload = {
+            order_id: orderId,
+            product_id: item.productId,
+            quantity: item.quantity,
+            price_paid: item.pricePaid,
+            cost_at_sale: itemCost
+          };
+
+          let { error: itemsErr } = await supabase
             .from('order_items')
-            .insert({
-              order_id: orderId,
-              product_id: item.productId,
-              quantity: item.quantity,
-              price_paid: item.pricePaid
-            });
+            .insert(itemPayload);
+
+          if (itemsErr && (itemsErr.code === 'PGRST204' || itemsErr.message?.includes('cost_at_sale'))) {
+            const { cost_at_sale: _cost_at_sale, ...stripped } = itemPayload;
+            const retryRes = await supabase.from('order_items').insert(stripped);
+            itemsErr = retryRes.error;
+          }
 
           if (itemsErr) throw itemsErr;
 

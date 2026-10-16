@@ -219,6 +219,17 @@ DECLARE
   o_role_used TEXT;
   expected_price NUMERIC;
 BEGIN
+  -- ⚡ EXCEPCIÓN PARA ACTUALIZACIONES INTERNAS (UPDATE):
+  -- Si no cambiaron ni el producto, ni la cantidad, ni el precio pagado (ej: solo cost_at_sale o auditoría),
+  -- no revalidar contra precios de catálogo actuales para no dañar ventas históricas.
+  IF TG_OP = 'UPDATE' THEN
+    IF OLD.product_id = NEW.product_id 
+       AND OLD.quantity = NEW.quantity 
+       AND OLD.price_paid = NEW.price_paid THEN
+      RETURN NEW;
+    END IF;
+  END IF;
+
   -- FIX: Leer desde products_raw para que el trigger tenga acceso a datos crudos
   SELECT stock, featured_public, name, price_public, description, cost
   INTO p_stock, p_featured, p_name, p_price_public, p_description, p_cost
@@ -227,6 +238,16 @@ BEGIN
 
   IF p_name IS NULL THEN
     RAISE EXCEPTION 'El producto con ID % no existe.', NEW.product_id;
+  END IF;
+
+  -- ⚡ BLINDAJE DE HISTORICIDAD: Congela el costo unitario exacto al momento de la venta
+  IF NEW.cost_at_sale IS NULL OR NEW.cost_at_sale <= 0 THEN
+    NEW.cost_at_sale := COALESCE(p_cost, 0);
+  END IF;
+
+  -- Si quien ejecuta es el rol de sistema o superusuario en consola SQL, permitir sin restricciones de cliente
+  IF current_user IN ('postgres', 'service_role', 'supabase_admin') THEN
+    RETURN NEW;
   END IF;
 
   caller_role := public.get_my_role();

@@ -9,7 +9,7 @@ import {
   Search, AlertTriangle, PlayCircle, 
   AlertCircle, Check, Percent, Download, Share2,
   FileDown, FileSpreadsheet, FileText, X, Image as ImageIcon,
-  Upload
+  Upload, Eye, EyeOff, PackageX, PackageCheck, Layers
 } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import { isProductSet, cleanProductDescription, getProductPromoDetalle, getProductPromoMayorista, setProductPromotions, getProductPrices, getProductIsRemate, getProductDiscountBadges, detectProductCategory, normalizeCategory } from '../utils/productHelper';
@@ -42,7 +42,23 @@ export default function Inventory() {
   const [selectedBrand, setSelectedBrand] = useState('Todas');
   const [selectedCategory, setSelectedCategory] = useState('Todas');
   const [selectedImageFilter, setSelectedImageFilter] = useState('Todas'); // 'Todas' | 'con_imagen' | 'sin_imagen'
+  const [stockFilter, setStockFilter] = useState(() => {
+    try {
+      return localStorage.getItem('perfumeria_inventory_stock_filter') || 'in_stock';
+    } catch {
+      return 'in_stock';
+    }
+  }); // 'in_stock' (oculta stock 0 por defecto) | 'out_of_stock' (apartado de stock 0) | 'all' (muestra todos)
   const [draftFilter, setDraftFilter] = useState('todos'); // 'todos' | 'nuevos' | 'mismo_costo' | 'distinto_costo'
+
+  const handleSetStockFilter = (val) => {
+    setStockFilter(val);
+    try {
+      localStorage.setItem('perfumeria_inventory_stock_filter', val);
+    } catch {
+      // ignore
+    }
+  };
 
   // Slide-over or Modal states for single product CRUD
   const [isEditing, setIsEditing] = useState(false);
@@ -218,9 +234,30 @@ export default function Inventory() {
           ? hasProductImage(p)
           : !hasProductImage(p);
 
-      return matchesSearch && matchesBrand && matchesCategory && matchesImage;
+      const stockNum = Number(p.stock || 0);
+      const matchesStock = stockFilter === 'in_stock'
+        ? stockNum > 0
+        : stockFilter === 'out_of_stock'
+          ? stockNum <= 0
+          : true;
+
+      return matchesSearch && matchesBrand && matchesCategory && matchesImage && matchesStock;
     });
-  }, [products, searchTerm, selectedBrand, selectedCategory, selectedImageFilter]);
+  }, [products, searchTerm, selectedBrand, selectedCategory, selectedImageFilter, stockFilter]);
+
+  const stockStats = useMemo(() => {
+    let inStock = 0;
+    let outOfStock = 0;
+    products.forEach(p => {
+      const s = Number(p.stock || 0);
+      if (s > 0) {
+        inStock++;
+      } else {
+        outOfStock++;
+      }
+    });
+    return { inStock, outOfStock, total: products.length };
+  }, [products]);
 
   const imageStats = useMemo(() => {
     const withImg = products.filter(hasProductImage).length;
@@ -1842,22 +1879,138 @@ export default function Inventory() {
       {/* Interactive Inventory List table */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <h3 className="font-display font-black text-neutral-900 dark:text-neutral-100 text-sm sm:text-base">
-            Listado de Fragancias en Stock
-          </h3>
-          <button
-            type="button"
-            onClick={() => setIsExportModalOpen(true)}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4.5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm"
-          >
-            <Download className="h-4 w-4" /> Exportar Catálogo Clientes
-          </button>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-display font-black text-neutral-900 dark:text-neutral-100 text-sm sm:text-base">
+                {stockFilter === 'out_of_stock'
+                  ? 'Apartado de Fragancias Agotadas'
+                  : stockFilter === 'all'
+                    ? 'Catálogo Completo de Fragancias'
+                    : 'Listado de Fragancias en Stock'}
+              </h3>
+              {stockFilter === 'in_stock' && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/80 px-2.5 py-0.5 text-[10px] font-black text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  <PackageCheck className="h-3 w-3" /> {stockStats.inStock} disponibles (Stock 0 oculto)
+                </span>
+              )}
+              {stockFilter === 'out_of_stock' && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 dark:bg-rose-950/80 px-2.5 py-0.5 text-[10px] font-black text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                  <PackageX className="h-3 w-3" /> {stockStats.outOfStock} sin stock (Apartado)
+                </span>
+              )}
+              {stockFilter === 'all' && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 dark:bg-neutral-800 px-2.5 py-0.5 text-[10px] font-bold text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">
+                  <Layers className="h-3 w-3" /> {stockStats.total} total registrados
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              {stockFilter === 'in_stock'
+                ? 'Mostrando perfumes con existencias. Los productos con stock 0 están ocultos automáticamente.'
+                : stockFilter === 'out_of_stock'
+                  ? 'Mostrando apartado exclusivo de perfumes sin existencias (stock = 0). Ocultos para clientes.'
+                  : 'Inventario general mostrando productos con existencia y perfumes agotados.'}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setIsExportModalOpen(true)}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4.5 py-2.5 bg-neutral-900 dark:bg-amber-400 hover:bg-neutral-800 dark:hover:bg-amber-300 text-white dark:text-neutral-950 text-xs font-bold rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm"
+            >
+              <Download className="h-4 w-4" /> Exportar Catálogo Clientes
+            </button>
+          </div>
+        </div>
+
+        {/* Stock Visibility View Switcher Tabs */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 p-1.5 bg-neutral-100/90 dark:bg-neutral-800/60 rounded-2xl border border-neutral-200 dark:border-neutral-700/80">
+          <div className="flex items-center gap-1.5 overflow-x-auto p-0.5">
+            <button
+              type="button"
+              onClick={() => handleSetStockFilter('in_stock')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                stockFilter === 'in_stock'
+                  ? 'bg-white dark:bg-neutral-900 text-neutral-950 dark:text-neutral-50 shadow-sm border border-neutral-200/60 dark:border-neutral-700'
+                  : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-white/50 dark:hover:bg-neutral-800/50'
+              }`}
+            >
+              <PackageCheck className={`h-4 w-4 ${stockFilter === 'in_stock' ? 'text-emerald-600 dark:text-emerald-400' : 'text-neutral-400'}`} />
+              <span>En Stock / Disponibles</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+                stockFilter === 'in_stock'
+                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
+                  : 'bg-neutral-200 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300'
+              }`}>
+                {stockStats.inStock}
+              </span>
+              <span className="text-[10px] font-normal text-neutral-400 dark:text-neutral-500 hidden md:inline">(Stock 0 oculto)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSetStockFilter('out_of_stock')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                stockFilter === 'out_of_stock'
+                  ? 'bg-rose-600 text-white shadow-sm border border-rose-700'
+                  : 'text-neutral-600 dark:text-neutral-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-white/50 dark:hover:bg-neutral-800/50'
+              }`}
+            >
+              <PackageX className={`h-4 w-4 ${stockFilter === 'out_of_stock' ? 'text-white' : 'text-rose-500'}`} />
+              <span>Apartado: Agotados (Stock 0)</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+                stockFilter === 'out_of_stock'
+                  ? 'bg-white text-rose-700'
+                  : 'bg-rose-100 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300'
+              }`}>
+                {stockStats.outOfStock}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSetStockFilter('all')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                stockFilter === 'all'
+                  ? 'bg-white dark:bg-neutral-900 text-neutral-950 dark:text-neutral-50 shadow-sm border border-neutral-200/60 dark:border-neutral-700'
+                  : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-white/50 dark:hover:bg-neutral-800/50'
+              }`}
+            >
+              <Layers className={`h-4 w-4 ${stockFilter === 'all' ? 'text-indigo-600 dark:text-amber-400' : 'text-neutral-400'}`} />
+              <span>Ver Todos</span>
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-neutral-200 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300">
+                {stockStats.total}
+              </span>
+            </button>
+          </div>
+
+          {/* Quick toggle switch */}
+          <div className="flex items-center justify-end px-2 py-1">
+            <button
+              type="button"
+              onClick={() => handleSetStockFilter(stockFilter === 'in_stock' ? 'out_of_stock' : 'in_stock')}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-neutral-600 dark:text-neutral-300 hover:text-neutral-950 dark:hover:text-white px-2.5 py-1.5 rounded-lg hover:bg-white dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+            >
+              {stockFilter === 'in_stock' ? (
+                <>
+                  <Eye className="h-3.5 w-3.5 text-neutral-500" />
+                  <span>Ver apartado de agotados ({stockStats.outOfStock})</span>
+                </>
+              ) : (
+                <>
+                  <EyeOff className="h-3.5 w-3.5 text-neutral-500" />
+                  <span>Ocultar stock 0 (volver)</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Filter and Search Box */}
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-4 sm:p-5 shadow-sm space-y-4">
-          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-5">
-            <div className="sm:col-span-2 relative">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+            <div className="sm:col-span-2 lg:col-span-2 relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                 <Search className="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
               </div>
@@ -1868,6 +2021,18 @@ export default function Inventory() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="block w-full pl-10 pr-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent outline-none transition-all"
               />
+            </div>
+
+            <div>
+              <select
+                value={stockFilter}
+                onChange={(e) => handleSetStockFilter(e.target.value)}
+                className="block w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-700 dark:text-neutral-200 focus:ring-2 focus:ring-neutral-900 dark:focus:ring-amber-400 focus:border-transparent outline-none transition-all cursor-pointer"
+              >
+                <option value="in_stock" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">🟢 En Stock ({stockStats.inStock}) [Ocultar stock 0]</option>
+                <option value="out_of_stock" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">🔴 Apartado: Stock 0 ({stockStats.outOfStock})</option>
+                <option value="all" className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">⚪ Ver Todos ({stockStats.total})</option>
+              </select>
             </div>
 
             <div>
@@ -1909,44 +2074,85 @@ export default function Inventory() {
             </div>
           </div>
 
-          {/* Quick Image Status Filter Pills */}
-          <div className="flex items-center gap-2 pt-1 border-t border-neutral-100 dark:border-neutral-800/80 overflow-x-auto text-xs">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mr-1 shrink-0">
-              Filtro Imagen:
-            </span>
-            <button
-              type="button"
-              onClick={() => setSelectedImageFilter('Todas')}
-              className={`px-3 py-1 rounded-full text-xs font-bold cursor-pointer transition-all ${
-                selectedImageFilter === 'Todas'
-                  ? 'bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950'
-                  : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 hover:bg-neutral-200'
-              }`}
-            >
-              Todas ({products.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedImageFilter('con_imagen')}
-              className={`px-3 py-1 rounded-full text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 ${
-                selectedImageFilter === 'con_imagen'
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
-              }`}
-            >
-              <ImageIcon className="h-3.5 w-3.5" /> Con Imagen ({imageStats.withImg})
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedImageFilter('sin_imagen')}
-              className={`px-3 py-1 rounded-full text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 ${
-                selectedImageFilter === 'sin_imagen'
-                  ? 'bg-amber-600 text-white'
-                  : 'bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100'
-              }`}
-            >
-              <AlertCircle className="h-3.5 w-3.5" /> Sin Imagen ({imageStats.withoutImg})
-            </button>
+          {/* Quick Filter Pills Row */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-2 border-t border-neutral-100 dark:border-neutral-800/80 text-xs">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mr-1 shrink-0">
+                Existencias:
+              </span>
+              <button
+                type="button"
+                onClick={() => handleSetStockFilter('in_stock')}
+                className={`px-3 py-1 rounded-full text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 shrink-0 ${
+                  stockFilter === 'in_stock'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
+                }`}
+              >
+                <PackageCheck className="h-3.5 w-3.5" /> En Stock ({stockStats.inStock})
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSetStockFilter('out_of_stock')}
+                className={`px-3 py-1 rounded-full text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 shrink-0 ${
+                  stockFilter === 'out_of_stock'
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'bg-rose-50 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800 hover:bg-rose-100'
+                }`}
+              >
+                <PackageX className="h-3.5 w-3.5" /> Agotados (Stock 0) ({stockStats.outOfStock})
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSetStockFilter('all')}
+                className={`px-3 py-1 rounded-full text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 shrink-0 ${
+                  stockFilter === 'all'
+                    ? 'bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950 shadow-xs'
+                    : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 hover:bg-neutral-200'
+                }`}
+              >
+                <Layers className="h-3.5 w-3.5" /> Todos ({stockStats.total})
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1.5 overflow-x-auto">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mr-1 shrink-0">
+                Filtro Imagen:
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedImageFilter('Todas')}
+                className={`px-2.5 py-1 rounded-full text-xs font-bold cursor-pointer transition-all shrink-0 ${
+                  selectedImageFilter === 'Todas'
+                    ? 'bg-neutral-900 text-white dark:bg-amber-400 dark:text-neutral-950'
+                    : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 hover:bg-neutral-200'
+                }`}
+              >
+                Todas ({products.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedImageFilter('con_imagen')}
+                className={`px-2.5 py-1 rounded-full text-xs font-bold cursor-pointer transition-all flex items-center gap-1 shrink-0 ${
+                  selectedImageFilter === 'con_imagen'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
+                }`}
+              >
+                <ImageIcon className="h-3.5 w-3.5" /> Con Foto ({imageStats.withImg})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedImageFilter('sin_imagen')}
+                className={`px-2.5 py-1 rounded-full text-xs font-bold cursor-pointer transition-all flex items-center gap-1 shrink-0 ${
+                  selectedImageFilter === 'sin_imagen'
+                    ? 'bg-amber-600 text-white'
+                    : 'bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100'
+                }`}
+              >
+                <AlertCircle className="h-3.5 w-3.5" /> Sin Foto ({imageStats.withoutImg})
+              </button>
+            </div>
           </div>
         </div>
 
@@ -2051,6 +2257,55 @@ export default function Inventory() {
           </div>
         )}
 
+        {/* Contextual Stock Banners */}
+        {stockFilter === 'out_of_stock' && (
+          <div className="bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 flex items-center justify-center shrink-0 mt-0.5">
+                <PackageX className="h-5 w-5" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-bold text-rose-950 dark:text-rose-200 text-sm">
+                    Apartado de Perfumes Agotados (Stock = 0)
+                  </h4>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-200 dark:bg-rose-900 text-rose-800 dark:text-rose-200">
+                    {filteredProducts.length} fragancias
+                  </span>
+                </div>
+                <p className="text-xs text-rose-800 dark:text-rose-300 leading-relaxed">
+                  Estas fragancias no están visibles para ningún cliente ni en el catálogo de ventas. Se mantienen registradas para conservar el historial de costos, ventas y métricas. Puedes reabastecer existencias haciendo clic en "Reabastecer" o "Editar".
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSetStockFilter('in_stock')}
+              className="w-full sm:w-auto px-4 py-2 bg-rose-700 hover:bg-rose-800 dark:bg-rose-500 dark:hover:bg-rose-600 text-white text-xs font-bold rounded-xl transition-all shadow-sm shrink-0 cursor-pointer flex items-center justify-center gap-2"
+            >
+              <EyeOff className="h-3.5 w-3.5" /> Ocultar y volver a perfumes en stock
+            </button>
+          </div>
+        )}
+
+        {stockFilter === 'all' && (
+          <div className="bg-neutral-100 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-2xl px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
+              <Layers className="h-4 w-4 text-neutral-500 shrink-0" />
+              <span>
+                Mostrando el catálogo completo ({filteredProducts.length} perfumes), incluyendo <strong>{stockStats.outOfStock} fragancias con stock 0</strong>.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSetStockFilter('in_stock')}
+              className="text-xs font-bold text-neutral-900 dark:text-amber-400 hover:underline cursor-pointer flex items-center gap-1.5"
+            >
+              <EyeOff className="h-3.5 w-3.5" /> Ocultar perfumes sin stock ({stockStats.outOfStock})
+            </button>
+          </div>
+        )}
+
         {/* Inventory list Table */}
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
@@ -2062,7 +2317,9 @@ export default function Inventory() {
                   {isOwner && <th className="px-3 sm:px-6 py-3.5">Costo (HNL)</th>}
                   <th className="px-3 sm:px-6 py-3.5">Precio Público (HNL)</th>
                   <th className="px-3 sm:px-6 py-3.5">Precio Mayorista (HNL)</th>
-                  <th className="px-3 sm:px-6 py-3.5">Stock</th>
+                  <th className={`px-3 sm:px-6 py-3.5 ${stockFilter === 'out_of_stock' ? 'text-rose-600 dark:text-rose-400' : ''}`}>
+                    {stockFilter === 'out_of_stock' ? 'Stock (Agotado)' : 'Stock'}
+                  </th>
                   <th className="px-3 sm:px-6 py-3.5 max-w-[120px] w-[120px] truncate">Código / Barcode</th>
                   <th className="px-3 sm:px-6 py-3.5 text-right">Acciones</th>
                 </tr>
@@ -2071,7 +2328,47 @@ export default function Inventory() {
                 {filteredProducts.length === 0 ? (
                   <tr>
                     <td colSpan={isOwner ? "8" : "7"} className="px-6 py-12 text-center text-neutral-400 dark:text-neutral-500">
-                      <span>No se encontraron perfumes registrados.</span>
+                      <div className="flex flex-col items-center justify-center space-y-2 max-w-sm mx-auto">
+                        {stockFilter === 'out_of_stock' ? (
+                          <>
+                            <PackageCheck className="h-8 w-8 text-emerald-500 mb-1" />
+                            <span className="font-bold text-neutral-800 dark:text-neutral-200 text-sm">
+                              ¡No hay perfumes agotados!
+                            </span>
+                            <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                              Todas las fragancias con los filtros actuales cuentan con existencias disponibles en inventario.
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleSetStockFilter('in_stock')}
+                              className="mt-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                            >
+                              Ver fragancias en stock ({stockStats.inStock}) →
+                            </button>
+                          </>
+                        ) : stockFilter === 'in_stock' ? (
+                          <>
+                            <AlertCircle className="h-8 w-8 text-amber-500 mb-1" />
+                            <span className="font-bold text-neutral-800 dark:text-neutral-200 text-sm">
+                              Sin fragancias disponibles
+                            </span>
+                            <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                              No hay perfumes con existencias mayores a 0 para esta búsqueda o categoría.
+                            </span>
+                            {stockStats.outOfStock > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleSetStockFilter('out_of_stock')}
+                                className="mt-2 text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
+                              >
+                                Ver apartado de {stockStats.outOfStock} perfumes agotados →
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <span>No se encontraron perfumes registrados.</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -2159,15 +2456,20 @@ export default function Inventory() {
                           </div>
                         </td>
                         <td className="px-3 sm:px-6 py-3.5 whitespace-nowrap">
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-mono font-black ${
-                            p.stock <= 0
-                              ? 'bg-red-50 dark:bg-rose-950/80 text-red-700 dark:text-rose-300'
-                              : p.stock <= 3
-                                ? 'bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 font-bold'
-                                : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-bold'
-                          }`}>
-                            {p.stock} u
-                          </span>
+                          {p.stock <= 0 ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono font-black bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 shadow-xs">
+                              <PackageX className="h-3 w-3 shrink-0" />
+                              <span>0 u (Agotado)</span>
+                            </span>
+                          ) : (
+                            <span className={`inline-block px-2.5 py-1 rounded-lg text-xs font-mono font-black ${
+                              p.stock <= 3
+                                ? 'bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                                : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-neutral-200 dark:border-neutral-700'
+                            }`}>
+                              {p.stock} u
+                            </span>
+                          )}
                         </td>
                         <td className="px-3 sm:px-6 py-3.5 space-y-1 max-w-[120px] w-[120px] overflow-hidden">
                           <span className="font-mono text-neutral-500 dark:text-neutral-400 text-[10px] block truncate" title={p.barcode}>{p.barcode}</span>
@@ -2177,6 +2479,16 @@ export default function Inventory() {
                           />
                         </td>
                         <td className="px-3 sm:px-6 py-3.5 text-right whitespace-nowrap space-x-1">
+                          {p.stock <= 0 && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(p)}
+                              className="inline-flex items-center gap-1 px-2 py-1 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-[10px] font-bold rounded-lg cursor-pointer transition-colors mr-1"
+                              title="Reabastecer o ingresar stock para esta fragancia"
+                            >
+                              <Plus className="h-3 w-3" /> Reabastecer
+                            </button>
+                          )}
                           <button
                             onClick={() => handleOpenEdit(p)}
                             className="p-1.5 text-neutral-400 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg cursor-pointer transition-colors"

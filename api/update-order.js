@@ -83,17 +83,34 @@ export default async function handler(req, res) {
     // 4. Calculate total and map new items
     const total = newItems.reduce((acc, curr) => acc + (Number(curr.pricePaid || 0) * Number(curr.quantity || 0)), 0);
 
-    const itemsToInsert = newItems.map(item => ({
-      order_id: orderId,
-      product_id: item.productId,
-      quantity: Number(item.quantity || 0),
-      price_paid: Number(item.pricePaid || 0)
-    }));
+    const itemsToInsert = newItems.map(item => {
+      const itemCost = item.cost !== undefined && Number(item.cost) > 0
+        ? Number(item.cost)
+        : (item.costAtSale !== undefined && item.costAtSale !== null && Number(item.costAtSale) > 0
+          ? Number(item.costAtSale)
+          : undefined);
+      const record = {
+        order_id: orderId,
+        product_id: item.productId,
+        quantity: Number(item.quantity || 0),
+        price_paid: Number(item.pricePaid || 0)
+      };
+      if (itemCost !== undefined) {
+        record.cost_at_sale = itemCost;
+      }
+      return record;
+    });
 
     // 5. Insert new items
-    const { error: insertErr } = await supabase
+    let { error: insertErr } = await supabase
       .from('order_items')
       .insert(itemsToInsert);
+
+    if (insertErr && (insertErr.code === 'PGRST204' || insertErr.message?.includes('cost_at_sale'))) {
+      const strippedItems = itemsToInsert.map(({ cost_at_sale: _cost_at_sale, ...rest }) => rest);
+      const retry = await supabase.from('order_items').insert(strippedItems);
+      insertErr = retry.error;
+    }
 
     if (insertErr) {
       console.error('Error inserting new order items:', insertErr);
