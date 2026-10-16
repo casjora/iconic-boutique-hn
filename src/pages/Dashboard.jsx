@@ -22,6 +22,7 @@ import {
   Flame
 } from 'lucide-react';
 import { isProductSet } from '../utils/productHelper';
+import SalesAnalyticsCharts from '../components/SalesAnalyticsCharts';
 
 export default function Dashboard() {
   const { products, orders, fetchProducts, fetchOrders, user } = useStore();
@@ -627,6 +628,14 @@ export default function Dashboard() {
           </div>
 
         </div>
+
+        {/* 2.1 Recharts Visual Data Visualization Component */}
+        <SalesAnalyticsCharts
+          orders={orders}
+          products={products}
+          isOwner={isOwner}
+          currentTimeframe={timeframe}
+        />
 
         {/* Strategic Inventory & Business Alerts Section */}
         <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2">
