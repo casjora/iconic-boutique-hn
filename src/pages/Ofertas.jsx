@@ -19,9 +19,15 @@ export default function OfertasView() {
   // Lazy loading state
   const [visibleCount, setVisibleCount] = useState(12);
 
-  // Filters only products where pricePromotional < pricePublic
+  // Filters only products where pricePromotional < pricePublic and with available stock > 0 for everyone
   const promoProducts = useMemo(() => {
-    return products.filter(p => p.pricePromotional < p.pricePublic);
+    return products.filter(p => {
+      const isPromo = p.pricePromotional < p.pricePublic;
+      if (!isPromo) return false;
+      const stock = p.availableStock !== undefined ? p.availableStock : p.stock;
+      if (Number(stock || 0) <= 0) return false;
+      return true;
+    });
   }, [products]);
 
   // Extract unique brands for the filter select

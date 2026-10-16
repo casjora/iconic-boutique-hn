@@ -65,7 +65,7 @@ export default function CartView() {
       `📍 *Orden ID:* \`${sentOrder.id}\`\n\n` +
       `📦 *Detalle de Perfumes:*\n${itemsText}\n\n` +
       `💵 *TOTAL COTIZADO:* *L. ${sentOrder.total.toLocaleString()} HNL*\n\n` +
-      `Hola, me gustaría coordinar el pago y la entrega de mi pedido en Honduras.`
+      `Hola, me gustaría coordinar el pago (transferencia/contra entrega) y la entrega de mi pedido en Honduras.`
     );
 
     return (

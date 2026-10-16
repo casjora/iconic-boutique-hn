@@ -11,8 +11,12 @@ const PerfumeCard = React.memo(({ product, index = 10 }) => {
   const isMayorista = user?.role === 'mayorista';
   const isStaff = user?.role === 'vendedor' || user?.role === 'owner';
 
-  const targetStock = product.availableStock !== undefined ? product.availableStock : product.stock;
-  const outOfStock = targetStock <= 0;
+  const targetStock = product?.availableStock !== undefined ? product.availableStock : product?.stock;
+  const outOfStock = Number(targetStock || 0) <= 0;
+
+  if (outOfStock) {
+    return null;
+  }
 
   // Price calculations
   const isSet = isProductSet(product);
